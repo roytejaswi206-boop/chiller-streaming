@@ -1,0 +1,594 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================================
+// 1. User & Authentication
+// ============================================================================
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String         @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  image         String?
+  role          String         @default("USER") // USER, ADMIN, MODERATOR
+  tier          String         @default("FREE") // FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  watchHistory  WatchHistory[]
+  watchlist     Watchlist[]
+  favorites     Favorite[]
+  viewEvents    ViewEvent[]
+  subscriptions Subscription[]
+  payments      Payment[]
+
+  @@index([email])
+  @@index([role])
+  @@index([tier])
+  @@map("users")
+}
+
+// ============================================================================
+// 2. Video Catalog & Metadata
+// ============================================================================
+
+model Video {
+  id               String         @id @default(cuid())
+  publicId         String         @unique @default(cuid())
+  slug             String         @unique
+  title            String
+  description      String?
+  thumbnailUrl     String
+  backdropUrl      String?
+  previewUrl       String?        // Hover preview clip / sprite sheet
+  duration         Int            @default(0) // In seconds
+  resolution       String         @default("1080p") // 4K, 1440p, 1080p, 720p, 480p, 360p
+  fps              Int            @default(30)
+  codec            String         @default("h264")
+  fileSize         BigInt         @default(0) // In bytes
+  contentHash      String?        // SHA-256 for duplicate detection
+  
+  // Streaming & Master HLS
+  hlsMasterUrl     String?        // master.m3u8 URL or path
+  dashUrl          String?        // manifest.mpd URL
+  fallbackMp4Url   String?        // direct fallback
+  
+  // Status & Flags
+  status           String         @default("READY") // UPLOADED, QUEUED, PROCESSING, TRANSCODING, PACKAGING, UPLOADING, READY, FAILED
+  visibility       String         @default("PUBLIC") // PUBLIC, UNLISTED, PRIVATE, PREMIUM_ONLY
+  isPublished      Boolean        @default(true)
+  isFeatured       Boolean        @default(false)
+  isTrending       Boolean        @default(false)
+  isPremium        Boolean        @default(false)
+  
+  // Real Statistics (No fake numbers)
+  views            Int            @default(0)
+  uniqueViews      Int            @default(0)
+  guestViews       Int            @default(0)
+  memberViews      Int            @default(0)
+  totalWatchTime   BigInt         @default(0) // Total seconds watched
+  completedViews   Int            @default(0)
+  likes            Int            @default(0)
+  shares           Int            @default(0)
+  
+  source           String         @default("BROWSER") // BROWSER, FOLDER_IMPORT, TELEGRAM
+  
+  // Relations
+  categoryId       String?
+  category         Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags             VideoTag[]
+  variants         VideoVariant[]
+  subtitles        Subtitle[]
+  audioTracks      AudioTrack[]
+  origins          VideoOrigin[]
+  processingJobs   ProcessingJob[]
+  watchHistory     WatchHistory[]
+  watchlist        Watchlist[]
+  favorites        Favorite[]
+  viewEvents       ViewEvent[]
+  telegramMedia    TelegramMedia[]
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([slug])
+  @@index([publicId])
+  @@index([status])
+  @@index([source])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([isTrending])
+  @@index([views])
+  @@index([createdAt])
+  @@index([categoryId])
+  @@map("videos")
+}
+
+model VideoVariant {
+  id          String   @id @default(cuid())
+  videoId     String
+  video       Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  quality     String   // 2160p, 1440p, 1080p, 720p, 480p, 360p
+  width       Int
+  height      Int
+  bitrate     Int      // in kbps
+  fps         Int      @default(30)
+  playlistUrl String   // path or URL to the variant's .m3u8
+  fileSize    BigInt   @default(0)
+  codec       String   @default("h264")
+  createdAt   DateTime @default(now())
+
+  @@unique([videoId, quality])
+  @@index([videoId])
+  @@map("video_variants")
+}
+
+model Subtitle {
+  id        String   @id @default(cuid())
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  language  String   // en, es, fr, de, hi, etc.
+  label     String   // English, Spanish, etc.
+  url       String   // vtt or srt file url
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([videoId])
+  @@map("subtitles")
+}
+
+model AudioTrack {
+  id        String   @id @default(cuid())
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  language  String
+  label     String
+  codec     String   @default("aac")
+  url       String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([videoId])
+  @@map("audio_tracks")
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  thumbnail   String?
+  icon        String?    // Icon identifier e.g. heart, fire, person, star, etc.
+  order       Int        @default(0)
+  videoCount  Int        @default(0)
+  videos      Video[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([slug])
+  @@index([order])
+  @@map("categories")
+}
+
+model Tag {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  slug      String     @unique
+  videos    VideoTag[]
+  createdAt DateTime   @default(now())
+
+  @@index([slug])
+  @@map("tags")
+}
+
+model VideoTag {
+  videoId   String
+  tagId     String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([videoId, tagId])
+  @@index([videoId])
+  @@index([tagId])
+  @@map("video_tags")
+}
+
+// ============================================================================
+// 3. User Activity: History, Watchlist, Favorites
+// ============================================================================
+
+model WatchHistory {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId         String?
+  video           Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  tmdbId          Int?
+  mediaType       String?  @default("movie") // movie, tv, anime
+  title           String?
+  posterUrl       String?
+  backdropUrl     String?
+  seasonNumber    Int?
+  episodeNumber   Int?
+  episodeTitle    String?
+  progressSeconds Int      @default(0)
+  durationSeconds Int      @default(0)
+  completed       Boolean  @default(false)
+  lastWatchedAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([videoId])
+  @@index([tmdbId])
+  @@index([lastWatchedAt])
+  @@map("watch_history")
+}
+
+model Watchlist {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId     String?
+  video       Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  tmdbId      Int?
+  mediaType   String?  @default("movie") // movie, tv, anime
+  title       String?
+  posterUrl   String?
+  backdropUrl String?
+  rating      Float?
+  releaseYear String?
+  addedAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([videoId])
+  @@index([tmdbId])
+  @@index([addedAt])
+  @@map("watchlist")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId   String?
+  video     Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  tmdbId    Int?
+  addedAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([videoId])
+  @@index([tmdbId])
+  @@map("favorites")
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  isSecret  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// ============================================================================
+// 4. Analytics & Verified Views
+// ============================================================================
+
+model ViewEvent {
+  id            String   @id @default(cuid())
+  videoId       String
+  video         Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ipAddress     String?
+  userAgent     String?
+  country       String?
+  device        String?  // Desktop, Mobile, Tablet, TV
+  browser       String?
+  watchDuration Int      @default(0) // seconds watched in this session
+  completed     Boolean  @default(false)
+  originId      String?
+  quality       String?
+  createdAt     DateTime @default(now())
+
+  @@index([videoId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("view_events")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  eventType  String   // PLAY, PAUSE, SEEK, BUFFER, ERROR, QUALITY_CHANGE, SPEED_CHANGE, AD_CLICK
+  category   String   // PLAYER, NAVIGATION, MONETIZATION
+  data       String?  // JSON encoded details
+  userId     String?
+  sessionId  String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([eventType])
+  @@index([category])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
+
+// ============================================================================
+// 5. Multi-Server Origin Architecture & Replication
+// ============================================================================
+
+model StreamingServer {
+  id             String        @id @default(cuid())
+  name           String        @unique // e.g. INDIA-01, SINGAPORE-01, EUROPE-01, US-01
+  region         String        // ap-south, ap-southeast, eu-central, us-east
+  endpoint       String        // e.g. https://origin-in.velora-cdn.net
+  capacityBytes  BigInt        @default(10995116277760) // 10TB in bytes
+  usedBytes      BigInt        @default(0)
+  currentLoad    Float         @default(0.0) // 0-100%
+  activeStreams  Int           @default(0)
+  bandwidthMbps  Float         @default(0.0)
+  priority       Int           @default(1)
+  isHealthy      Boolean       @default(false)
+  isEnabled      Boolean       @default(true)
+  latencyMs      Float         @default(0.0)
+  failureCount   Int           @default(0)
+  lastSeen       DateTime?
+  status         String        @default("NOT_CONFIGURED") // NOT_CONFIGURED, ONLINE, OFFLINE, UNREACHABLE
+  lastCheckedAt  DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  origins        VideoOrigin[]
+
+  @@index([region])
+  @@index([isHealthy])
+  @@index([isEnabled])
+  @@index([status])
+  @@map("streaming_servers")
+}
+
+model VideoOrigin {
+  id         String          @id @default(cuid())
+  videoId    String
+  video      Video           @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  serverId   String
+  server     StreamingServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  status     String          @default("READY") // PENDING, COPYING, VERIFYING, READY, FAILED
+  checksum   String?
+  sizeBytes  BigInt          @default(0)
+  replicatedAt DateTime?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([videoId, serverId])
+  @@index([videoId])
+  @@index([serverId])
+  @@index([status])
+  @@map("video_origins")
+}
+
+// ============================================================================
+// 6. Processing Queue & Workers
+// ============================================================================
+
+model ProcessingJob {
+  id           String    @id @default(cuid())
+  videoId      String
+  video        Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  type         String    // TRANSCODE, HLS_PACKAGE, THUMBNAIL, TELEGRAM_IMPORT, REPLICATION
+  status       String    @default("QUEUED") // UPLOADED, QUEUED, PROCESSING, TRANSCODING, PACKAGING, UPLOADING, READY, FAILED, CANCELLED
+  progress     Float     @default(0.0) // 0-100%
+  workerId     String?
+  sourceFile   String?
+  outputFiles  String?   // JSON encoded paths
+  errorMessage String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([videoId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("processing_jobs")
+}
+
+// ============================================================================
+// 7. Monetization & Subscriptions
+// ============================================================================
+
+model Subscription {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan             String    // MONTHLY, YEARLY
+  status           String    @default("ACTIVE") // ACTIVE, CANCELLED, EXPIRED, PAST_DUE
+  amount           Float     @default(0.0)
+  currency         String    @default("USD")
+  currentPeriodStart DateTime @default(now())
+  currentPeriodEnd   DateTime
+  cancelledAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Float
+  currency      String   @default("USD")
+  provider      String   // STRIPE, CCBILL, SEGPAY, MANUAL
+  transactionId String?  @unique
+  status        String   // COMPLETED, PENDING, FAILED, REFUNDED
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+model AdEvent {
+  id         String   @id @default(cuid())
+  adId       String
+  type       String   // IMPRESSION, CLICK, COMPLETE, SKIP
+  videoId    String?
+  userId     String?
+  ipAddress  String?
+  revenue    Float    @default(0.0)
+  createdAt  DateTime @default(now())
+
+  @@index([adId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("ad_events")
+}
+
+// ============================================================================
+// 8. Observability & System Logs
+// ============================================================================
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String   @default("INFO") // INFO, WARN, ERROR, FATAL
+  service   String   // API, QUEUE, TRANSCODER, ORIGIN, REPLICATION, TELEGRAM, AUTH
+  message   String
+  metadata  String?  // JSON stringified details
+  createdAt DateTime @default(now())
+
+  @@index([level])
+  @@index([service])
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+// ============================================================================
+// 9. Telegram Video Ingestion Architecture
+// ============================================================================
+
+model TelegramSource {
+  id              String               @id @default(cuid())
+  telegramId      String               @unique // chat/channel ID e.g. "-1001234567890" or "me"
+  title           String
+  username        String?
+  type            String               // CHANNEL, GROUP, SAVED_MESSAGES, CHAT
+  lastScannedId   Int                  @default(0) // Cursor for resumable pagination
+  totalDiscovered Int                  @default(0)
+  totalImported   Int                  @default(0)
+  autoSync        Boolean              @default(false)
+  syncIntervalMin Int                  @default(60)
+  lastSyncedAt    DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  media           TelegramMedia[]
+  importJobs      TelegramImportJob[]
+
+  @@map("telegram_sources")
+}
+
+model TelegramMedia {
+  id               String               @id @default(cuid())
+  sourceId         String
+  source           TelegramSource       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  messageId        Int
+  fileId           String?              // Telegram file identifier
+  fileName         String?
+  mimeType         String?
+  fileSizeBytes    BigInt               @default(0)
+  duration         Int                  @default(0) // Duration in seconds
+  width            Int?
+  height           Int?
+  messageDate      DateTime?
+  contentHash      String?              // SHA-256 for duplicate detection
+  
+  // Ingestion State
+  status           String               @default("DISCOVERED") 
+  // DISCOVERED, QUEUED, DOWNLOADING, DOWNLOADED, PROCESSING, READY, DUPLICATE, SKIPPED, FAILED, CANCELLED
+  downloadProgress Float                @default(0.0)
+  localStagingPath String?
+  
+  videoId          String?              // Associated Velora Video
+  video            Video?               @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  
+  errorMessage     String?
+  retryCount       Int                  @default(0)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  importItems      TelegramImportItem[]
+
+  @@unique([sourceId, messageId])
+  @@index([sourceId])
+  @@index([status])
+  @@index([contentHash])
+  @@index([fileId])
+  @@map("telegram_media")
+}
+
+model TelegramImportJob {
+  id               String               @id @default(cuid())
+  sourceId         String
+  source           TelegramSource       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  status           String               @default("IDLE") 
+  // IDLE, RUNNING, PAUSED, COMPLETED, CANCELLED, PAUSED_STORAGE
+  mode             String               @default("NEW_ONLY") 
+  // NEW_ONLY, FULL_SYNC, SELECTED, BATCH
+  totalDiscovered  Int                  @default(0)
+  queued           Int                  @default(0)
+  downloading      Int                  @default(0)
+  downloaded       Int                  @default(0)
+  processing       Int                  @default(0)
+  ready            Int                  @default(0)
+  failed           Int                  @default(0)
+  duplicates       Int                  @default(0)
+  skipped          Int                  @default(0)
+  currentMessageId Int?
+  batchSize        Int                  @default(50)
+  maxFileSize      BigInt?
+  errorMessage     String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  items            TelegramImportItem[]
+
+  @@index([sourceId])
+  @@index([status])
+  @@map("telegram_import_jobs")
+}
+
+model TelegramImportItem {
+  id           String             @id @default(cuid())
+  jobId        String
+  job          TelegramImportJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  mediaId      String
+  media        TelegramMedia      @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  status       String             @default("QUEUED")
+  // QUEUED, DOWNLOADING, DOWNLOADED, PROCESSING, READY, DUPLICATE, SKIPPED, FAILED, CANCELLED
+  errorMessage String?
+  retryCount   Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([jobId, mediaId])
+  @@index([jobId])
+  @@index([mediaId])
+  @@index([status])
+  @@map("telegram_import_items")
+}
+

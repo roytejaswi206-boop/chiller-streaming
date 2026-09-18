@@ -1,0 +1,51 @@
+{
+  "name": "chiller-streaming",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:seed": "node --loader ts-node/esm prisma/seed.ts",
+    "db:switch:pg": "npx prisma db push --schema=prisma/schema.postgresql.prisma",
+    "worker": "npx tsx worker.ts",
+    "health": "npx tsx scripts/health-check.ts",
+    "verify-video": "npx tsx scripts/verify-video.ts",
+    "test:scale": "npx tsx scripts/scale-test.ts"
+  },
+  "dependencies": {
+    "@next-auth/prisma-adapter": "^1.0.7",
+    "@prisma/client": "^5.22.0",
+    "@tanstack/react-query": "^5.102.8",
+    "axios": "^1.20.0",
+    "axios-retry": "^4.5.0",
+    "bcryptjs": "^3.0.3",
+    "framer-motion": "^13.1.1",
+    "hls.js": "^1.7.1",
+    "jose": "^6.2.10",
+    "next": "16.3.4",
+    "next-auth": "^4.24.15",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "sharp": "^0.35.4",
+    "telegram": "^2.26.22",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.4",
+    "prisma": "^5.22.0",
+    "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5"
+  }
+}

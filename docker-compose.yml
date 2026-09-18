@@ -1,0 +1,108 @@
+# ============================================================================
+# Velora Streaming Platform - Free-First / Self-Hosted Docker Compose
+# One-command full-stack production deployment: docker compose up -d
+# ============================================================================
+
+version: "3.8"
+
+services:
+  # 1. PostgreSQL Database (Free / Self-Hosted)
+  postgres:
+    image: postgres:16-alpine
+    container_name: velora_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: velora_admin
+      POSTGRES_PASSWORD: velora_secure_password_change_me
+      POSTGRES_DB: velora_production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U velora_admin -d velora_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis Queue & Cache (Free / Self-Hosted)
+  redis:
+    image: redis:7-alpine
+    container_name: velora_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # 3. Velora Web Application (Next.js 16)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: velora_web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://velora_admin:velora_secure_password_change_me@postgres:5432/velora_production?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      STORAGE_PROVIDER: "local"
+      LOCAL_STORAGE_PATH: "/data/velora"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "velora_production_secure_secret_key_change_in_env_32chars"
+      STREAMING_SIGNING_SECRET: "velora_secure_hls_stream_token_signing_secret_key_8892"
+      NEXT_PUBLIC_APP_URL: "http://localhost"
+    volumes:
+      - ./media_storage:/data/velora
+    ports:
+      - "3000:3000"
+
+  # 4. Dedicated Background FFmpeg Transcoding Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: velora_worker
+    restart: unless-stopped
+    command: ["npx", "tsx", "worker.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://velora_admin:velora_secure_password_change_me@postgres:5432/velora_production?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      STORAGE_PROVIDER: "local"
+      LOCAL_STORAGE_PATH: "/data/velora"
+      KEEP_ORIGINAL_FILES: "true"
+      WORKER_CONCURRENCY: "2"
+    volumes:
+      - ./media_storage:/data/velora
+
+  # 5. High-Performance Nginx Reverse Proxy & Static HLS Video Server
+  nginx:
+    image: nginx:alpine
+    container_name: velora_nginx
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./media_storage:/data/velora:ro
+
+volumes:
+  postgres_data:
+  redis_data:
