@@ -35,6 +35,14 @@ interface ProviderData {
     lastError?: string;
     score?: number;
   };
+  embedPolicy?: {
+    safetyTier: "STRICT" | "COMPATIBLE" | "RELAXED";
+    sandbox: string;
+    popups: "BLOCKED" | "ALLOWED";
+    topNavigation: "BLOCKED" | "ALLOWED";
+    fullscreen: "SUPPORTED" | "UNSUPPORTED";
+    orientation: "SUPPORTED" | "UNSUPPORTED";
+  };
 }
 
 export default function AdminProvidersPage() {
@@ -299,6 +307,63 @@ export default function AdminProvidersPage() {
                         CC
                       </span>
                     )}
+                  </div>
+
+                  {/* Safety & Sandboxing 2.0 Dashboard */}
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-black/60 to-black/30 border border-white/5 space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-zinc-400 font-semibold flex items-center gap-1.5">
+                        <span className="text-emerald-400">🛡️</span> Safety Tier
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                          (p.embedPolicy?.safetyTier || "STRICT") === "STRICT"
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                            : (p.embedPolicy?.safetyTier || "STRICT") === "COMPATIBLE"
+                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                            : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                        }`}
+                      >
+                        {p.embedPolicy?.safetyTier || "STRICT"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-white/5 text-[10px] font-mono">
+                      <div className="flex items-center justify-between px-2 py-1 rounded bg-white/[0.02]">
+                        <span className="text-zinc-400">Sandbox:</span>
+                        <span className="text-emerald-400 font-bold">{p.embedPolicy?.sandbox || "ENABLED"}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-2 py-1 rounded bg-white/[0.02]">
+                        <span className="text-zinc-400">Popups:</span>
+                        <span
+                          className={
+                            (p.embedPolicy?.popups || "BLOCKED") === "BLOCKED"
+                              ? "text-emerald-400 font-bold"
+                              : "text-amber-400 font-bold"
+                          }
+                        >
+                          {p.embedPolicy?.popups || "BLOCKED"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-2 py-1 rounded bg-white/[0.02]">
+                        <span className="text-zinc-400">Top Nav:</span>
+                        <span
+                          className={
+                            (p.embedPolicy?.topNavigation || "BLOCKED") === "BLOCKED"
+                              ? "text-emerald-400 font-bold"
+                              : "text-amber-400 font-bold"
+                          }
+                        >
+                          {p.embedPolicy?.topNavigation || "BLOCKED"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-2 py-1 rounded bg-white/[0.02]">
+                        <span className="text-zinc-400">Rotate/FS:</span>
+                        <span className="text-blue-400 font-bold">
+                          {p.embedPolicy?.orientation === "SUPPORTED" ? "SUPPORTED" : "UNSUPPORTED"}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Telemetry Block */}

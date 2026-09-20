@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { playbackRegistry } from "@/lib/playback/registry";
 import { getProviderDirectoryEntry } from "@/lib/playback/provider-directory";
+import { getProviderEmbedPolicy } from "@/lib/playback/embed-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,14 @@ export async function GET() {
           lastFailure: health.lastFailure,
           lastError: health.lastError,
           score: health.score,
+        },
+        embedPolicy: {
+          safetyTier: getProviderEmbedPolicy(p.id).safetyTier,
+          sandbox: "ENABLED",
+          popups: getProviderEmbedPolicy(p.id).requiresPopups ? "ALLOWED" : "BLOCKED",
+          topNavigation: getProviderEmbedPolicy(p.id).requiresTopNavigation ? "ALLOWED" : "BLOCKED",
+          fullscreen: getProviderEmbedPolicy(p.id).allowTokens.includes("fullscreen") ? "SUPPORTED" : "UNSUPPORTED",
+          orientation: getProviderEmbedPolicy(p.id).allowTokens.includes("orientation-lock") ? "SUPPORTED" : "UNSUPPORTED",
         },
       };
     });

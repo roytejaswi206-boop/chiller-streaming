@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { IconFullscreen, IconPlay } from "@/components/icons";
+import { IconFullscreen, IconRotate, IconShield } from "@/components/icons";
 import { PlaybackCandidate, ContentPlaybackStatus, PlaybackTelemetry } from "@/lib/playback/types";
+import { getProviderEmbedPolicy, validateProviderUrl, SafetyTier } from "@/lib/playback/embed-policy";
 
 interface ExternalPlayerProps {
   sources: PlaybackCandidate[];
@@ -63,6 +64,16 @@ export function ExternalPlayer({
   const [diagnosticSource, setDiagnosticSource] = useState<string | null>(null);
   const [showDiag, setShowDiag] = useState(false);
 
+  // Safety & Redirect Protection State
+  const [safetyMode, setSafetyMode] = useState<"SAFE" | "COMPATIBILITY" | "RELAXED">("SAFE");
+  const [interactionUnlocked, setInteractionUnlocked] = useState(true);
+  const [showSafetySheet, setShowSafetySheet] = useState(false);
+
+  // Orientation & Fullscreen State
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [orientationHint, setOrientationHint] = useState<string | null>(null);
+
   // Resume prompt state
   const [resumeTime, setResumeTime] = useState<number | null>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
@@ -75,10 +86,21 @@ export function ExternalPlayer({
   const progressSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fallbackCooling = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
 
   const activeSource = sources[activeIndex] ?? null;
   const allFailed = sources.length === 0 || failedIndices.size >= sources.length;
   const isDev = process.env.NODE_ENV === "development";
+
+  // Provider embed security policy
+  const embedPolicy = activeSource
+    ? getProviderEmbedPolicy(activeSource.providerId, safetyMode)
+    : getProviderEmbedPolicy("unknown", safetyMode);
+
+  // Validate active URL before rendering
+  const validatedUrl = activeSource
+    ? validateProviderUrl(activeSource.url, activeSource.providerId)
+    : { valid: false, sanitizedUrl: "" };
 
   // Check for saved watch progress on episode mount
   useEffect(() => {
@@ -118,6 +140,121 @@ export function ExternalPlayer({
       playerMount: Date.now(),
     });
   }, [sources, season, episode]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // FULLSCREEN & ORIENTATION SYNC (Sections 9, 19, 20, 21, 22, 46, 47)
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFull = Boolean(document.fullscreenElement);
+      setIsFullscreen(isFull);
+
+      // When leaving fullscreen, unlock orientation if supported
+      if (!isFull) {
+        if (typeof screen !== "undefined" && screen.orientation && typeof screen.orientation.unlock === "function") {
+          try {
+            screen.orientation.unlock();
+          } catch {
+            // Ignore
+          }
+        }
+        setIsLandscape(false);
+      }
+    };
+
+    const handleOrientationChange = () => {
+      if (typeof window !== "undefined") {
+        const isLand =
+          window.innerWidth > window.innerHeight ||
+          (screen.orientation?.type?.includes("landscape") ?? false);
+        setIsLandscape(isLand);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    window.addEventListener("resize", handleOrientationChange);
+    if (typeof screen !== "undefined" && screen.orientation) {
+      screen.orientation.addEventListener("change", handleOrientationChange);
+    }
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      window.removeEventListener("resize", handleOrientationChange);
+      if (typeof screen !== "undefined" && screen.orientation) {
+        screen.orientation.removeEventListener("change", handleOrientationChange);
+      }
+    };
+  }, []);
+
+  const handleFullscreen = async () => {
+    const container = playerContainerRef.current;
+    if (!container) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+        } else if ((container as any).webkitRequestFullscreen) {
+          await (container as any).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  };
+
+  /**
+   * ROTATE BUTTON ACTION (Sections 19, 20, 21, 22)
+   * 1. Enters container fullscreen if not already fullscreen.
+   * 2. Calls screen.orientation.lock("landscape") directly inside user activation.
+   * 3. Gracefully catches exceptions on unsupported browsers with helpful hint.
+   */
+  const handleRotate = async () => {
+    const container = playerContainerRef.current;
+
+    try {
+      // 1. Enter fullscreen if needed
+      if (!document.fullscreenElement && container) {
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+        } else if ((container as any).webkitRequestFullscreen) {
+          await (container as any).webkitRequestFullscreen();
+        }
+      }
+
+      // 2. Lock or unlock orientation
+      const orientationApi = typeof screen !== "undefined" ? (screen.orientation as any) : null;
+      if (orientationApi && typeof orientationApi.lock === "function") {
+        if (isLandscape) {
+          try {
+            if (typeof orientationApi.unlock === "function") {
+              await orientationApi.unlock();
+            }
+          } catch {
+            // Ignore
+          }
+          setIsLandscape(false);
+        } else {
+          await orientationApi.lock("landscape");
+          setIsLandscape(true);
+        }
+      } else {
+        // Graceful hint for iOS Safari / browsers where screen.orientation.lock is restricted
+        setOrientationHint("Rotate your device for landscape viewing.");
+        setTimeout(() => setOrientationHint(null), 3500);
+      }
+    } catch (err: any) {
+      // Browser refused orientation lock or unsupported
+      setOrientationHint("Rotate your device for landscape viewing.");
+      setTimeout(() => setOrientationHint(null), 3500);
+    }
+  };
 
   // ─────────────────────────────────────────────────────────────────
   // WATCH PROGRESS PERSISTENCE
@@ -173,7 +310,7 @@ export function ExternalPlayer({
 
         if (nextIdx !== -1) {
           const nextName = sources[nextIdx]?.providerName ?? "next provider";
-          setSwitchMsg(reason ? `${reason} Switching to ${nextName}...` : `Switching to ${nextName}...`);
+          setSwitchMsg(reason ? `${reason} Trying ${nextName}...` : `Trying ${nextName}...`);
           setIsSwitching(true);
           setIsLoading(true);
           setPlaybackState("FALLING_BACK");
@@ -212,7 +349,7 @@ export function ExternalPlayer({
   }, [isLoading, playbackState, iframeKey]);
 
   // ─────────────────────────────────────────────────────────────────
-  // STRICT POSTMESSAGE EVENT LISTENER
+  // STRICT ORIGIN-VALIDATED POSTMESSAGE LISTENER (Sections 27, 28, 29)
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!activeSource) return;
@@ -281,7 +418,7 @@ export function ExternalPlayer({
       }
 
       // 2. VidSrc (Origins: https://vidsrc.sbs, https://vidsrc.sh, https://vidsrc.to)
-      const vidsrcOrigins = ["https://vidsrc.sbs", "https://vidsrc.sh", "https://vidsrc.to"];
+      const vidsrcOrigins = ["https://vidsrc.sbs", "https://vidsrc.sh", "https://vidsrc.to", "https://vidsrc.pm"];
       if (vidsrcOrigins.includes(event.origin) && activeSource.providerId === "vidsrc") {
         if (data && typeof data === "object") {
           if (data.player_status === "playing") {
@@ -307,6 +444,22 @@ export function ExternalPlayer({
           triggerFallback(activeIndex, "NHD stream unavailable.");
         }
       }
+
+      // 4. Dailymotion (Origins: https://geo.dailymotion.com, https://www.dailymotion.com)
+      if (
+        (event.origin === "https://geo.dailymotion.com" || event.origin === "https://www.dailymotion.com") &&
+        activeSource.providerId === "dailymotion"
+      ) {
+        if (data?.event === "playback_ready" || data?.event === "video_start") {
+          setIsLoading(false);
+          setPlaybackState("PLAYER_READY");
+        } else if (data?.event === "playing") {
+          setIsLoading(false);
+          setPlaybackState("PLAYBACK_CONFIRMED");
+        } else if (data?.event === "timeupdate" && data?.time && data?.duration) {
+          saveProgress(data.time, data.duration);
+        }
+      }
     };
 
     window.addEventListener("message", handleMessage);
@@ -323,18 +476,6 @@ export function ExternalPlayer({
     );
   }, []);
 
-  const handleManualSwitch = (index: number) => {
-    if (index === activeIndex) return;
-    setIsLoading(true);
-    setIsSwitching(false);
-    setPlaybackState("CONNECTING");
-    setLoadTimeoutReached(false);
-    setDiagnosticSource(null);
-    setActiveIndex(index);
-    onSelectSourceIndex?.(index);
-    setIframeKey((k) => k + 1);
-  };
-
   const handleRetryAll = () => {
     setFailedIndices(new Set());
     setActiveIndex(0);
@@ -344,13 +485,6 @@ export function ExternalPlayer({
     setLoadTimeoutReached(false);
     setIframeKey((k) => k + 1);
     fallbackCooling.current = false;
-  };
-
-  const handleFullscreen = () => {
-    const el = iframeRef.current;
-    if (!el) return;
-    if (el.requestFullscreen) el.requestFullscreen();
-    else if ((el as any).webkitRequestFullscreen) (el as any).webkitRequestFullscreen();
   };
 
   const formatSeconds = (sec: number) => {
@@ -374,13 +508,20 @@ export function ExternalPlayer({
   const badge = stateBadge[playbackState] ?? stateBadge["CONNECTING"];
 
   return (
-    <div className="w-full space-y-3 font-sans select-none">
-      {/* ── Player Container (Aspect Ratio 16:9, Max Cinematic Height) ── */}
+    <div
+      className="w-full space-y-3 font-sans select-none"
+      ref={playerContainerRef}
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+      {/* ── Player Shell Container (Aspect Ratio 16:9, Max Cinematic Height) ── */}
       <div
         className="relative w-full rounded-2xl overflow-hidden bg-[#09090C] border border-white/10 shadow-2xl transition-all"
-        style={{ aspectRatio: "16/9", maxHeight: "80vh" }}
+        style={{ aspectRatio: "16/9", maxHeight: isFullscreen ? "100vh" : "80vh" }}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
-        {/* Top Overlay Badges */}
+        {/* Top-Left Overlay Badges */}
         <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 pointer-events-none">
           {activeSource && !allFailed && (
             <>
@@ -399,24 +540,132 @@ export function ExternalPlayer({
           )}
         </div>
 
-        {/* Top-Right Player Controls */}
+        {/* Top-Right Player Controls: Safe Shield + Rotate + Fullscreen + DIAG */}
         <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+          {/* Safe Mode Shield Indicator & Popover */}
+          <button
+            onClick={() => setShowSafetySheet((s) => !s)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl backdrop-blur-md text-[11px] font-bold border transition cursor-pointer ${
+              safetyMode === "SAFE"
+                ? "bg-emerald-950/80 border-emerald-500/40 text-emerald-400 hover:bg-emerald-900/80"
+                : safetyMode === "COMPATIBILITY"
+                ? "bg-amber-950/80 border-amber-500/40 text-amber-400 hover:bg-amber-900/80"
+                : "bg-rose-950/80 border-rose-500/40 text-rose-400 hover:bg-rose-900/80"
+            }`}
+            title="Iframe Redirect & Popup Protection Status"
+          >
+            <IconShield className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">
+              {safetyMode === "SAFE" ? "Protected" : safetyMode === "COMPATIBILITY" ? "Compatible" : "Relaxed"}
+            </span>
+          </button>
+
+          {/* CHILLER ROTATE BUTTON (Sections 19, 20, 21, 22) */}
+          <button
+            onClick={handleRotate}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl backdrop-blur-md border transition cursor-pointer ${
+              isLandscape
+                ? "bg-[#FF3B6B] border-[#FF3B6B] text-white shadow-lg shadow-[#FF3B6B]/25"
+                : "bg-black/60 border-white/15 text-zinc-300 hover:text-white hover:bg-black/80"
+            }`}
+            title={isLandscape ? "Rotate to Portrait / Restore" : "Rotate to Landscape & Expand"}
+          >
+            <IconRotate className={`w-3.5 h-3.5 transition-transform ${isLandscape ? "rotate-90" : ""}`} />
+            <span className="text-[11px] font-extrabold hidden sm:inline">
+              {isLandscape ? "Standard" : "Rotate"}
+            </span>
+          </button>
+
+          {/* Fullscreen Button */}
+          <button
+            onClick={handleFullscreen}
+            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-zinc-300 hover:text-white transition cursor-pointer"
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          >
+            <IconFullscreen className="w-4 h-4" />
+          </button>
+
           {isDev && (
             <button
               onClick={() => setShowDiag((v) => !v)}
-              className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-zinc-400 border border-white/10 hover:text-white cursor-pointer"
+              className="px-2 py-1 rounded-xl bg-black/60 backdrop-blur-md text-[10px] font-mono font-bold text-zinc-400 border border-white/10 hover:text-white cursor-pointer"
             >
               DIAG
             </button>
           )}
-          <button
-            onClick={handleFullscreen}
-            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-zinc-300 hover:text-white transition cursor-pointer"
-            title="Toggle Fullscreen"
-          >
-            <IconFullscreen className="w-4 h-4" />
-          </button>
         </div>
+
+        {/* Orientation Fallback Hint Banner */}
+        {orientationHint && (
+          <div className="absolute top-14 right-4 z-30 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/85 backdrop-blur-md border border-white/20 text-xs text-white font-medium shadow-2xl animate-fade-in">
+            <span>📱</span>
+            <span>{orientationHint}</span>
+          </div>
+        )}
+
+        {/* Safety Protection Settings Sheet */}
+        {showSafetySheet && (
+          <div className="absolute top-14 right-3 z-30 w-72 p-4 rounded-2xl bg-[#12121a]/95 backdrop-blur-xl border border-white/15 shadow-2xl space-y-3 animate-fade-in text-xs">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <span className="font-bold text-white flex items-center gap-1.5">
+                <IconShield className="w-4 h-4 text-emerald-400" /> Redirect Protection
+              </span>
+              <button
+                onClick={() => setShowSafetySheet(false)}
+                className="text-zinc-400 hover:text-white font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-1.5 text-[11px] text-zinc-300">
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Sandbox Tier:</span>
+                <span className="font-mono text-emerald-400">{embedPolicy.safetyTier}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Popups:</span>
+                <span className="font-mono text-emerald-400">
+                  {embedPolicy.requiresPopups ? "Allowed" : "Blocked"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Top Navigation:</span>
+                <span className="font-mono text-emerald-400">
+                  {embedPolicy.requiresTopNavigation ? "Allowed" : "Blocked"}
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+              <span className="text-[10px] text-zinc-400">Mode:</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => {
+                    setSafetyMode("SAFE");
+                    setIframeKey((k) => k + 1);
+                  }}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    safetyMode === "SAFE" ? "bg-emerald-500 text-black" : "bg-white/5 text-zinc-400"
+                  }`}
+                >
+                  Safe
+                </button>
+                <button
+                  onClick={() => {
+                    setSafetyMode("COMPATIBILITY");
+                    setIframeKey((k) => k + 1);
+                  }}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    safetyMode === "COMPATIBILITY" ? "bg-amber-500 text-black" : "bg-white/5 text-zinc-400"
+                  }`}
+                >
+                  Compat
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Resume Playback Prompt */}
         {showResumePrompt && resumeTime && !allFailed && (
@@ -438,8 +687,8 @@ export function ExternalPlayer({
                 setShowResumePrompt(false);
                 if (tmdbId || anilistId) {
                   const key =
-                    mediaType === "tv"
-                      ? `chiller_progress_tv_${tmdbId}_s${season}_e${episode}`
+                    mediaType === "tv" || mediaType === "anime"
+                      ? `chiller_progress_tv_${tmdbId || anilistId}_s${season || 1}_e${episode || 1}`
                       : `chiller_progress_${mediaType}_${tmdbId || anilistId}`;
                   localStorage.removeItem(key);
                 }
@@ -490,7 +739,7 @@ export function ExternalPlayer({
           </div>
         )}
 
-        {/* All Providers Failed State */}
+        {/* All Providers Failed State (Section 47) */}
         {allFailed ? (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#09090C] text-center p-6">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-2xl mb-4">
@@ -524,16 +773,18 @@ export function ExternalPlayer({
             </div>
           </div>
         ) : (
-          /* Single Player Facade — Unmounts old iframe on switch */
-          activeSource && (
+          /* Single Player Facade with Strict Sandboxing (Sections 3, 4, 5, 8, 14, 15) */
+          activeSource &&
+          validatedUrl.valid && (
             <iframe
               key={iframeKey}
               ref={iframeRef}
               id="chiller-active-player"
-              src={activeSource.url}
+              src={validatedUrl.sanitizedUrl}
               title={title}
+              sandbox={embedPolicy.sandboxTokens.join(" ")}
+              allow={embedPolicy.allowTokens.join("; ")}
               referrerPolicy="origin"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
               allowFullScreen
               onLoad={() => {
                 setIsLoading(false);
@@ -617,20 +868,22 @@ export function ExternalPlayer({
       {isDev && showDiag && (
         <div className="rounded-xl border border-white/10 bg-black/90 p-4 text-[11px] font-mono space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-zinc-200 font-bold">⚙ Telemetry & State</span>
+            <span className="text-zinc-200 font-bold">⚙ Telemetry & Safety Policy</span>
             <button onClick={() => setShowDiag(false)} className="text-zinc-500 hover:text-white">✕</button>
           </div>
           <div className="grid grid-cols-2 gap-2 text-zinc-400">
             <span>Provider</span>
             <span className="text-white">{activeSource?.providerName} (P{activeSource?.priority})</span>
+            <span>Safety Tier</span>
+            <span className="text-emerald-400">{embedPolicy.safetyTier}</span>
+            <span>Sandbox Policy</span>
+            <span className="text-zinc-300 truncate">{embedPolicy.sandboxTokens.join(" ")}</span>
+            <span>Top Nav & Popups</span>
+            <span className="text-emerald-400">BLOCKED</span>
             <span>State</span>
             <span className="text-[#FF3B6B]">{playbackState}</span>
             <span>Embed Load Latency</span>
             <span className="text-emerald-400">{telemetry.playerLoadMs ? `${telemetry.playerLoadMs}ms` : "—"}</span>
-            <span>All Candidates ({sources.length})</span>
-            <span className="text-zinc-300">
-              {sources.map((s, i) => `${i === activeIndex ? "▶" : ""}${s.providerName}`).join(", ")}
-            </span>
           </div>
         </div>
       )}

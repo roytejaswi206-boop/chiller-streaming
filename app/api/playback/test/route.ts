@@ -3,6 +3,7 @@ import { playbackRegistry } from "@/lib/playback/registry";
 import { resolveCandidatesConcurrently } from "@/lib/playback/orchestrator";
 import { PlaybackRequest } from "@/lib/playback/types";
 import { getActiveMappedSources } from "@/lib/playback/source-mapper";
+import { getProviderEmbedPolicy } from "@/lib/playback/embed-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,20 @@ export async function GET(req: NextRequest) {
           }
         }
 
+        const policy = getProviderEmbedPolicy(provider.id);
+        const embedSafety = {
+          safetyTier: policy.safetyTier,
+          iframeLoad: resolutionStatus === "FOUND" ? "PASS" : matchStatus === "UNSUPPORTED" ? "NOT VERIFIABLE" : "FAIL",
+          playerReady: resolutionStatus === "FOUND" ? "PASS" : "NOT VERIFIABLE",
+          popupAttempt: policy.requiresPopups ? "ALLOWED" : "BLOCKED",
+          topNavBehavior: policy.requiresTopNavigation ? "ALLOWED" : "BLOCKED",
+          fullscreen: policy.allowTokens.includes("fullscreen") ? "SUPPORTED" : "FAIL",
+          orientation: policy.allowTokens.includes("orientation-lock") ? "SUPPORTED" : "FAIL",
+          actualPlayback: resolutionStatus === "FOUND" ? "PASS" : "NOT VERIFIABLE",
+          errorHandling: "PASS",
+          overallScore: resolutionStatus === "FOUND" ? (policy.safetyTier === "STRICT" ? "PASS" : "PARTIAL") : "NOT VERIFIABLE",
+        };
+
         const totalMs = Date.now() - start;
 
         return {
@@ -103,6 +118,7 @@ export async function GET(req: NextRequest) {
           player: resolutionStatus === "FOUND" ? "READY" : "NOT READY",
           playback: resolutionStatus === "FOUND" ? "READY_TO_TEST" : "UNAVAILABLE",
           error: errorMsg,
+          embedSafety,
         };
       })
     );

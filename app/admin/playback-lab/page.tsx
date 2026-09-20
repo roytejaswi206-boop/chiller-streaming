@@ -17,6 +17,18 @@ interface ProviderTestResult {
   player: string;
   playback: string;
   error?: string;
+  embedSafety?: {
+    safetyTier: string;
+    iframeLoad: string;
+    playerReady: string;
+    popupAttempt: string;
+    topNavBehavior: string;
+    fullscreen: string;
+    orientation: string;
+    actualPlayback: string;
+    errorHandling: string;
+    overallScore: string;
+  };
 }
 
 export default function PlaybackLabPage() {
@@ -26,12 +38,14 @@ export default function PlaybackLabPage() {
   const [episode, setEpisode] = useState("1");
   const [selectedProvider, setSelectedProvider] = useState<string>("all");
   const [isRunning, setIsRunning] = useState(false);
+  const [testMode, setTestMode] = useState<"standard" | "safety">("standard");
   const [results, setResults] = useState<ProviderTestResult[]>([]);
   const [autoCandidate, setAutoCandidate] = useState<any>(null);
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
 
-  const runTest = async (mode: "auto" | "all" | "single") => {
+  const runTest = async (mode: "auto" | "all" | "single", isSafetyMode = false) => {
     setIsRunning(true);
+    setTestMode(isSafetyMode ? "safety" : "standard");
     setResults([]);
     setAutoCandidate(null);
 
@@ -204,6 +218,13 @@ export default function PlaybackLabPage() {
           >
             🌐 TEST ALL PROVIDERS
           </button>
+          <button
+            onClick={() => runTest("all", true)}
+            disabled={isRunning}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-bold text-white shadow-lg shadow-emerald-900/30 transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+          >
+            🛡️ TEST EMBED SAFETY
+          </button>
           {selectedProvider !== "all" && (
             <button
               onClick={() => runTest("single")}
@@ -312,6 +333,34 @@ export default function PlaybackLabPage() {
                         Err: {res.error}
                       </div>
                     )}
+
+                    {/* Embed Safety & Redirect Protection 2.0 Diagnostics */}
+                    {res.embedSafety && (
+                      <div className="mt-2.5 pt-2.5 border-t border-white/5 space-y-1 bg-black/30 p-2 rounded-lg text-[10px]">
+                        <div className="flex justify-between font-bold text-zinc-300">
+                          <span>🛡️ Embed Safety:</span>
+                          <span
+                            className={
+                              res.embedSafety.overallScore === "PASS"
+                                ? "text-emerald-400"
+                                : res.embedSafety.overallScore === "PARTIAL"
+                                ? "text-amber-400"
+                                : "text-zinc-500"
+                            }
+                          >
+                            {res.embedSafety.overallScore} ({res.embedSafety.safetyTier})
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-zinc-400 pt-1">
+                          <div>Iframe: <span className="text-zinc-200">{res.embedSafety.iframeLoad}</span></div>
+                          <div>Player: <span className="text-zinc-200">{res.embedSafety.playerReady}</span></div>
+                          <div>Popups: <span className="text-emerald-400">{res.embedSafety.popupAttempt}</span></div>
+                          <div>TopNav: <span className="text-emerald-400">{res.embedSafety.topNavBehavior}</span></div>
+                          <div>Rotate: <span className="text-blue-400">{res.embedSafety.orientation}</span></div>
+                          <div>Fullscreen: <span className="text-blue-400">{res.embedSafety.fullscreen}</span></div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -360,7 +409,8 @@ export default function PlaybackLabPage() {
                 src={activePreviewUrl}
                 className="w-full h-full border-0"
                 allowFullScreen
-                allow="autoplay; encrypted-media; picture-in-picture"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-orientation-lock"
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; orientation-lock"
               />
             </div>
           </div>
