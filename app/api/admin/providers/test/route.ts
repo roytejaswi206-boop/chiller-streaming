@@ -188,3 +188,32 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const providerId = searchParams.get("provider") || searchParams.get("providerId");
+    if (!providerId) {
+      return NextResponse.json({ success: false, message: "provider parameter is required" }, { status: 400 });
+    }
+
+    const provider = playbackRegistry.getProvider(providerId);
+    if (!provider) {
+      return NextResponse.json({ success: false, message: `Provider '${providerId}' not found.` }, { status: 404 });
+    }
+
+    const start = Date.now();
+    const check = await provider.healthCheck();
+    const isHealthy = check.status === "ACTIVE" || check.status === "HTTP_REACHABLE";
+
+    return NextResponse.json({
+      success: isHealthy,
+      healthy: isHealthy,
+      status: check.status,
+      latencyMs: check.latencyMs || Date.now() - start,
+      message: check.message || `Health check: ${check.status}`,
+    });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message || "Test error" }, { status: 500 });
+  }
+}

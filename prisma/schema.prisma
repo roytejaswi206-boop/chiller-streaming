@@ -718,3 +718,45 @@ model PlaybackAttempt {
   @@map("playback_attempts")
 }
 
+model ProviderSource {
+  id              String    @id @default(cuid())
+  mediaKey        String    // e.g. "movie:tmdb:634649" or "tv:tmdb:100088:1:1" or "anime:anilist:21:1"
+  providerId      String    // e.g. "filemoon", "vdohide", "streamtape", "dailymotion", "jellyfin"
+  providerMediaId String    // e.g. file code, video ID, stream URL
+  title           String?
+  season          Int?
+  episode         Int?
+  quality         String?   // "1080p", "720p", "4K", "auto"
+  format          String?   // "HLS", "MP4", "EMBED"
+  status          String    @default("ACTIVE") // ACTIVE, INACTIVE, EXPIRED, BROKEN, UNVERIFIED
+  expiresAt       DateTime?
+  customHeaders   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([mediaKey, providerId, providerMediaId])
+  @@index([mediaKey])
+  @@index([providerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("provider_sources")
+}
+
+model ProviderConfig {
+  id         String   @id // e.g. "filemoon", "earnvids", "vdohide", "streamtape", "dailymotion"
+  name       String
+  type       String   // "VIDEO_HOST", "SELF_HOSTED", "PLATFORM", "AGGREGATOR"
+  enabled    Boolean  @default(false)
+  apiUrl     String?
+  apiToken   String?
+  apiKey     String?
+  priority   Int      @default(50)
+  docsUrl    String?
+  refUrl     String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("provider_configs")
+}
+

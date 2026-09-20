@@ -455,8 +455,8 @@ export function ExternalPlayer({
         {isSwitching && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#09090C]/90 text-center p-6 backdrop-blur-sm">
             <div className="w-10 h-10 border-3 border-[#FF3B6B] border-t-transparent rounded-full animate-spin mb-3" />
-            <p className="text-sm font-bold text-white mb-1">Finding next source</p>
-            <p className="text-xs text-zinc-400">{switchMsg}</p>
+            <p className="text-sm font-bold text-white mb-1">Trying another source…</p>
+            <p className="text-xs text-zinc-400">{switchMsg || "Connecting to backup stream..."}</p>
           </div>
         )}
 
@@ -494,18 +494,32 @@ export function ExternalPlayer({
         {allFailed ? (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#09090C] text-center p-6">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-2xl mb-4">
-              ⚠️
+              🎬
             </div>
-            <h3 className="text-base font-bold text-white mb-1.5">Playback unavailable right now</h3>
+            <h3 className="text-base font-bold text-white mb-1.5">Playback isn&apos;t available right now.</h3>
             <p className="text-xs text-zinc-400 max-w-sm mb-6 leading-relaxed">
-              We attempted all {sources.length} configured servers for this title. Please try again in a few moments or switch servers.
+              We attempted all available streaming sources for this title. Please try again in a few moments or choose another title.
             </p>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleRetryAll}
                 className="px-5 py-2.5 rounded-xl bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 text-white text-xs font-bold transition shadow-lg shadow-[#FF3B6B]/25 cursor-pointer"
               >
-                Retry All Servers
+                Retry
+              </button>
+              {onSelectSourceIndex && sources.length > 1 && (
+                <button
+                  onClick={() => onSelectSourceIndex(0)}
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition cursor-pointer"
+                >
+                  More Sources
+                </button>
+              )}
+              <button
+                onClick={() => window.history.back()}
+                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-bold transition cursor-pointer"
+              >
+                Back to Title
               </button>
             </div>
           </div>

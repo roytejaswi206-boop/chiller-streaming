@@ -5,6 +5,19 @@ import { VidkingProvider } from "./providers/vidking";
 import { CodeSpecterProvider } from "./providers/codespecter";
 import { AggregatorProvider } from "./providers/aggregator";
 import { NHDProvider } from "./providers/nhd";
+import { FileMoonProvider } from "./providers/filemoon";
+import { VdoHideProvider } from "./providers/vdohide";
+import { StreamTapeProvider } from "./providers/streamtape";
+import { EarnVidsProvider } from "./providers/earnvids";
+import { VidstreamProvider } from "./providers/vidstream";
+import { VidStreamingProvider } from "./providers/vidstreaming";
+import { DailymotionProvider } from "./providers/dailymotion";
+import { JellyfinProvider } from "./providers/jellyfin";
+import { PlexProvider } from "./providers/plex";
+import { MyCloudProvider } from "./providers/mycloud";
+import { MegaCloudProvider } from "./providers/megacloud";
+import { MegaUpProvider } from "./providers/megaup";
+import { TubiProvider, RokuProvider, PlutoProvider } from "./providers/platforms";
 import { providerHealthCache } from "./health-cache";
 
 /**
@@ -23,13 +36,36 @@ class ProviderRegistry {
   private providers: Map<string, PlaybackProvider> = new Map();
 
   constructor() {
-    // Register all supported independent providers
+    // 1. Primary automated resolvers
     this.register(new CineSrcProvider());
     this.register(new VidSrcProvider());
     this.register(new VidkingProvider());
     this.register(new CodeSpecterProvider());
     this.register(new AggregatorProvider());
     this.register(new NHDProvider());
+
+    // 2. Video Hosts & Media Services (FileMoon, VdoHide, StreamTape, EarnVids, Vidstream, VidStreaming)
+    this.register(new FileMoonProvider());
+    this.register(new VdoHideProvider());
+    this.register(new StreamTapeProvider());
+    this.register(new EarnVidsProvider());
+    this.register(new VidstreamProvider());
+    this.register(new VidStreamingProvider());
+
+    // 3. Official Platform Integrations (Dailymotion)
+    this.register(new DailymotionProvider());
+
+    // 4. Self-Hosted Media Servers (Jellyfin, Plex)
+    this.register(new JellyfinProvider());
+    this.register(new PlexProvider());
+
+    // 5. Cloud Media Platforms & Fast Channels (MyCloud, MegaCloud, MegaUp, Tubi, Roku, Pluto)
+    this.register(new MyCloudProvider());
+    this.register(new MegaCloudProvider());
+    this.register(new MegaUpProvider());
+    this.register(new TubiProvider());
+    this.register(new RokuProvider());
+    this.register(new PlutoProvider());
   }
 
   register(provider: PlaybackProvider) {

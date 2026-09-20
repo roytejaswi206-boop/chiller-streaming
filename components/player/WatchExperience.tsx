@@ -345,30 +345,82 @@ export function WatchExperience({
             </span>
           </div>
 
-          {/* Server Selector Pills */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-zinc-400 mr-2">
-              SERVERS:
+          {/* Server Selector: AUTO + More Sources Dropdown */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-zinc-400">
+              PLAYBACK SOURCE:
             </span>
-            {sources.map((source, idx) => {
-              const isSelected = idx === activeSourceIndex;
-              return (
+
+            {/* AUTO Mode Button */}
+            <button
+              onClick={() => setActiveSourceIndex(0)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                activeSourceIndex === 0
+                  ? "bg-[#FF3B6B] text-white shadow-lg shadow-[#FF3B6B]/25 border border-[#FF3B6B]"
+                  : "bg-[#09090C] border border-white/10 text-zinc-300 hover:border-white/20 hover:text-white"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>AUTO</span>
+              <span className="text-[10px] font-mono opacity-80">
+                ({sources[0]?.providerName || "Fastest"})
+              </span>
+            </button>
+
+            {/* More Sources Dropdown */}
+            {sources.length > 1 && (
+              <div className="relative group">
                 <button
-                  key={source.providerId + idx}
-                  onClick={() => setActiveSourceIndex(idx)}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-[#FF3B6B] border-[#FF3B6B] text-white shadow-md shadow-[#FF3B6B]/25"
-                      : "bg-[#09090C] border-white/10 text-zinc-300 hover:border-white/25 hover:bg-white/5 hover:text-white"
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+                    activeSourceIndex > 0
+                      ? "bg-white/15 border-white/30 text-white"
+                      : "bg-[#09090C] border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                   }`}
                 >
-                  <span>{source.serverLabel || `HD-${idx + 1}`}</span>
-                  {source.score !== undefined && (
-                    <span className="text-[10px] opacity-75">{source.score}%</span>
-                  )}
+                  <span>
+                    {activeSourceIndex > 0
+                      ? sources[activeSourceIndex]?.providerName || "Selected Source"
+                      : "More Sources"}
+                  </span>
+                  <span className="text-[10px] text-zinc-400">▼</span>
                 </button>
-              );
-            })}
+
+                {/* Dropdown Menu */}
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-40 w-64 p-2 rounded-2xl bg-[#12121a] border border-white/15 shadow-2xl backdrop-blur-xl space-y-1">
+                  <div className="px-3 py-1.5 text-[10px] font-mono uppercase text-zinc-500 border-b border-white/5">
+                    Available Sources ({sources.length})
+                  </div>
+                  <div className="max-h-56 overflow-y-auto space-y-1">
+                    {sources.map((source, idx) => {
+                      const isSelected = idx === activeSourceIndex;
+                      return (
+                        <button
+                          key={source.providerId + idx}
+                          onClick={() => setActiveSourceIndex(idx)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition cursor-pointer text-left ${
+                            isSelected
+                              ? "bg-[#FF3B6B] text-white font-bold"
+                              : "text-zinc-300 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-semibold">{source.providerName}</span>
+                            <span className="text-[10px] text-zinc-400">
+                              {source.quality || "1080p HD"} • {source.type?.toUpperCase()}
+                            </span>
+                          </div>
+                          {idx === 0 && (
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-zinc-200">
+                              FASTEST
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -119,8 +119,30 @@ export async function resolveCandidatesConcurrently(
     }
   }
 
+  // Also retrieve any direct authorized mapped sources from database
+  try {
+    const { getActiveMappedSources, mapRecordToCandidate } = await import("./source-mapper");
+    const mappedRecords = await getActiveMappedSources(request);
+    for (const record of mappedRecords) {
+      if (!candidates.some((c) => c.providerId === record.providerId && c.url === record.providerMediaId)) {
+        const candidate = mapRecordToCandidate(record, request);
+        candidates.push(candidate);
+      }
+    }
+  } catch (err) {
+    // Non-blocking fallback
+  }
+
   // Sort candidates: highest score first, then lowest priority number
   candidates.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || a.priority - b.priority);
+
+  // Renumber server labels cleanly
+  candidates.forEach((cand, idx) => {
+    cand.serverNumber = idx + 1;
+    if (!cand.serverLabel || cand.serverLabel.startsWith("HD-")) {
+      cand.serverLabel = `${cand.providerName || "Source"} (${cand.quality || "HD"})`;
+    }
+  });
 
   const fastestMs = Date.now() - start;
 
