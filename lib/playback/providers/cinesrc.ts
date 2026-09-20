@@ -1,30 +1,17 @@
-import { PlaybackProvider, PlaybackSource, ProviderHealthStatus } from "../types";
+import {
+  PlaybackProvider,
+  PlaybackSource,
+  PlaybackCandidate,
+  PlaybackRequest,
+  ProviderCapabilities,
+  ProviderHealth,
+  ProviderHealthStatus,
+} from "../types";
+import { providerHealthCache } from "../health-cache";
 
 /**
  * CineSrc Embed Provider — Priority 1
  * Official embed endpoints: https://cinesrc.st
- *
- * Movie:  https://cinesrc.st/embed/movie/{tmdbId}
- * TV:     https://cinesrc.st/embed/tv/{tmdbId}?s={season}&e={episode}
- *
- * Documented query parameters (optional enhancements):
- *   autoplay, controls, autonext, autoskip, continueprompt
- *
- * postMessage events (listen with event.origin === "https://cinesrc.st"):
- *   cinesrc:ready, cinesrc:play, cinesrc:pause, cinesrc:timeupdate,
- *   cinesrc:seeking, cinesrc:seeked, cinesrc:ended, cinesrc:volumechange,
- *   cinesrc:ratechange, cinesrc:loadedmetadata, cinesrc:nextepisode,
- *   cinesrc:skipintro, cinesrc:sourceused, cinesrc:close, cinesrc:error,
- *   cinesrc:response
- *
- * Player commands via postMessage to origin "https://cinesrc.st":
- *   { type: "cinesrc:command", command, args }
- *   Commands: play, pause, seek, setVolume, setMuted, setPlaybackRate,
- *             getCurrentTime, getDuration, getVolume, getMuted, getPaused,
- *             getPlaybackRate
- *
- * IMPORTANT: cinesrc:nextepisode carries { season, episode, internalNavigation, source }
- * When internalNavigation === true, do NOT replace the iframe — let CineSrc handle it.
  */
 export class CineSrcProvider implements PlaybackProvider {
   id = "cinesrc";
@@ -36,17 +23,46 @@ export class CineSrcProvider implements PlaybackProvider {
   priority = 1;
 
   private getBaseUrl(): string {
-    // Support both CINESRC_BASE_URL and legacy CINESRC_API_URL
-    const url = (
+    return (
       process.env.CINESRC_BASE_URL?.trim() ||
       process.env.CINESRC_API_URL?.trim() ||
       "https://cinesrc.st"
     ).replace(/\/+$/, "");
-    return url;
   }
 
   private buildParams(): string {
     return "autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false";
+  }
+
+  supports(request: PlaybackRequest): boolean {
+    if (!this.enabled) return false;
+    return Boolean(request.tmdbId);
+  }
+
+  async resolve(request: PlaybackRequest): Promise<PlaybackCandidate | null> {
+    if (!this.supports(request) || !request.tmdbId) return null;
+
+    if (request.mediaType === "tv" || request.mediaType === "anime") {
+      return this.getTVPlayback(request.tmdbId, request.season || 1, request.episode || 1);
+    }
+    return this.getMoviePlayback(request.tmdbId);
+  }
+
+  getCapabilities(): ProviderCapabilities {
+    return {
+      supportsMovie: true,
+      supportsTV: true,
+      supportsAnime: true,
+      supportsSub: true,
+      supportsDub: true,
+      supportsEvents: true, // Emits cinesrc:ready, cinesrc:play, etc.
+      requiresApiKey: false,
+      hasCaptions: true,
+    };
+  }
+
+  getHealth(): ProviderHealth {
+    return providerHealthCache.getHealth(this.id);
   }
 
   async getMoviePlayback(tmdbId: number | string): Promise<PlaybackSource | null> {
@@ -65,9 +81,12 @@ export class CineSrcProvider implements PlaybackProvider {
       priority: this.priority,
       mediaType: "movie",
       tmdbId: id,
+      serverLabel: "HD-1 (CineSrc)",
+      serverNumber: 1,
+      language: "sub",
       statusText: "CineSrc — Awaiting Player Event",
       progressTrackingSupported: true,
-      status: "DISCOVERED",
+      status: "CANDIDATE_FOUND",
     };
   }
 
@@ -95,17 +114,15 @@ export class CineSrcProvider implements PlaybackProvider {
       tmdbId: id,
       season: s,
       episode: e,
+      serverLabel: "HD-1 (CineSrc)",
+      serverNumber: 1,
+      language: "sub",
       statusText: "CineSrc — Awaiting Player Event",
       progressTrackingSupported: true,
-      status: "DISCOVERED",
+      status: "CANDIDATE_FOUND",
     };
   }
 
-  /**
-   * Health check is advisory only.
-   * Do NOT disable CineSrc just because a server-side probe returns an error.
-   * Many embed CDNs block server-to-server requests by design.
-   */
   async healthCheck(): Promise<{
     status: ProviderHealthStatus;
     latencyMs?: number;
@@ -124,17 +141,17 @@ export class CineSrcProvider implements PlaybackProvider {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           Referer: "https://cinesrc.st/",
         },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(4000),
       });
 
       const latencyMs = Date.now() - start;
 
-      // 2xx, 3xx = reachable; 4xx/5xx from server probe does NOT disqualify embeds
       if (res.status < 500) {
+        providerHealthCache.recordSuccess(this.id, latencyMs);
         return {
           status: "HTTP_REACHABLE",
           latencyMs,
-          message: `HTTP ${res.status} (${latencyMs}ms). Browser iframes operate independently — server probe result does not reflect embed playback.`,
+          message: `HTTP ${res.status} (${latencyMs}ms). Embed player postMessage enabled.`,
         };
       }
 
@@ -145,11 +162,10 @@ export class CineSrcProvider implements PlaybackProvider {
       };
     } catch (err: any) {
       const latencyMs = Date.now() - start;
-      // Network error from server does NOT mean the embed is broken in browser
       return {
         status: "DEGRADED",
         latencyMs,
-        message: `Server probe failed (${err.message}). This does NOT disqualify CineSrc — embed providers block server-side requests by design.`,
+        message: `Server probe note (${err.message}). Embed operates independently in browser.`,
       };
     }
   }

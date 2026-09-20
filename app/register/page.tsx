@@ -11,12 +11,29 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -44,6 +61,24 @@ export default function RegisterPage() {
       if (signInRes?.error) {
         router.push("/login");
       } else {
+        // Merge guest localStorage watchlist into account
+        try {
+          const guestWatchlist = localStorage.getItem("chiller_watchlist");
+          if (guestWatchlist) {
+            const items = JSON.parse(guestWatchlist);
+            if (Array.isArray(items) && items.length > 0) {
+              await fetch("/api/user/watchlist/merge", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items }),
+              });
+              localStorage.removeItem("chiller_watchlist");
+            }
+          }
+        } catch {
+          // Non-blocking
+        }
+
         router.push("/");
         router.refresh();
       }
@@ -87,7 +122,7 @@ export default function RegisterPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name or alias"
-              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3864] focus:ring-1 focus:ring-[#FF3864] transition"
+              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-1 focus:ring-[#FF3B6B] transition"
             />
           </div>
 
@@ -101,7 +136,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
-              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3864] focus:ring-1 focus:ring-[#FF3864] transition"
+              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-1 focus:ring-[#FF3B6B] transition"
             />
           </div>
 
@@ -115,7 +150,21 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 6 characters"
-              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3864] focus:ring-1 focus:ring-[#FF3864] transition"
+              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-1 focus:ring-[#FF3B6B] transition"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter password"
+              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-1 focus:ring-[#FF3B6B] transition"
             />
           </div>
 
@@ -123,7 +172,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl velora-gradient text-white text-xs sm:text-sm font-bold shadow-lg shadow-rose-600/30 hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#8A5CFF] text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#FF3B6B]/30 hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
@@ -132,7 +181,7 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-xs text-center text-zinc-400">
           Already have an account?{" "}
-          <Link href="/login" className="text-rose-400 hover:text-rose-300 font-semibold underline">
+          <Link href="/login" className="text-[#FF3B6B] hover:text-[#FF3B6B]/80 font-semibold underline">
             Sign In
           </Link>
         </p>

@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconBrowse, IconHome, IconPlus, IconUser } from "@/components/icons";
+import { IconHome, IconSearch, IconPlus, IconUser } from "@/components/icons";
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -15,8 +15,8 @@ export function MobileNav() {
 
   const navItems = [
     { label: "Home", href: "/", icon: IconHome },
-    { label: "Explore", href: "/movies", icon: IconBrowse },
-    { label: "My List", href: "/watchlist", icon: IconPlus },
+    { label: "Search", href: "/search", icon: IconSearch },
+    { label: "My List", href: "/my-list", icon: IconPlus },
     { label: "Profile", href: "/profile", icon: IconUser },
   ];
 

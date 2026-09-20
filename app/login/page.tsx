@@ -28,6 +28,24 @@ export default function LoginPage() {
       if (res?.error) {
         setError("Invalid email address or password.");
       } else {
+        // Merge guest localStorage watchlist into account
+        try {
+          const guestWatchlist = localStorage.getItem("chiller_watchlist");
+          if (guestWatchlist) {
+            const items = JSON.parse(guestWatchlist);
+            if (Array.isArray(items) && items.length > 0) {
+              await fetch("/api/user/watchlist/merge", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items }),
+              });
+              localStorage.removeItem("chiller_watchlist");
+            }
+          }
+        } catch {
+          // Non-blocking
+        }
+
         router.push("/");
         router.refresh();
       }
@@ -36,16 +54,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillAdmin = () => {
-    setEmail("admin@chiller.com");
-    setPassword("Admin@123456");
-  };
-
-  const fillMember = () => {
-    setEmail("user@chiller.com");
-    setPassword("User@123456");
   };
 
   return (
@@ -81,58 +89,45 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
-              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3864] focus:ring-1 focus:ring-[#FF3864] transition"
+              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-1 focus:ring-[#FF3B6B] transition"
             />
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-[11px] font-semibold text-[#FF3B6B] hover:text-[#FF3B6B]/80 transition"
+              >
+                Forgot Password?
+              </Link>
+            </div>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3864] focus:ring-1 focus:ring-[#FF3864] transition"
+              className="w-full h-10 px-3.5 rounded-xl bg-[#181822] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-1 focus:ring-[#FF3B6B] transition"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl velora-gradient text-white text-xs sm:text-sm font-bold shadow-lg shadow-rose-600/30 hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#8A5CFF] text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#FF3B6B]/30 hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
           >
             {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 
-        {/* Quick Demo Credentials Fill Buttons */}
-        <div className="mt-6 pt-5 border-t border-white/[0.08]">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 text-center mb-2.5">
-            Quick Test Logins
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={fillAdmin}
-              className="flex-1 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-rose-300 transition cursor-pointer"
-            >
-              Admin Demo
-            </button>
-            <button
-              onClick={fillMember}
-              className="flex-1 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-zinc-300 transition cursor-pointer"
-            >
-              Member Demo
-            </button>
-          </div>
-        </div>
-
         <p className="mt-6 text-xs text-center text-zinc-400">
           Don't have an account?{" "}
-          <Link href="/register" className="text-rose-400 hover:text-rose-300 font-semibold underline">
-            Sign Up
+          <Link href="/register" className="text-[#FF3B6B] hover:text-[#FF3B6B]/80 font-semibold underline">
+            Create an Account
           </Link>
         </p>
       </div>

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { prisma } from "@/lib/prisma";
+import { isSuperAdminEmail } from "@/lib/security/rbac";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -44,13 +45,18 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // Server-side: determine effective role.
+        // SUPER_ADMIN email check is authoritative — never trust DB role alone for this.
+        const effectiveRole = isSuperAdminEmail(user.email) ? "SUPER_ADMIN" : user.role;
+
         return {
           id: user.id,
           email: user.email,
           name: user.name ?? user.email.split("@")[0],
           image: user.image ?? null,
-          role: user.role,
+          role: effectiveRole,
           tier: user.tier,
+          mustChangePassword: user.mustChangePassword,
         } as any;
       },
     }),
@@ -61,6 +67,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = (user as any).role;
         token.tier = (user as any).tier;
+        token.mustChangePassword = (user as any).mustChangePassword;
       }
       return token;
     },
@@ -69,6 +76,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
         (session.user as any).tier = token.tier;
+        (session.user as any).mustChangePassword = token.mustChangePassword;
       }
       return session;
     },

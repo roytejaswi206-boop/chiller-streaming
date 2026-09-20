@@ -305,9 +305,10 @@ export async function testTmdbConnection(customKey?: string): Promise<{ success:
  */
 export async function getTrending(
   mediaType: "all" | "movie" | "tv" = "all",
-  timeWindow: "day" | "week" = "week"
+  timeWindow: "day" | "week" = "week",
+  page = 1
 ): Promise<TmdbPaginatedResponse<TmdbMediaItem>> {
-  return tmdbFetch<TmdbPaginatedResponse<TmdbMediaItem>>(`/trending/${mediaType}/${timeWindow}`);
+  return tmdbFetch<TmdbPaginatedResponse<TmdbMediaItem>>(`/trending/${mediaType}/${timeWindow}`, { page });
 }
 
 /**
@@ -332,6 +333,13 @@ export async function getNowPlayingMovies(page = 1): Promise<TmdbPaginatedRespon
 }
 
 /**
+ * Upcoming movies
+ */
+export async function getUpcomingMovies(page = 1): Promise<TmdbPaginatedResponse<TmdbMediaItem>> {
+  return tmdbFetch<TmdbPaginatedResponse<TmdbMediaItem>>("/movie/upcoming", { page });
+}
+
+/**
  * Popular TV Series
  */
 export async function getPopularTV(page = 1): Promise<TmdbPaginatedResponse<TmdbMediaItem>> {
@@ -343,6 +351,20 @@ export async function getPopularTV(page = 1): Promise<TmdbPaginatedResponse<Tmdb
  */
 export async function getTopRatedTV(page = 1): Promise<TmdbPaginatedResponse<TmdbMediaItem>> {
   return tmdbFetch<TmdbPaginatedResponse<TmdbMediaItem>>("/tv/top_rated", { page });
+}
+
+/**
+ * On The Air TV Series
+ */
+export async function getOnTheAirTV(page = 1): Promise<TmdbPaginatedResponse<TmdbMediaItem>> {
+  return tmdbFetch<TmdbPaginatedResponse<TmdbMediaItem>>("/tv/on_the_air", { page });
+}
+
+/**
+ * Airing Today TV Series
+ */
+export async function getAiringTodayTV(page = 1): Promise<TmdbPaginatedResponse<TmdbMediaItem>> {
+  return tmdbFetch<TmdbPaginatedResponse<TmdbMediaItem>>("/tv/airing_today", { page });
 }
 
 /**
@@ -431,3 +453,82 @@ export async function discoverMovies(params: Record<string, string | number> = {
 export async function discoverTV(params: Record<string, string | number> = {}): Promise<TmdbPaginatedResponse<TmdbMediaItem>> {
   return tmdbFetch<TmdbPaginatedResponse<TmdbMediaItem>>("/discover/tv", params);
 }
+
+/**
+ * Person details with filmography credits and biography
+ */
+export interface TmdbPersonDetail {
+  id: number;
+  name: string;
+  biography?: string;
+  birthday?: string;
+  deathday?: string;
+  place_of_birth?: string;
+  profile_path?: string | null;
+  known_for_department?: string;
+  popularity?: number;
+  combined_credits?: {
+    cast?: Array<{
+      id: number;
+      title?: string;
+      name?: string;
+      character?: string;
+      poster_path?: string | null;
+      backdrop_path?: string | null;
+      media_type: "movie" | "tv";
+      vote_average?: number;
+      release_date?: string;
+      first_air_date?: string;
+    }>;
+    crew?: Array<{
+      id: number;
+      title?: string;
+      name?: string;
+      department?: string;
+      job?: string;
+      poster_path?: string | null;
+      media_type: "movie" | "tv";
+    }>;
+  };
+}
+
+export async function getPersonDetails(id: number | string): Promise<TmdbPersonDetail> {
+  return tmdbFetch<TmdbPersonDetail>(`/person/${id}`, {
+    append_to_response: "combined_credits,images",
+  });
+}
+
+export async function getTrailers(
+  mediaType: "movie" | "tv",
+  id: number | string
+): Promise<Array<{ id: string; key: string; name: string; site: string; type: string }>> {
+  const data = await tmdbFetch<{ results: Array<{ id: string; key: string; name: string; site: string; type: string }> }>(
+    `/${mediaType}/${id}/videos`
+  );
+  return data?.results || [];
+}
+
+export const tmdbClient = {
+  getTrending,
+  getPopularMovies,
+  getPopularTV,
+  getTopRatedMovies,
+  getTopRatedTV,
+  getNowPlayingMovies,
+  getUpcomingMovies,
+  getOnTheAirTV,
+  getAiringTodayTV,
+  getPopularAnime,
+  getTopRatedAnime,
+  getAnimeMovies,
+  getMovieDetails,
+  getTVDetails,
+  getSeasonDetails,
+  getPersonDetails,
+  getTrailers,
+  searchMulti,
+  discoverMovies,
+  discoverTV,
+  testTmdbConnection,
+};
+

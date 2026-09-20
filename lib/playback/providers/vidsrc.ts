@@ -1,19 +1,17 @@
-import { PlaybackProvider, PlaybackSource, ProviderHealthStatus } from "../types";
+import {
+  PlaybackProvider,
+  PlaybackSource,
+  PlaybackCandidate,
+  PlaybackRequest,
+  ProviderCapabilities,
+  ProviderHealth,
+  ProviderHealthStatus,
+} from "../types";
+import { providerHealthCache } from "../health-cache";
 
 /**
  * VidSrc Embed Provider — Priority 2
  * Active official host: https://vidsrc.sbs
- *
- * Movie:  https://vidsrc.sbs/embed/movie/{tmdbId}
- * TV:     https://vidsrc.sbs/embed/tv/{tmdbId}/{season}/{episode}
- *         (path-based, NOT query params)
- *
- * postMessage events (listen with event.origin matching VIDSRC_BASE_URL):
- *   { player_status: "playing" | "paused" | "error" }
- *   { player_progress, player_duration }
- *
- * IMPORTANT: Do NOT use vidsrc.sh — that host is deprecated and returns timeouts
- *            or blocks server-side probes. The correct current host is vidsrc.sbs.
  */
 export class VidSrcProvider implements PlaybackProvider {
   id = "vidsrc";
@@ -25,18 +23,47 @@ export class VidSrcProvider implements PlaybackProvider {
   priority = 2;
 
   private getBaseUrl(): string {
-    // Default to the active official host vidsrc.sbs
     const raw = process.env.VIDSRC_BASE_URL?.trim() || "https://vidsrc.sbs";
     return raw.replace(/\/+$/, "");
   }
 
-  /** Returns just the hostname for postMessage origin filtering */
   getOrigin(): string {
     try {
       return new URL(this.getBaseUrl()).origin;
     } catch {
       return "https://vidsrc.sbs";
     }
+  }
+
+  supports(request: PlaybackRequest): boolean {
+    if (!this.enabled) return false;
+    return Boolean(request.tmdbId);
+  }
+
+  async resolve(request: PlaybackRequest): Promise<PlaybackCandidate | null> {
+    if (!this.supports(request) || !request.tmdbId) return null;
+
+    if (request.mediaType === "tv" || request.mediaType === "anime") {
+      return this.getTVPlayback(request.tmdbId, request.season || 1, request.episode || 1);
+    }
+    return this.getMoviePlayback(request.tmdbId);
+  }
+
+  getCapabilities(): ProviderCapabilities {
+    return {
+      supportsMovie: true,
+      supportsTV: true,
+      supportsAnime: true,
+      supportsSub: true,
+      supportsDub: false,
+      supportsEvents: true,
+      requiresApiKey: false,
+      hasCaptions: true,
+    };
+  }
+
+  getHealth(): ProviderHealth {
+    return providerHealthCache.getHealth(this.id);
   }
 
   async getMoviePlayback(tmdbId: number | string): Promise<PlaybackSource | null> {
@@ -54,9 +81,12 @@ export class VidSrcProvider implements PlaybackProvider {
       priority: this.priority,
       mediaType: "movie",
       tmdbId: id,
+      serverLabel: "HD-2 (VidSrc)",
+      serverNumber: 2,
+      language: "sub",
       statusText: "VidSrc — Awaiting Player Event",
       progressTrackingSupported: true,
-      status: "DISCOVERED",
+      status: "CANDIDATE_FOUND",
     };
   }
 
@@ -70,7 +100,6 @@ export class VidSrcProvider implements PlaybackProvider {
     const e = Math.max(1, episode || 1);
     if (!id) return null;
 
-    // TV uses path-based routing, never query params
     const url = `${this.getBaseUrl()}/embed/tv/${id}/${s}/${e}`;
 
     return {
@@ -84,17 +113,15 @@ export class VidSrcProvider implements PlaybackProvider {
       tmdbId: id,
       season: s,
       episode: e,
+      serverLabel: "HD-2 (VidSrc)",
+      serverNumber: 2,
+      language: "sub",
       statusText: "VidSrc — Awaiting Player Event",
       progressTrackingSupported: true,
-      status: "DISCOVERED",
+      status: "CANDIDATE_FOUND",
     };
   }
 
-  /**
-   * Advisory health check only.
-   * HTTP 429 from VidSrc server-side means rate-limited, NOT that browser embeds are broken.
-   * Never disable VidSrc solely based on server probe failures.
-   */
   async healthCheck(): Promise<{
     status: ProviderHealthStatus;
     latencyMs?: number;
@@ -113,34 +140,31 @@ export class VidSrcProvider implements PlaybackProvider {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           Referer: "https://vidsrc.sbs/",
         },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(4000),
       });
 
       const latencyMs = Date.now() - start;
 
       if (res.status < 500) {
+        providerHealthCache.recordSuccess(this.id, latencyMs);
         return {
           status: "HTTP_REACHABLE",
           latencyMs,
-          message: `HTTP ${res.status} (${latencyMs}ms). ${
-            res.status === 429
-              ? "Rate-limited on server probe (expected). Browser iframes are not rate-limited the same way."
-              : "Reachable. Browser iframes may play independently."
-          }`,
+          message: `HTTP ${res.status} (${latencyMs}ms). Reachable.`,
         };
       }
 
       return {
         status: "DEGRADED",
         latencyMs,
-        message: `HTTP ${res.status} from server probe. Embed may still play in browser.`,
+        message: `HTTP ${res.status} from server probe.`,
       };
     } catch (err: any) {
       const latencyMs = Date.now() - start;
       return {
         status: "DEGRADED",
         latencyMs,
-        message: `Server probe failed (${err.message}). Embed may still function in browser — server probes are often blocked by CDN rules.`,
+        message: `Server probe note (${err.message}). Embed operates independently in browser.`,
       };
     }
   }

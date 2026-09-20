@@ -1,5 +1,14 @@
 import { getPlaybackAggregatorUrl } from "@/lib/settings";
-import { PlaybackProvider, PlaybackSource, ProviderHealthStatus } from "../types";
+import {
+  PlaybackProvider,
+  PlaybackSource,
+  PlaybackCandidate,
+  PlaybackRequest,
+  ProviderCapabilities,
+  ProviderHealth,
+  ProviderHealthStatus,
+} from "../types";
+import { providerHealthCache } from "../health-cache";
 
 export class AggregatorProvider implements PlaybackProvider {
   id = "aggregator";
@@ -23,6 +32,37 @@ export class AggregatorProvider implements PlaybackProvider {
     }
   }
 
+  supports(request: PlaybackRequest): boolean {
+    if (!this.enabled) return false;
+    return Boolean(request.tmdbId);
+  }
+
+  async resolve(request: PlaybackRequest): Promise<PlaybackCandidate | null> {
+    if (!this.supports(request) || !request.tmdbId) return null;
+
+    if (request.mediaType === "tv" || request.mediaType === "anime") {
+      return this.getTVPlayback(request.tmdbId, request.season || 1, request.episode || 1);
+    }
+    return this.getMoviePlayback(request.tmdbId);
+  }
+
+  getCapabilities(): ProviderCapabilities {
+    return {
+      supportsMovie: true,
+      supportsTV: true,
+      supportsAnime: false,
+      supportsSub: true,
+      supportsDub: true,
+      supportsEvents: true,
+      requiresApiKey: false,
+      hasCaptions: true,
+    };
+  }
+
+  getHealth(): ProviderHealth {
+    return providerHealthCache.getHealth(this.id);
+  }
+
   async getMoviePlayback(tmdbId: number | string): Promise<PlaybackSource | null> {
     const baseUrl = await this.getAggregatorUrl();
     if (!baseUrl) return null;
@@ -39,7 +79,13 @@ export class AggregatorProvider implements PlaybackProvider {
       url,
       available: true,
       priority: this.priority,
+      mediaType: "movie",
+      tmdbId: id,
+      serverLabel: "Aggregator",
+      serverNumber: 5,
+      language: "sub",
       statusText: "Aggregator Stream",
+      status: "CANDIDATE_FOUND",
     };
   }
 
@@ -61,7 +107,15 @@ export class AggregatorProvider implements PlaybackProvider {
       url,
       available: true,
       priority: this.priority,
+      mediaType: "tv",
+      tmdbId: id,
+      season: s,
+      episode: e,
+      serverLabel: "Aggregator",
+      serverNumber: 5,
+      language: "sub",
       statusText: "Aggregator Stream",
+      status: "CANDIDATE_FOUND",
     };
   }
 
@@ -87,12 +141,13 @@ export class AggregatorProvider implements PlaybackProvider {
       const testUrl = `${baseUrl}/health`;
       const res = await fetch(testUrl, {
         method: "GET",
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(4000),
       });
 
       const latencyMs = Date.now() - start;
 
       if (res.ok) {
+        providerHealthCache.recordSuccess(this.id, latencyMs);
         return {
           status: "ACTIVE",
           latencyMs,

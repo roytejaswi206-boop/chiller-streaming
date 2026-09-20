@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useTransition, Suspense } from "react";
+import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MediaCard } from "@/components/video/MediaCard";
@@ -16,15 +16,30 @@ function SearchContent() {
   const [activeFilter, setActiveFilter] = useState<"all" | "movie" | "anime" | "tv">("all");
   const [results, setResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Debounced search effect
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+
+  const loadingPagesRef = useRef<Set<number>>(new Set());
+  const loadedPagesRef = useRef<Set<number>>(new Set());
+  const observerTargetRef = useRef<HTMLDivElement>(null);
+
+  // Debounced search effect for page 1
   useEffect(() => {
     const trimmed = query.trim();
     if (!trimmed) {
       setResults([]);
       setHasSearched(false);
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalResults(0);
+      loadingPagesRef.current.clear();
+      loadedPagesRef.current.clear();
       return;
     }
 
@@ -32,19 +47,28 @@ function SearchContent() {
       setIsLoading(true);
       setErrorMessage("");
       setHasSearched(true);
+      loadingPagesRef.current.clear();
+      loadedPagesRef.current.clear();
 
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`);
+        loadingPagesRef.current.add(1);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}&page=1`);
         if (!res.ok) {
           const errData = await res.json();
           throw new Error(errData.error || "Search error");
         }
         const data = await res.json();
-        setResults(data.results || []);
+        const initialItems = data.results || [];
+        setResults(initialItems);
+        setCurrentPage(1);
+        setTotalPages(data.total_pages || 1);
+        setTotalResults(data.total_results || 0);
+        loadedPagesRef.current.add(1);
       } catch (err: any) {
         setErrorMessage(err.message || "Failed to search stories.");
         setResults([]);
       } finally {
+        loadingPagesRef.current.delete(1);
         setIsLoading(false);
       }
     }, 350);
@@ -58,6 +82,73 @@ function SearchContent() {
       setQuery(initialQuery);
     }
   }, [initialQuery]);
+
+  // Infinite scroll: fetch next page
+  const fetchNextPage = useCallback(async () => {
+    const trimmed = query.trim();
+    const nextPage = currentPage + 1;
+
+    if (
+      !trimmed ||
+      nextPage > totalPages ||
+      isLoading ||
+      isLoadingMore ||
+      loadingPagesRef.current.has(nextPage) ||
+      loadedPagesRef.current.has(nextPage)
+    ) {
+      return;
+    }
+
+    loadingPagesRef.current.add(nextPage);
+    setIsLoadingMore(true);
+
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}&page=${nextPage}`);
+      if (!res.ok) throw new Error("Search page fetch failed");
+
+      const data = await res.json();
+      const newItems: any[] = data.results || [];
+      loadedPagesRef.current.add(nextPage);
+
+      setResults((prev) => {
+        const existingIds = new Set(prev.map((i) => `${i.media_type}-${i.id}`));
+        const uniqueNew = newItems.filter((i) => !existingIds.has(`${i.media_type}-${i.id}`));
+        return [...prev, ...uniqueNew];
+      });
+
+      setCurrentPage(nextPage);
+    } catch {
+      // Graceful error retention
+    } finally {
+      loadingPagesRef.current.delete(nextPage);
+      setIsLoadingMore(false);
+    }
+  }, [currentPage, totalPages, isLoading, isLoadingMore, query]);
+
+  // Sentinel intersection observer for infinite scroll
+  useEffect(() => {
+    const hasNext = currentPage < totalPages;
+    if (!hasNext || isLoading || isLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+
+    const target = observerTargetRef.current;
+    if (target) {
+      observer.observe(target);
+    }
+
+    return () => {
+      if (target) observer.unobserve(target);
+      observer.disconnect();
+    };
+  }, [currentPage, totalPages, isLoading, isLoadingMore, fetchNextPage]);
 
   // Filter results
   const filteredResults = results.filter((item) => {
@@ -98,74 +189,79 @@ function SearchContent() {
             {query && (
               <button
                 onClick={() => setQuery("")}
-                className="absolute right-4 text-xs font-bold text-zinc-400 hover:text-white transition cursor-pointer"
+                className="absolute right-4 text-xs font-bold text-zinc-500 hover:text-white transition"
               >
                 Clear
               </button>
             )}
           </div>
-
-          {/* Filter Pills */}
-          <div className="flex items-center gap-2 mt-4">
-            {[
-              { id: "all", label: "All Stories" },
-              { id: "movie", label: "Movies" },
-              { id: "anime", label: "Anime" },
-              { id: "tv", label: "TV Series" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setActiveFilter(f.id as any)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
-                  activeFilter === f.id
-                    ? "bg-[#FF3B6B] text-white shadow-md shadow-[#FF3B6B]/25"
-                    : "bg-white/[0.05] hover:bg-white/10 text-zinc-300 border border-white/5"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Loading Spinner */}
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-10 h-10 rounded-full border-2 border-[#FF3B6B] border-t-transparent animate-spin mb-3" />
-            <p className="text-xs text-zinc-400 font-semibold">Searching catalog...</p>
-          </div>
-        )}
+        {/* Filter Chips */}
+        {hasSearched && !isLoading && results.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-white/[0.08]">
+            <div className="flex items-center gap-2">
+              {(["all", "movie", "tv", "anime"] as const).map((filter) => {
+                const label =
+                  filter === "all"
+                    ? "All Titles"
+                    : filter === "movie"
+                    ? "Movies"
+                    : filter === "tv"
+                    ? "Series"
+                    : "Anime";
+                const isActive = activeFilter === filter;
 
-        {/* Error State */}
-        {!isLoading && errorMessage && (
-          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-6 text-center max-w-md mx-auto my-8">
-            <p className="text-xs font-bold text-rose-400 mb-1">Search Error</p>
-            <p className="text-xs text-zinc-300">{errorMessage}</p>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && !errorMessage && hasSearched && filteredResults.length === 0 && (
-          <div className="rounded-3xl border border-white/10 bg-[#0F172A] p-12 text-center max-w-md mx-auto my-12 shadow-xl">
-            <div className="w-12 h-12 rounded-2xl bg-white/5 text-zinc-400 flex items-center justify-center mx-auto mb-4 text-xl">
-              🔍
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => setActiveFilter(filter)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      isActive
+                        ? "bg-[#FF3B6B] text-white shadow-lg shadow-[#FF3B6B]/25"
+                        : "bg-[#0F172A] border border-white/10 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
-            <h3 className="text-base font-bold text-white mb-1">No stories found</h3>
+
             <p className="text-xs text-zinc-400">
-              We couldn&apos;t find any results matching &quot;{query}&quot;. Try a different title or keyword.
+              Showing {filteredResults.length} of {totalResults} available titles
             </p>
           </div>
         )}
 
-        {/* Search Results Grid */}
-        {!isLoading && filteredResults.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                Results ({filteredResults.length})
-              </span>
-            </div>
+        {/* Loading Spinner */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 rounded-full border-2 border-[#FF3B6B] border-t-transparent animate-spin mb-4" />
+            <p className="text-xs font-semibold text-zinc-400">Searching global catalogue...</p>
+          </div>
+        )}
 
+        {/* Error Message */}
+        {errorMessage && (
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center max-w-md mx-auto my-8">
+            <p className="text-sm font-semibold text-red-400 mb-1">{errorMessage}</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && hasSearched && filteredResults.length === 0 && !errorMessage && (
+          <div className="rounded-3xl border border-white/10 bg-[#0F172A] p-12 text-center max-w-md mx-auto my-12 shadow-xl">
+            <p className="text-base font-bold text-white mb-2">No matching titles found</p>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              We couldn't find anything matching &quot;{query}&quot;. Try searching for another movie, series, or anime.
+            </p>
+          </div>
+        )}
+
+        {/* Search Results Grid with Infinite Scroll */}
+        {!isLoading && filteredResults.length > 0 && (
+          <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {filteredResults.map((item) => {
                 const isTV = item.media_type === "tv";
@@ -188,7 +284,17 @@ function SearchContent() {
                 );
               })}
             </div>
-          </div>
+
+            {/* Sentinel */}
+            <div ref={observerTargetRef} className="h-12 flex items-center justify-center mt-6">
+              {isLoadingMore && (
+                <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400">
+                  <div className="w-5 h-5 rounded-full border-2 border-[#FF3B6B] border-t-transparent animate-spin" />
+                  <span>Loading more search results...</span>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </main>
     </div>
@@ -197,13 +303,7 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[calc(100vh-4rem)] bg-[#09090C] items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-2 border-[#FF3B6B] border-t-transparent animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="min-h-screen bg-[#09090C]" />}>
       <SearchContent />
     </Suspense>
   );

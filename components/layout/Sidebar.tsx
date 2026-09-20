@@ -63,6 +63,40 @@ export function Sidebar() {
           })}
         </div>
 
+        {/* Discovery & Genres */}
+        <div className="pt-4 border-t border-white/[0.06]">
+          <p className="px-3.5 text-[10px] font-extrabold uppercase tracking-wider text-zinc-500 mb-2">
+            Browse Genres
+          </p>
+          <div className="grid grid-cols-2 gap-1 px-1">
+            {[
+              { label: "Action", href: "/genre/action" },
+              { label: "Comedy", href: "/genre/comedy" },
+              { label: "Drama", href: "/genre/drama" },
+              { label: "Sci-Fi", href: "/genre/scifi" },
+              { label: "Horror", href: "/genre/horror" },
+              { label: "Romance", href: "/genre/romance" },
+              { label: "Thriller", href: "/genre/thriller" },
+              { label: "Documentary", href: "/genre/documentary" },
+            ].map((g) => {
+              const isActive = pathname === g.href;
+              return (
+                <Link
+                  key={g.label}
+                  href={g.href}
+                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition ${
+                    isActive
+                      ? "bg-[#FF3B6B]/20 text-white font-bold"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                  }`}
+                >
+                  {g.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Library / Account Section */}
         <div className="pt-4 border-t border-white/[0.06]">
           <p className="px-3.5 text-[10px] font-extrabold uppercase tracking-wider text-zinc-500 mb-2">
@@ -110,6 +144,18 @@ export function Sidebar() {
         <span className="inline-block px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/10 text-[9px] font-bold text-zinc-300">
           Powered by TMDB
         </span>
+
+        <button
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.location.href = "/intro";
+            }
+          }}
+          className="mt-3 w-full py-1.5 px-2 rounded-xl bg-gradient-to-r from-[#FF3B6B]/20 to-[#8A5CFF]/20 hover:from-[#FF3B6B]/30 hover:to-[#8A5CFF]/30 border border-[#FF3B6B]/30 text-white text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+        >
+          <span>🎬</span>
+          <span>Replay Intro</span>
+        </button>
       </div>
     </aside>
   );

@@ -85,58 +85,66 @@ export default async function AdminAnalyticsPage() {
         {/* Top Performing Videos */}
         <div className="rounded-2xl border border-white/10 bg-[#12121a] p-5 shadow-xl">
           <h3 className="text-sm font-bold text-white mb-4">Top Performing Videos</h3>
-          <div className="space-y-3">
-            {topVideos.map((video, idx) => (
-              <div
-                key={video.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-black/30 text-xs"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-mono font-black text-zinc-500 w-4">
-                    #{idx + 1}
-                  </span>
-                  <div className="w-12 aspect-video rounded overflow-hidden bg-black shrink-0">
-                    <img src={video.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+          {topVideos.length === 0 ? (
+            <p className="text-xs text-zinc-500 py-6 text-center">Not enough data</p>
+          ) : (
+            <div className="space-y-3">
+              {topVideos.map((video, idx) => (
+                <div
+                  key={video.id}
+                  className="flex items-center justify-between p-3 rounded-xl bg-black/30 text-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono font-black text-zinc-500 w-4">
+                      #{idx + 1}
+                    </span>
+                    <div className="w-12 aspect-video rounded overflow-hidden bg-black shrink-0">
+                      <img src={video.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="max-w-xs truncate">
+                      <p className="font-bold text-white truncate">{video.title}</p>
+                      <p className="text-[10px] text-zinc-400">{video.category?.name || "Uncategorized"}</p>
+                    </div>
                   </div>
-                  <div className="max-w-xs truncate">
-                    <p className="font-bold text-white truncate">{video.title}</p>
-                    <p className="text-[10px] text-zinc-400">{video.category?.name || "Uncategorized"}</p>
+                  <div className="text-right">
+                    <span className="font-bold text-rose-400 block">
+                      {formatViews(video.views)}
+                    </span>
+                    <span className="text-[10px] text-zinc-500">
+                      {formatDuration(video.duration)}
+                    </span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="font-bold text-rose-400 block">
-                    {formatViews(video.views)}
-                  </span>
-                  <span className="text-[10px] text-zinc-500">
-                    {formatDuration(video.duration)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Categories Breakdown */}
         <div className="rounded-2xl border border-white/10 bg-[#12121a] p-5 shadow-xl">
           <h3 className="text-sm font-bold text-white mb-4">Top Category Distribution</h3>
-          <div className="space-y-3">
-            {categories.map((cat) => (
-              <div key={cat.id} className="space-y-1 text-xs">
-                <div className="flex justify-between font-semibold">
-                  <span className="text-zinc-200">{cat.name}</span>
-                  <span className="text-zinc-400 font-mono">{cat.videoCount} scenes</span>
+          {categories.length === 0 ? (
+            <p className="text-xs text-zinc-500 py-6 text-center">Not enough data</p>
+          ) : (
+            <div className="space-y-3">
+              {categories.map((cat) => (
+                <div key={cat.id} className="space-y-1 text-xs">
+                  <div className="flex justify-between font-semibold">
+                    <span className="text-zinc-200">{cat.name}</span>
+                    <span className="text-zinc-400 font-mono">{cat.videoCount} scenes</span>
+                  </div>
+                  <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-[#FF3864] h-full rounded-full"
+                      style={{
+                        width: `${Math.min(100, Math.max(10, (cat.videoCount / 20) * 100))}%`,
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-[#FF3864] h-full rounded-full"
-                    style={{
-                      width: `${Math.min(100, Math.max(10, (cat.videoCount / 20) * 100))}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

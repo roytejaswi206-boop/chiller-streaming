@@ -1,68 +1,175 @@
 import React from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ChillerHero, HeroItem } from "@/components/video/ChillerHero";
-import { MediaRail } from "@/components/video/MediaRail";
-import {
-  getAnimeMovies,
-  getPopularAnime,
-  getTopRatedAnime,
-  discoverTV,
-} from "@/lib/tmdb/client";
-import { getGenreNames } from "@/lib/tmdb/genres";
+import { InfiniteMediaRail } from "@/components/video/InfiniteMediaRail";
+import { InfiniteMediaGrid } from "@/components/video/InfiniteMediaGrid";
+import { discoverContent } from "@/lib/content/discovery";
 
 export const dynamic = "force-dynamic";
 
-export default async function AnimePage() {
-  const [popularAnimeRes, topRatedAnimeRes, animeMoviesRes, actionAnimeRes] = await Promise.allSettled([
-    getPopularAnime(1),
-    getTopRatedAnime(1),
-    getAnimeMovies(1),
-    discoverTV({
-      with_genres: "16,10759",
-      with_original_language: "ja",
-      sort_by: "popularity.desc",
-    }),
-  ]);
+interface AnimePageProps {
+  searchParams: Promise<{ category?: string; genre?: string; format?: string; view?: string }>;
+}
 
-  const popular = popularAnimeRes.status === "fulfilled" ? popularAnimeRes.value.results : [];
-  const topRated = topRatedAnimeRes.status === "fulfilled" ? topRatedAnimeRes.value.results : [];
-  const animeMovies = animeMoviesRes.status === "fulfilled" ? animeMoviesRes.value.results : [];
-  const actionAnime = actionAnimeRes.status === "fulfilled" ? actionAnimeRes.value.results : [];
+export default async function AnimePage({ searchParams }: AnimePageProps) {
+  const { category, genre, format, view } = await searchParams;
 
-  const heroItems: HeroItem[] = popular.slice(0, 5).map((a) => ({
-    id: a.id,
-    title: a.name || a.title || "Anime Series",
-    overview: a.overview || "Enter infinite worlds and epic battles on Chiller Anime.",
-    backdropPath: a.backdrop_path,
-    posterPath: a.poster_path,
+  // Pre-fetch top trending anime for the hero from AniList
+  const trendingRes = await discoverContent({
     mediaType: "anime",
-    rating: Number(a.vote_average.toFixed(1)),
-    releaseYear: (a.first_air_date || a.release_date || "").split("-")[0],
-    genres: getGenreNames(a.genre_ids),
+    category: "trending",
+    page: 1,
+  });
+
+  const trendingItems = trendingRes.items || [];
+
+  const heroCandidates = trendingItems.filter(
+    (item) => item.backdrop && !item.backdrop.includes("placeholder") && item.overview && item.overview.length > 20
+  );
+  const heroSource = heroCandidates.length >= 3 ? heroCandidates : trendingItems;
+  const heroItems: HeroItem[] = heroSource.slice(0, 5).map((a) => ({
+    id: a.anilistId || (typeof a.id === "string" ? parseInt(a.id.replace(/\D/g, ""), 10) || a.id : a.id),
+    title: a.title,
+    overview: a.overview,
+    backdropPath: a.backdrop,
+    posterPath: a.poster,
+    mediaType: "anime",
+    rating: a.rating,
+    releaseYear: a.year,
+    genres: a.genres,
   }));
 
-  const formatItems = (list: typeof popular, defaultType: "anime" | "movie" = "anime") =>
-    list.map((a) => ({
-      id: a.id,
-      title: a.name || a.title || "Untitled",
-      posterPath: a.poster_path,
-      backdropPath: a.backdrop_path,
-      mediaType: defaultType,
-      rating: a.vote_average,
-      releaseYear: (a.first_air_date || a.release_date || "").split("-")[0],
-      genres: getGenreNames(a.genre_ids),
-    }));
+  const isGridView = view === "grid" || Boolean(category) || Boolean(genre) || Boolean(format);
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] bg-[#09090C]">
       <Sidebar />
       <main className="flex-1 p-4 lg:p-8 max-w-[1680px] overflow-hidden">
-        {heroItems.length > 0 && <ChillerHero items={heroItems} />}
+        {!isGridView && heroItems.length > 0 && <ChillerHero items={heroItems} />}
 
-        <MediaRail title="Trending & Popular Anime" items={formatItems(popular, "anime")} layout="backdrop" />
-        <MediaRail title="Top Rated Anime Series" items={formatItems(topRated, "anime")} layout="poster" />
-        <MediaRail title="Anime Feature Films" items={formatItems(animeMovies, "movie")} layout="poster" />
-        <MediaRail title="Action & Shonen Anime" items={formatItems(actionAnime, "anime")} layout="poster" />
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/[0.08]">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold text-[#8A5CFF] uppercase tracking-wider mb-1">
+              <span className="w-2 h-2 rounded-full bg-[#8A5CFF] animate-pulse" />
+              AniList Intelligence Engine
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              {category
+                ? `Anime — ${category.replace(/_/g, " ").toUpperCase()}`
+                : genre
+                ? `Anime — ${genre.toUpperCase()}`
+                : format
+                ? `Anime — ${format.toUpperCase()}`
+                : "Anime Universe"}
+            </h1>
+            <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+              Explore thousands of anime series, movies, OVAs, and seasonal releases directly from AniList.
+            </p>
+          </div>
+        </div>
+
+        {isGridView ? (
+          <InfiniteMediaGrid
+            query={{
+              mediaType: "anime",
+              category: category || "popular",
+              genre,
+              format: format as any,
+            }}
+          />
+        ) : (
+          <>
+            <InfiniteMediaRail
+              title="Trending Anime"
+              query={{ mediaType: "anime", category: "trending" }}
+              initialItems={trendingItems}
+              seeAllHref="/anime?category=trending"
+              layout="backdrop"
+              badge="AniList Top"
+            />
+
+            <InfiniteMediaRail
+              title="Currently Airing This Season"
+              query={{ mediaType: "anime", category: "airing" }}
+              seeAllHref="/anime?category=airing"
+              layout="poster"
+              badge="#AIRING"
+            />
+
+            <InfiniteMediaRail
+              title="Popular All Time"
+              query={{ mediaType: "anime", category: "popular" }}
+              seeAllHref="/anime?category=popular"
+              layout="poster"
+            />
+
+            <InfiniteMediaRail
+              title="Critically Acclaimed & Top Rated"
+              query={{ mediaType: "anime", category: "top_rated" }}
+              seeAllHref="/anime?category=top_rated"
+              layout="poster"
+              badge="#TOPRATED"
+            />
+
+            <InfiniteMediaRail
+              title="Anime Feature Films"
+              query={{ mediaType: "anime", format: "MOVIE" }}
+              seeAllHref="/anime?format=MOVIE"
+              layout="poster"
+              badge="#MOVIE"
+            />
+
+            <InfiniteMediaRail
+              title="Action & Shonen"
+              query={{ mediaType: "anime", genre: "Action" }}
+              seeAllHref="/anime?genre=Action"
+              layout="poster"
+            />
+
+            <InfiniteMediaRail
+              title="Fantasy & Isekai"
+              query={{ mediaType: "anime", genre: "Fantasy" }}
+              seeAllHref="/anime?genre=Fantasy"
+              layout="poster"
+            />
+
+            <InfiniteMediaRail
+              title="Sci-Fi & Cyberpunk"
+              query={{ mediaType: "anime", genre: "Sci-Fi" }}
+              seeAllHref="/anime?genre=Sci-Fi"
+              layout="poster"
+            />
+
+            <InfiniteMediaRail
+              title="Romance & Slice of Life"
+              query={{ mediaType: "anime", genre: "Romance" }}
+              seeAllHref="/anime?genre=Romance"
+              layout="poster"
+            />
+
+            <InfiniteMediaRail
+              title="Mystery & Psychological"
+              query={{ mediaType: "anime", genre: "Mystery" }}
+              seeAllHref="/anime?genre=Mystery"
+              layout="poster"
+            />
+
+            <InfiniteMediaRail
+              title="Comedy & Satire"
+              query={{ mediaType: "anime", genre: "Comedy" }}
+              seeAllHref="/anime?genre=Comedy"
+              layout="poster"
+            />
+
+            <InfiniteMediaRail
+              title="OVAs & Specials"
+              query={{ mediaType: "anime", format: "OVA" }}
+              seeAllHref="/anime?format=OVA"
+              layout="poster"
+              badge="#OVA"
+            />
+          </>
+        )}
       </main>
     </div>
   );

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ChillerLogo, IconMoon, IconSearch } from "@/components/icons";
+import { replayChillerIntro } from "@/components/intro/ChillerIntro";
 
 export function Header() {
   const pathname = usePathname();
@@ -20,13 +21,27 @@ export function Header() {
     }
   };
 
+  const [genresOpen, setGenresOpen] = useState(false);
+
   const navLinks = [
     { label: "Home", href: "/" },
     { label: "Movies", href: "/movies" },
     { label: "Anime", href: "/anime" },
     { label: "Series", href: "/series" },
     { label: "Trending", href: "/trending" },
-    { label: "My List", href: "/watchlist" },
+  ];
+
+  const popularGenres = [
+    { label: "Action", slug: "action" },
+    { label: "Comedy", slug: "comedy" },
+    { label: "Drama", slug: "drama" },
+    { label: "Sci-Fi", slug: "scifi" },
+    { label: "Horror", slug: "horror" },
+    { label: "Romance", slug: "romance" },
+    { label: "Thriller", slug: "thriller" },
+    { label: "Animation", slug: "animation" },
+    { label: "Documentary", slug: "documentary" },
+    { label: "Fantasy", slug: "fantasy" },
   ];
 
   return (
@@ -37,7 +52,7 @@ export function Header() {
           <ChillerLogo className="w-8 h-8" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+        <nav className="hidden md:flex items-center gap-5 text-sm font-medium">
           {navLinks.map((link) => {
             const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
             return (
@@ -57,6 +72,55 @@ export function Header() {
               </Link>
             );
           })}
+
+          {/* Genres Dropdown */}
+          <div className="relative" onMouseLeave={() => setGenresOpen(false)}>
+            <button
+              onClick={() => setGenresOpen(!genresOpen)}
+              onMouseEnter={() => setGenresOpen(true)}
+              className={`flex items-center gap-1 py-1 transition ${
+                pathname.startsWith("/genre")
+                  ? "text-white font-bold"
+                  : "text-zinc-400 hover:text-white font-medium"
+              }`}
+            >
+              <span>Genres</span>
+              <svg
+                className={`w-3.5 h-3.5 transition-transform ${genresOpen ? "rotate-180 text-white" : "text-zinc-400"}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {genresOpen && (
+              <div className="absolute left-0 mt-2 w-56 rounded-2xl border border-white/10 bg-[#0F172A] p-2 shadow-2xl z-50 grid grid-cols-2 gap-1 animate-in fade-in zoom-in-95 duration-150">
+                {popularGenres.map((g) => (
+                  <Link
+                    key={g.slug}
+                    href={`/genre/${g.slug}`}
+                    onClick={() => setGenresOpen(false)}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.08] transition"
+                  >
+                    {g.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Link
+            href="/watchlist"
+            className={`relative py-1 transition ${
+              pathname === "/watchlist"
+                ? "text-white font-bold"
+                : "text-zinc-400 hover:text-white font-medium"
+            }`}
+          >
+            My List
+          </Link>
         </nav>
       </div>
 
@@ -83,6 +147,16 @@ export function Header() {
         >
           <IconSearch className="w-5 h-5" />
         </Link>
+
+        {/* Replay Intro Button */}
+        <button
+          onClick={replayChillerIntro}
+          title="Replay Official CHILLER Intro Experience"
+          className="hidden md:flex items-center gap-1.5 py-1 px-3 rounded-full text-xs font-semibold text-zinc-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 transition cursor-pointer"
+        >
+          <span>🎬</span>
+          <span className="hidden lg:inline">Replay Intro</span>
+        </button>
 
         {/* Authentication Buttons or User Profile */}
         {session?.user ? (
@@ -133,15 +207,33 @@ export function Header() {
                 >
                   Profile & Settings
                 </Link>
+                <button
+                  onClick={() => {
+                    setUserDropdownOpen(false);
+                    replayChillerIntro();
+                  }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-[#FF3B6B] hover:text-[#FF3B6B]/90 hover:bg-[#FF3B6B]/10 transition text-xs font-semibold cursor-pointer"
+                >
+                  🎬 Replay Intro
+                </button>
 
                 {(session.user as any).role === "ADMIN" && (
-                  <Link
-                    href="/admin/settings"
-                    onClick={() => setUserDropdownOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-[#FF3B6B] hover:text-[#FF3B6B]/80 hover:bg-[#FF3B6B]/10 font-bold transition text-xs"
-                  >
-                    ⚡ API & Settings
-                  </Link>
+                  <>
+                    <Link
+                      href="/admin/diagnostics"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 font-bold transition text-xs"
+                    >
+                      📊 Diagnostics Engine
+                    </Link>
+                    <Link
+                      href="/admin/settings"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-[#FF3B6B] hover:text-[#FF3B6B]/80 hover:bg-[#FF3B6B]/10 font-bold transition text-xs"
+                    >
+                      ⚡ API & Settings
+                    </Link>
+                  </>
                 )}
 
                 <div className="h-px bg-white/[0.08] my-1" />

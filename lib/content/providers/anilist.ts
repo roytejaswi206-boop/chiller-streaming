@@ -33,13 +33,108 @@ export class AniListContentProvider implements ContentProvider {
     }
   }
 
-  async search(query: string): Promise<ChillerContent[]> {
-    if (!this.enabled || !query.trim()) return [];
+  private readonly ANIME_PAGE_GQL = `
+    query ($page: Int, $perPage: Int, $sort: [MediaSort], $status: MediaStatus, $genre: String, $format: MediaFormat) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo {
+          total
+          perPage
+          currentPage
+          lastPage
+          hasNextPage
+        }
+        media(type: ANIME, sort: $sort, status: $status, genre: $genre, format: $format, isAdult: false) {
+          id
+          idMal
+          title {
+            romaji
+            english
+            native
+          }
+          description
+          coverImage {
+            large
+            extraLarge
+          }
+          bannerImage
+          format
+          episodes
+          status
+          averageScore
+          popularity
+          genres
+          season
+          seasonYear
+          startDate {
+            year
+            month
+            day
+          }
+          studios(isMain: true) {
+            nodes {
+              name
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  private async fetchAnimePage(variables: Record<string, any>): Promise<{ items: ChillerContent[]; hasNextPage: boolean; total: number }> {
+    if (!this.enabled) return { items: [], hasNextPage: false, total: 0 };
+    const data = await this.queryGraphQL<{
+      Page: {
+        pageInfo: { hasNextPage: boolean; total: number };
+        media: any[];
+      };
+    }>(this.ANIME_PAGE_GQL, variables);
+
+    if (!data?.Page?.media) return { items: [], hasNextPage: false, total: 0 };
+    return {
+      items: data.Page.media.map((item) => this.mapMediaToContent(item)),
+      hasNextPage: Boolean(data.Page.pageInfo?.hasNextPage),
+      total: data.Page.pageInfo?.total || 0,
+    };
+  }
+
+  async getTrending(page = 1, perPage = 20) {
+    return this.fetchAnimePage({ page, perPage, sort: ["TRENDING_DESC", "POPULARITY_DESC"] });
+  }
+
+  async getPopular(page = 1, perPage = 20) {
+    return this.fetchAnimePage({ page, perPage, sort: ["POPULARITY_DESC"] });
+  }
+
+  async getTopRated(page = 1, perPage = 20) {
+    return this.fetchAnimePage({ page, perPage, sort: ["SCORE_DESC"] });
+  }
+
+  async getAiring(page = 1, perPage = 20) {
+    return this.fetchAnimePage({ page, perPage, status: "RELEASING", sort: ["POPULARITY_DESC"] });
+  }
+
+  async getByGenre(genre: string, page = 1, perPage = 20) {
+    return this.fetchAnimePage({ page, perPage, genre, sort: ["POPULARITY_DESC"] });
+  }
+
+  async getByFormat(format: "TV" | "MOVIE" | "OVA" | "ONA" | "SPECIAL", page = 1, perPage = 20) {
+    return this.fetchAnimePage({ page, perPage, format, sort: ["POPULARITY_DESC"] });
+  }
+
+  async search(query: string, typeOrPage?: ContentType | number, perPage = 20): Promise<any> {
+    const page = typeof typeOrPage === "number" ? typeOrPage : 1;
+    if (!this.enabled || !query.trim()) {
+      return typeof typeOrPage === "number" ? { items: [], hasNextPage: false, total: 0 } : [];
+    }
 
     const gql = `
-      query SearchAnime($search: String) {
-        Page(page: 1, perPage: 10) {
-          media(search: $search, type: ANIME) {
+      query SearchAnime($search: String, $page: Int, $perPage: Int) {
+        Page(page: $page, perPage: $perPage) {
+          pageInfo {
+            total
+            hasNextPage
+          }
+          media(search: $search, type: ANIME, isAdult: false) {
             id
             idMal
             title {
@@ -76,10 +171,24 @@ export class AniListContentProvider implements ContentProvider {
       }
     `;
 
-    const data = await this.queryGraphQL<{ Page: { media: any[] } }>(gql, { search: query });
-    if (!data?.Page?.media) return [];
+    const data = await this.queryGraphQL<{ Page: { pageInfo: { total: number; hasNextPage: boolean }; media: any[] } }>(gql, {
+      search: query,
+      page,
+      perPage,
+    });
+    if (!data?.Page?.media) {
+      return typeof typeOrPage === "number" ? { items: [], hasNextPage: false, total: 0 } : [];
+    }
 
-    return data.Page.media.map((item) => this.mapMediaToContent(item));
+    const items = data.Page.media.map((item) => this.mapMediaToContent(item));
+    if (typeof typeOrPage === "number") {
+      return {
+        items,
+        hasNextPage: Boolean(data.Page.pageInfo?.hasNextPage),
+        total: data.Page.pageInfo?.total || 0,
+      };
+    }
+    return items;
   }
 
   async getAnime(id: number | string): Promise<ChillerContent | null> {
@@ -228,3 +337,6 @@ export class AniListContentProvider implements ContentProvider {
     }
   }
 }
+
+export const anilistClient = new AniListContentProvider();
+

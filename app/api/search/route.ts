@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchMulti } from "@/lib/tmdb/client";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,18 @@ export async function GET(request: Request) {
 
   try {
     const data = await searchMulti(query, page);
+
+    if (page === 1) {
+      prisma.searchEvent
+        .create({
+          data: {
+            query,
+            resultCount: data.total_results || data.results?.length || 0,
+          },
+        })
+        .catch(() => {});
+    }
+
     return NextResponse.json(data);
   } catch (err: any) {
     if (err.message === "TMDB_NOT_CONFIGURED") {

@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
     if (type === "movie") {
       const id = tmdbId || 550; // default Fight Club
-      const source = await provider.getMoviePlayback(id);
+      const source = await provider.resolve({ mediaType: "movie", tmdbId: id });
       if (!source) {
         return NextResponse.json({
           success: false,
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       const id = tmdbId || 1399; // default Game of Thrones
       const s = season || 1;
       const e = episode || 1;
-      const source = await provider.getTVPlayback(id, s, e);
+      const source = await provider.resolve({ mediaType: "tv", tmdbId: id, season: s, episode: e });
       if (!source) {
         return NextResponse.json({
           success: false,

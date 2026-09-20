@@ -143,6 +143,32 @@ export default async function ProfilePage() {
             ))}
           </div>
         </div>
+
+        {/* Brand & Experience Preferences */}
+        <div className="pt-6 border-t border-white/10">
+          <h2 className="text-lg font-bold text-white tracking-tight mb-4">
+            Brand & Experience
+          </h2>
+          <div className="rounded-2xl border border-white/10 bg-[#121218] p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <span>🎬</span>
+                <span>Official CHILLER Opening Experience</span>
+              </h3>
+              <p className="text-xs text-zinc-400 mt-1">
+                Watch the official 10-second cinematic intro sequence or reset first-launch status.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <Link
+                href="/intro"
+                className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#8A5CFF] text-white text-xs font-bold hover:opacity-95 shadow-md shadow-[#FF3B6B]/20 transition text-center"
+              >
+                Replay CHILLER Intro
+              </Link>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );

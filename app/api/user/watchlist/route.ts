@@ -44,12 +44,17 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { tmdbId, videoId, mediaType, title, posterUrl, backdropUrl, rating, releaseYear } = body;
+    const mediaKey = tmdbId
+      ? `tmdb:${mediaType || "movie"}:${tmdbId}`
+      : videoId
+      ? `video:${videoId}`
+      : undefined;
 
     // Check if already in list
     const existing = await prisma.watchlist.findFirst({
       where: {
         userId: user.id,
-        ...(tmdbId ? { tmdbId } : videoId ? { videoId } : {}),
+        ...(mediaKey ? { mediaKey } : tmdbId ? { tmdbId: parseInt(String(tmdbId), 10) } : videoId ? { videoId } : {}),
       },
     });
 
@@ -62,6 +67,7 @@ export async function POST(request: Request) {
         userId: user.id,
         tmdbId: tmdbId ? parseInt(String(tmdbId), 10) : undefined,
         videoId: videoId || undefined,
+        mediaKey,
         mediaType: mediaType || "movie",
         title: title || "Untitled",
         posterUrl,

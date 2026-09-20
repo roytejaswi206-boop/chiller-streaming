@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin } from "@/lib/security/rbac";
 import { getCodeSpecterApiKey, getPlaybackAggregatorUrl, getTmdbApiKey, setSystemSetting } from "@/lib/settings";
 import { testTmdbConnection } from "@/lib/tmdb/client";
 import { testCodeSpecterConnection } from "@/lib/codespecters/client";
@@ -8,7 +7,9 @@ import { testCodeSpecterConnection } from "@/lib/codespecters/client";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) return authResult;
+
   const tmdbKey = await getTmdbApiKey();
   const codeSpecterKey = await getCodeSpecterApiKey();
   const aggregatorUrl = await getPlaybackAggregatorUrl();
@@ -53,6 +54,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const body = await request.json();
     const { tmdbApiKey, codeSpecterApiKey, playbackAggregatorUrl } = body;

@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:seed": "node --loader ts-node/esm prisma/seed.ts",
     "db:switch:pg": "npx prisma db push --schema=prisma/schema.postgresql.prisma",
+    "seed:admin": "npx tsx scripts/seed-admin.ts",
     "worker": "npx tsx worker.ts",
     "health": "npx tsx scripts/health-check.ts",
     "verify-video": "npx tsx scripts/verify-video.ts",

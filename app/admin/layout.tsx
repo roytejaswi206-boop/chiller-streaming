@@ -4,16 +4,22 @@ import { ChillerLogo } from "@/components/icons";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const adminNav = [
+    { label: "Dashboard", href: "/admin", icon: "📊" },
+    { label: "Providers Center", href: "/admin/providers", icon: "🔌" },
+    { label: "Diagnostics & Telemetry", href: "/admin/diagnostics", icon: "🛰️" },
+    { label: "Playback Verifier", href: "/admin/playback-test", icon: "▶️" },
+    { label: "System Health", href: "/admin/health", icon: "🩺" },
+    { label: "Cache Management", href: "/admin/cache", icon: "⚡" },
+    { label: "Collections CMS", href: "/admin/collections", icon: "📚" },
+    { label: "Homepage CMS", href: "/admin/homepage", icon: "🏠" },
+    { label: "Search Analytics", href: "/admin/search-analytics", icon: "🔍" },
+    { label: "Performance Center", href: "/admin/performance", icon: "⏱️" },
+    { label: "Error Center", href: "/admin/errors", icon: "🚨" },
+    { label: "User Management", href: "/admin/users", icon: "👥" },
+    { label: "Audit Logs", href: "/admin/audit", icon: "🛡️" },
     { label: "API & Settings", href: "/admin/settings", icon: "⚙️" },
-    { label: "System Logs", href: "/admin/logs", icon: "📜" },
-    { label: "Videos (Local)", href: "/admin/videos", icon: "🎬" },
-    { label: "Upload & Ingest", href: "/admin/upload", icon: "⬆️" },
-    { label: "Folder Import", href: "/admin/import", icon: "📁" },
-    { label: "Processing Queue", href: "/admin/processing", icon: "⚡" },
     { label: "Origin Servers", href: "/admin/servers", icon: "🖥️" },
-    { label: "Storage", href: "/admin/storage", icon: "💾" },
-    { label: "Telegram Ingestion", href: "/admin/telegram", icon: "✈️" },
-    { label: "Analytics", href: "/admin/analytics", icon: "📈" },
+    { label: "Storage & Transcoding", href: "/admin/storage", icon: "💾" },
   ];
 
   return (

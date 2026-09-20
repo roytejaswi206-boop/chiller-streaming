@@ -6,7 +6,7 @@ import Image from "next/image";
 import { IconPlay, IconPlus, IconCheck, IconStar } from "@/components/icons";
 
 export interface HeroItem {
-  id: number;
+  id: number | string;
   title: string;
   overview: string;
   backdropPath: string | null;
@@ -35,25 +35,51 @@ export function ChillerHero({ items }: ChillerHeroProps) {
     return () => clearInterval(interval);
   }, [items]);
 
+  useEffect(() => {
+    if (!activeItem) return;
+    try {
+      const stored = localStorage.getItem("chiller_watchlist");
+      if (stored) {
+        const list = JSON.parse(stored);
+        setIsInWatchlist(list.some((i: any) => String(i.id) === String(activeItem.id)));
+      } else {
+        setIsInWatchlist(false);
+      }
+    } catch {
+      // Ignore
+    }
+  }, [activeItem]);
+
   if (!activeItem) {
     return null;
   }
 
-  const watchUrl = `/watch/${activeItem.mediaType === "tv" || activeItem.mediaType === "anime" ? "tv" : "movie"}-${activeItem.id}`;
+  const watchUrl =
+    activeItem.mediaType === "anime"
+      ? `/watch/anime-${activeItem.id}`
+      : activeItem.mediaType === "tv"
+      ? `/watch/tv-${activeItem.id}`
+      : `/watch/movie-${activeItem.id}`;
+
   const backdropUrl = activeItem.backdropPath
-    ? `https://image.tmdb.org/t/p/original${activeItem.backdropPath}`
+    ? activeItem.backdropPath.startsWith("http")
+      ? activeItem.backdropPath
+      : `https://image.tmdb.org/t/p/original${activeItem.backdropPath.startsWith("/") ? "" : "/"}${activeItem.backdropPath}`
     : activeItem.posterPath
-    ? `https://image.tmdb.org/t/p/original${activeItem.posterPath}`
+    ? activeItem.posterPath.startsWith("http")
+      ? activeItem.posterPath
+      : `https://image.tmdb.org/t/p/original${activeItem.posterPath.startsWith("/") ? "" : "/"}${activeItem.posterPath}`
     : "/placeholder-backdrop.jpg";
 
   const handleToggleWatchlist = (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsInWatchlist(!isInWatchlist);
+    const nextState = !isInWatchlist;
+    setIsInWatchlist(nextState);
     try {
       const stored = localStorage.getItem("chiller_watchlist");
       let list = stored ? JSON.parse(stored) : [];
-      if (isInWatchlist) {
-        list = list.filter((i: any) => i.id !== activeItem.id);
+      if (!nextState) {
+        list = list.filter((i: any) => String(i.id) !== String(activeItem.id));
       } else {
         list.push({
           id: activeItem.id,
@@ -66,6 +92,27 @@ export function ChillerHero({ items }: ChillerHeroProps) {
         });
       }
       localStorage.setItem("chiller_watchlist", JSON.stringify(list));
+
+      // Also attempt background sync to authenticated API if user is logged in
+      if (nextState) {
+        fetch("/api/user/watchlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tmdbId: typeof activeItem.id === "number" ? activeItem.id : undefined,
+            mediaType: activeItem.mediaType,
+            title: activeItem.title,
+            posterUrl: activeItem.posterPath,
+            backdropUrl: activeItem.backdropPath,
+            rating: activeItem.rating,
+            releaseYear: activeItem.releaseYear,
+          }),
+        }).catch(() => {});
+      } else {
+        fetch(`/api/user/watchlist?id=${activeItem.id}&mediaType=${activeItem.mediaType}`, {
+          method: "DELETE",
+        }).catch(() => {});
+      }
     } catch {
       // Ignore
     }
@@ -87,10 +134,41 @@ export function ChillerHero({ items }: ChillerHeroProps) {
       <div className="absolute inset-0 bg-gradient-to-t from-[#09090C] via-[#09090C]/60 to-transparent z-10" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#09090C] via-[#09090C]/50 to-transparent z-10" />
 
+      {/* Left / Right Slide Cycle Arrows (Image 1 & 2 design) */}
+      {items.length > 1 && (
+        <>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
+            }}
+            aria-label="Previous Slide"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/40 hover:bg-[#FF3B6B] border border-white/10 hover:border-transparent text-white flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl hidden sm:flex cursor-pointer group"
+          >
+            <svg className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              setCurrentIndex((prev) => (prev + 1) % items.length);
+            }}
+            aria-label="Next Slide"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/40 hover:bg-[#FF3B6B] border border-white/10 hover:border-transparent text-white flex items-center justify-center backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 shadow-xl hidden sm:flex cursor-pointer group"
+          >
+            <svg className="w-5 h-5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </>
+      )}
+
       {/* Content Container */}
       <div className="relative z-20 p-6 sm:p-10 lg:p-14 max-w-2xl">
         {/* Badges / Metadata */}
-        <div className="flex flex-wrap items-center gap-2.5 mb-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
           <span
             className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest backdrop-blur-md shadow-md ${
               activeItem.mediaType === "anime"
@@ -101,6 +179,14 @@ export function ChillerHero({ items }: ChillerHeroProps) {
             }`}
           >
             {activeItem.mediaType.toUpperCase()}
+          </span>
+
+          <span className="px-2.5 py-0.5 rounded-full bg-black/40 border border-white/15 text-[10px] font-extrabold text-[#F8FAFC] tracking-wider uppercase">
+            4K UHD
+          </span>
+
+          <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-semibold text-zinc-300">
+            Dolby Vision
           </span>
 
           {activeItem.genres && activeItem.genres.slice(0, 3).map((g) => (
@@ -135,10 +221,10 @@ export function ChillerHero({ items }: ChillerHeroProps) {
         </p>
 
         {/* CTAs */}
-        <div className="flex items-center gap-3.5">
+        <div className="flex flex-wrap items-center gap-3.5">
           <Link
             href={watchUrl}
-            className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 text-white text-xs sm:text-sm font-bold tracking-wide transition duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-[1.02] cursor-pointer"
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-xs sm:text-sm font-black tracking-wide transition duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-[1.02] active:scale-95 cursor-pointer"
           >
             <IconPlay className="w-4 h-4 fill-white" />
             <span>Watch Now</span>
@@ -164,6 +250,19 @@ export function ChillerHero({ items }: ChillerHeroProps) {
               </>
             )}
           </button>
+
+          <Link
+            href={
+              activeItem.mediaType === "anime"
+                ? `/anime/${activeItem.id}`
+                : activeItem.mediaType === "tv"
+                ? `/series/${activeItem.id}`
+                : `/movies/${activeItem.id}`
+            }
+            className="px-4 py-3 rounded-full text-xs sm:text-sm font-semibold text-zinc-400 hover:text-white hover:bg-white/5 transition"
+          >
+            More Info
+          </Link>
         </div>
       </div>
 
@@ -185,3 +284,4 @@ export function ChillerHero({ items }: ChillerHeroProps) {
     </div>
   );
 }
+

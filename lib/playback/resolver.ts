@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { getMovieDetails, getSeasonDetails, getTVDetails, TmdbMediaItem, TmdbSeasonDetail } from "@/lib/tmdb/client";
-import { playbackRegistry } from "./registry";
-import { PlaybackSource } from "./types";
+import { getMovieDetails, getSeasonDetails, getTVDetails, TmdbSeasonDetail } from "@/lib/tmdb/client";
 import { selectBestOrigin } from "@/lib/origin-manager";
+import { PlaybackCandidate, PlaybackSource } from "./types";
+import { resolveCandidatesConcurrently } from "./orchestrator";
+import { parseMediaSlug } from "./identity";
 
 export interface PlaybackResolution {
   sourceType: "OWNED" | "EXTERNAL" | "UNAVAILABLE";
@@ -45,185 +46,106 @@ export interface PlaybackResolution {
 
   // Error info if unavailable
   errorMessage?: string;
+  startupLatencyMs?: number;
 }
 
 /**
- * Timeout wrapper for provider operations.
- * Returns null on timeout — never throws. Provider iteration always continues.
- */
-async function withTimeout<T>(promise: Promise<T>, timeoutMs = 8000): Promise<T | null> {
-  let timeoutHandle: ReturnType<typeof setTimeout>;
-  const timeoutPromise = new Promise<null>((resolve) => {
-    timeoutHandle = setTimeout(() => resolve(null), timeoutMs);
-  });
-
-  try {
-    const result = await Promise.race([promise, timeoutPromise]);
-    clearTimeout(timeoutHandle!);
-    return result;
-  } catch {
-    clearTimeout(timeoutHandle!);
-    return null;
-  }
-}
-
-/**
- * CHILLER PLAYBACK RESOLUTION FLOW — MOVIES
- *
- * 1. Iterate ALL enabled providers regardless of previous health state
- * 2. Each provider generates a candidate URL (server-side build only; no HTTP probe)
- * 3. Return all candidates sorted by priority
- * 4. Browser loads iframes one-by-one; postMessage events advance lifecycle:
- *    DISCOVERED → IFRAME_LOADED → PLAYER_READY → PLAY_STARTED
- *    or DISCOVERED → IFRAME_LOADED → PLAYBACK_ERROR (triggers auto-fallback)
- *
- * A provider failing to generate a URL does NOT stop iteration.
- * HTTP 429 / timeouts do NOT remove a provider from this list.
+ * Resolves movie candidates concurrently.
  */
 export async function resolveMoviePlayback(
   tmdbId: number | string
-): Promise<{ sources: PlaybackSource[]; primarySource: PlaybackSource | null }> {
-  const providers = playbackRegistry.getEnabledProviders();
-  const sources: PlaybackSource[] = [];
+): Promise<{ sources: PlaybackSource[]; primarySource: PlaybackSource | null; latencyMs?: number }> {
+  const { candidates, primaryCandidate, fastestMs } = await resolveCandidatesConcurrently({
+    mediaType: "movie",
+    tmdbId,
+  });
 
-  for (const provider of providers) {
-    if (!provider.supportsMovie) continue;
-
-    try {
-      const source = await withTimeout(provider.getMoviePlayback(tmdbId), 6000);
-      if (source && source.url) {
-        // Mark all resolver-built sources as DISCOVERED (not yet browser-verified)
-        sources.push({ ...source, available: true, status: source.status ?? "DISCOVERED" });
-      }
-    } catch {
-      // Isolated — this provider's failure does not halt other providers
-    }
-  }
-
-  sources.sort((a, b) => a.priority - b.priority);
-  return { sources, primarySource: sources[0] ?? null };
+  return {
+    sources: candidates,
+    primarySource: primaryCandidate,
+    latencyMs: fastestMs,
+  };
 }
 
 /**
- * CHILLER PLAYBACK RESOLUTION FLOW — TV EPISODES
- *
- * season and episode are always passed separately to each provider.
- * CineSrc uses query params: ?s={season}&e={episode}
- * VidSrc uses path routing: /embed/tv/{id}/{season}/{episode}
- * Both are handled inside their respective provider adapters.
+ * Resolves TV episode candidates concurrently.
  */
 export async function resolveTVPlayback(
   tmdbId: number | string,
   season: number,
   episode: number
-): Promise<{ sources: PlaybackSource[]; primarySource: PlaybackSource | null }> {
-  const s = Math.max(1, season || 1);
-  const e = Math.max(1, episode || 1);
-  const providers = playbackRegistry.getEnabledProviders();
-  const sources: PlaybackSource[] = [];
-
-  for (const provider of providers) {
-    if (!provider.supportsTV) continue;
-
-    try {
-      const source = await withTimeout(provider.getTVPlayback(tmdbId, s, e), 6000);
-      if (source && source.url) {
-        sources.push({ ...source, available: true, status: source.status ?? "DISCOVERED", season: s, episode: e });
-      }
-    } catch {
-      // Isolated — this provider's failure does not halt other providers
-    }
-  }
-
-  sources.sort((a, b) => a.priority - b.priority);
-  return { sources, primarySource: sources[0] ?? null };
-}
-
-/**
- * Resolves all available playback sources for Anime using AniList ID and episode number
- */
-export async function resolveAnimePlayback(
-  anilistId: number | string,
-  episode: number
-): Promise<{ sources: PlaybackSource[]; primarySource: PlaybackSource | null }> {
-  const providers = playbackRegistry.getEnabledProviders();
-  const sources: PlaybackSource[] = [];
-
-  for (const provider of providers) {
-    if (!provider.supportsAnime || !provider.getAnimePlayback) continue;
-
-    try {
-      const source = await withTimeout(provider.getAnimePlayback(anilistId, episode), 6000);
-      if (source && source.available && source.url) {
-        sources.push(source);
-        playbackRegistry.recordSuccess(provider.id);
-      }
-    } catch (err: any) {
-      playbackRegistry.recordFailure(provider.id, err.message || "Anime resolution error");
-    }
-  }
-
-  sources.sort((a, b) => a.priority - b.priority);
+): Promise<{ sources: PlaybackSource[]; primarySource: PlaybackSource | null; latencyMs?: number }> {
+  const { candidates, primaryCandidate, fastestMs } = await resolveCandidatesConcurrently({
+    mediaType: "tv",
+    tmdbId,
+    season,
+    episode,
+  });
 
   return {
-    sources,
-    primarySource: sources.length > 0 ? sources[0] : null,
+    sources: candidates,
+    primarySource: primaryCandidate,
+    latencyMs: fastestMs,
   };
 }
 
 /**
- * Parses a watch slug into type and ID.
+ * Resolves anime episode candidates concurrently with normalized AniList / TMDB identity.
  */
-export function parseSlug(slug: string): {
-  type: "movie" | "tv" | "anime";
-  tmdbId?: number;
-  anilistId?: number;
-} | null {
-  if (slug.startsWith("anime-")) {
-    const id = parseInt(slug.replace("anime-", ""), 10);
-    return isNaN(id) ? null : { type: "anime", anilistId: id, tmdbId: id };
-  }
-  if (slug.startsWith("movie-")) {
-    const id = parseInt(slug.replace("movie-", ""), 10);
-    return isNaN(id) ? null : { type: "movie", tmdbId: id };
-  }
-  if (slug.startsWith("tv-")) {
-    const id = parseInt(slug.replace("tv-", ""), 10);
-    return isNaN(id) ? null : { type: "tv", tmdbId: id };
-  }
-  if (/^\d+$/.test(slug)) {
-    const id = parseInt(slug, 10);
-    return { type: "movie", tmdbId: id };
-  }
-  return null;
+export async function resolveAnimePlayback(
+  anilistId: number | string,
+  episode: number,
+  tmdbId?: number | string
+): Promise<{ sources: PlaybackSource[]; primarySource: PlaybackSource | null; latencyMs?: number }> {
+  const { candidates, primaryCandidate, fastestMs } = await resolveCandidatesConcurrently({
+    mediaType: "anime",
+    anilistId,
+    tmdbId: tmdbId || anilistId,
+    episode,
+  });
+
+  return {
+    sources: candidates,
+    primarySource: primaryCandidate,
+    latencyMs: fastestMs,
+  };
+}
+
+export function parseSlug(slug: string | string[]) {
+  return parseMediaSlug(slug);
 }
 
 /**
  * Primary content resolution service for the Chiller Watch experience.
  */
 export async function resolveContent(
-  slug: string,
-  options: { season?: number; episode?: number } = {}
+  slug: string | string[],
+  options: { season?: number; episode?: number; language?: "sub" | "dub" } = {}
 ): Promise<PlaybackResolution | null> {
-  const parsed = parseSlug(slug);
+  const parsed = parseMediaSlug(slug);
 
-  // 1. Resolve TMDB Content (Movie or TV / Anime)
+  // 1. Resolve TMDB / AniList Content (Movie, TV, Anime)
   if (parsed) {
-    const { type } = parsed;
+    const { mediaType } = parsed;
     const tmdbId = parsed.tmdbId || parsed.anilistId;
     if (!tmdbId) return null;
 
-    const season = Math.max(1, options.season || 1);
-    const episode = Math.max(1, options.episode || 1);
+    const season = Math.max(1, options.season || parsed.season || 1);
+    const episode = Math.max(1, options.episode || parsed.episode || 1);
 
     try {
-      if (type === "anime" && parsed.anilistId) {
+      if (mediaType === "anime" && parsed.anilistId) {
         const { AniListContentProvider } = await import("@/lib/content/providers/anilist");
         const anilistProvider = new AniListContentProvider();
         const anime = await anilistProvider.getAnime(parsed.anilistId);
 
         if (anime) {
-          const { sources, primarySource } = await resolveAnimePlayback(parsed.anilistId, episode);
+          const { sources, primarySource, latencyMs } = await resolveAnimePlayback(
+            parsed.anilistId,
+            episode,
+            parsed.tmdbId
+          );
+
           return {
             sourceType: sources.length > 0 ? "EXTERNAL" : "UNAVAILABLE",
             provider: primarySource ? primarySource.providerId : "none",
@@ -238,19 +160,26 @@ export async function resolveContent(
             rating: anime.rating || 0,
             mediaType: "anime",
             anilistId: parsed.anilistId,
+            tmdbId: parsed.tmdbId,
             season: 1,
             episode,
             totalSeasons: 1,
             embedUrl: primarySource?.url,
             recommendations: [],
+            startupLatencyMs: latencyMs,
             errorMessage: sources.length === 0 ? "Playback is currently unavailable." : undefined,
           };
         }
       }
 
-      if (type === "movie") {
-        const movie = await getMovieDetails(tmdbId);
-        const { sources, primarySource } = await resolveMoviePlayback(tmdbId);
+      if (mediaType === "movie") {
+        // Parallel metadata and candidate resolution
+        const [movie, playbackRes] = await Promise.all([
+          getMovieDetails(tmdbId),
+          resolveMoviePlayback(tmdbId),
+        ]);
+
+        const { sources, primarySource, latencyMs } = playbackRes;
 
         return {
           sourceType: sources.length > 0 ? "EXTERNAL" : "UNAVAILABLE",
@@ -270,38 +199,44 @@ export async function resolveContent(
           embedUrl: primarySource?.url,
           cast: movie.credits?.cast?.slice(0, 10),
           recommendations: (movie.recommendations?.results || movie.similar?.results || []).slice(0, 10),
+          startupLatencyMs: latencyMs,
           errorMessage: sources.length === 0 ? "Playback is currently unavailable." : undefined,
         };
       } else {
-        // TV / Anime Series
-        const tv = await getTVDetails(tmdbId);
-        let { sources, primarySource } = await resolveTVPlayback(tmdbId, season, episode);
+        // TV / Anime Series: Parallel metadata, season details, and candidate resolution
+        const [tv, playbackRes, seasonRes] = await Promise.allSettled([
+          getTVDetails(tmdbId),
+          resolveTVPlayback(tmdbId, season, episode),
+          getSeasonDetails(tmdbId, season),
+        ]);
 
-        // If anime (Japanese animation or anime slug), also resolve NHD Anime source
-        const isAnime = type === "anime" || ((tv as any).original_language === "ja" && tv.genres?.some((g) => g.id === 16 || g.name === "Animation"));
-        if (isAnime) {
-          const anilistId = parsed.anilistId;
-          if (anilistId) {
-            const animeRes = await resolveAnimePlayback(anilistId, episode);
-            if (animeRes.sources.length > 0) {
-              // Combine and prioritize anime-specific sources
-              const existingUrls = new Set(sources.map((s) => s.url));
-              const newSources = animeRes.sources.filter((s) => !existingUrls.has(s.url));
-              sources = [...newSources, ...sources].sort((a, b) => a.priority - b.priority);
-              primarySource = sources[0] || primarySource;
-            }
+        const tvData = tv.status === "fulfilled" ? tv.value : null;
+        if (!tvData) return null;
+
+        const playbackData = playbackRes.status === "fulfilled" ? playbackRes.value : { sources: [], primarySource: null, latencyMs: 0 };
+        const currentSeasonDetails = seasonRes.status === "fulfilled" ? seasonRes.value : undefined;
+
+        let { sources, primarySource, latencyMs } = playbackData;
+
+        // If Japanese animation, also fetch anime candidates concurrently
+        const isAnime =
+          mediaType === "anime" ||
+          ((tvData as any).original_language === "ja" &&
+            tvData.genres?.some((g) => g.id === 16 || g.name === "Animation"));
+
+        if (isAnime && parsed.anilistId) {
+          const animeRes = await resolveAnimePlayback(parsed.anilistId, episode, tmdbId);
+          if (animeRes.sources.length > 0) {
+            const existingUrls = new Set(sources.map((s) => s.url));
+            const newSources = animeRes.sources.filter((s) => !existingUrls.has(s.url));
+            sources = [...newSources, ...sources].sort(
+              (a, b) => (b.score ?? 0) - (a.score ?? 0) || a.priority - b.priority
+            );
+            primarySource = sources[0] || primarySource;
           }
         }
 
-        // Fetch Season details for episode picker
-        let currentSeasonDetails: TmdbSeasonDetail | undefined;
-        try {
-          currentSeasonDetails = await getSeasonDetails(tmdbId, season);
-        } catch {
-          // If season detail fails, proceed with basic season info
-        }
-
-        const filteredSeasons = (tv.seasons || [])
+        const filteredSeasons = (tvData.seasons || [])
           .filter((s) => s.season_number > 0)
           .map((s) => ({
             season_number: s.season_number,
@@ -313,24 +248,26 @@ export async function resolveContent(
           sourceType: sources.length > 0 ? "EXTERNAL" : "UNAVAILABLE",
           provider: primarySource ? primarySource.providerId : "none",
           sources,
-          title: tv.name || tv.title || "Untitled Series",
-          originalTitle: tv.original_name,
-          overview: tv.overview || "No description provided.",
-          posterUrl: tv.poster_path ? `https://image.tmdb.org/t/p/w780${tv.poster_path}` : "/placeholder-poster.png",
-          backdropUrl: tv.backdrop_path ? `https://image.tmdb.org/t/p/original${tv.backdrop_path}` : "",
-          releaseYear: tv.first_air_date ? tv.first_air_date.split("-")[0] : "",
-          genres: tv.genres?.map((g) => g.name) || [],
-          rating: Number(tv.vote_average.toFixed(1)),
-          mediaType: "tv",
+          title: tvData.name || tvData.title || "Untitled Series",
+          originalTitle: tvData.original_name,
+          overview: tvData.overview || "No description provided.",
+          posterUrl: tvData.poster_path ? `https://image.tmdb.org/t/p/w780${tvData.poster_path}` : "/placeholder-poster.png",
+          backdropUrl: tvData.backdrop_path ? `https://image.tmdb.org/t/p/original${tvData.backdrop_path}` : "",
+          releaseYear: tvData.first_air_date ? tvData.first_air_date.split("-")[0] : "",
+          genres: tvData.genres?.map((g) => g.name) || [],
+          rating: Number(tvData.vote_average.toFixed(1)),
+          mediaType: isAnime ? "anime" : "tv",
           tmdbId,
+          anilistId: parsed.anilistId,
           season,
           episode,
-          totalSeasons: tv.number_of_seasons || filteredSeasons.length || 1,
+          totalSeasons: tvData.number_of_seasons || filteredSeasons.length || 1,
           seasons: filteredSeasons,
           currentSeasonDetails,
           embedUrl: primarySource?.url,
-          cast: tv.credits?.cast?.slice(0, 10),
-          recommendations: (tv.recommendations?.results || tv.similar?.results || []).slice(0, 10),
+          cast: tvData.credits?.cast?.slice(0, 10),
+          recommendations: (tvData.recommendations?.results || tvData.similar?.results || []).slice(0, 10),
+          startupLatencyMs: latencyMs,
           errorMessage: sources.length === 0 ? "Playback is currently unavailable." : undefined,
         };
       }
@@ -349,7 +286,7 @@ export async function resolveContent(
         releaseYear: "",
         genres: [],
         rating: 0,
-        mediaType: type,
+        mediaType: mediaType,
         tmdbId,
         errorMessage:
           err.message === "TMDB_NOT_CONFIGURED"
@@ -362,7 +299,7 @@ export async function resolveContent(
   // 2. Fallback check for Chiller-Owned Video (Prisma DB)
   try {
     const video = await prisma.video.findUnique({
-      where: { slug },
+      where: { slug: Array.isArray(slug) ? slug[0] : slug },
       include: {
         category: true,
         variants: true,

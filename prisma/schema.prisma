@@ -18,10 +18,11 @@ model User {
   emailVerified DateTime?
   passwordHash  String?
   image         String?
-  role          String         @default("USER") // USER, ADMIN, MODERATOR
-  tier          String         @default("FREE") // FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  role               String         @default("USER") // USER, ADMIN, MODERATOR, SUPER_ADMIN
+  tier               String         @default("FREE") // FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY
+  mustChangePassword Boolean        @default(false) // Force password reset on next login
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   // Relations
   watchHistory  WatchHistory[]
@@ -240,6 +241,7 @@ model Watchlist {
   video       Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
   tmdbId      Int?
   mediaType   String?  @default("movie") // movie, tv, anime
+  mediaKey    String?  // Normalized unique media key e.g. tmdb:movie:123
   title       String?
   posterUrl   String?
   backdropUrl String?
@@ -247,11 +249,25 @@ model Watchlist {
   releaseYear String?
   addedAt     DateTime @default(now())
 
+  @@unique([userId, mediaKey])
   @@index([userId])
   @@index([videoId])
   @@index([tmdbId])
   @@index([addedAt])
   @@map("watchlist")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([tokenHash])
+  @@map("password_reset_tokens")
 }
 
 model Favorite {
@@ -590,5 +606,115 @@ model TelegramImportItem {
   @@index([mediaId])
   @@index([status])
   @@map("telegram_import_items")
+}
+
+// ============================================================================
+// 10. Collections & CMS Builder
+// ============================================================================
+
+model Collection {
+  id          String           @id @default(cuid())
+  title       String
+  slug        String           @unique
+  description String?
+  backdropUrl String?
+  active      Boolean          @default(true)
+  featured    Boolean          @default(false)
+  order       Int              @default(0)
+  items       CollectionItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([slug])
+  @@index([active])
+  @@index([order])
+  @@map("collections")
+}
+
+model CollectionItem {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  tmdbId       Int?
+  anilistId    Int?
+  mediaType    String     @default("movie") // movie, tv, anime
+  title        String
+  posterUrl    String?
+  order        Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@index([collectionId])
+  @@index([order])
+  @@map("collection_items")
+}
+
+model HomepageSection {
+  id             String    @id @default(cuid())
+  title          String
+  queryJson      String    // serialized discovery query params
+  order          Int       @default(0)
+  enabled        Boolean   @default(true)
+  badge          String?
+  layout         String    @default("poster") // poster, backdrop
+  scheduledStart DateTime?
+  scheduledEnd   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([order])
+  @@index([enabled])
+  @@map("homepage_sections")
+}
+
+// ============================================================================
+// 11. Search Analytics, Audit Logs & Playback Telemetry
+// ============================================================================
+
+model SearchEvent {
+  id          String   @id @default(cuid())
+  query       String
+  category    String?  @default("all")
+  resultCount Int      @default(0)
+  userId      String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([query])
+  @@index([createdAt])
+  @@map("search_events")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminEmail String
+  action     String
+  target     String?
+  details    String?  // JSON formatted details
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([adminEmail])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model PlaybackAttempt {
+  id           String   @id @default(cuid())
+  mediaType    String   // movie, tv, anime
+  tmdbId       Int?
+  anilistId    Int?
+  providerId   String
+  status       String   // SUCCESS, TIMEOUT, FAILED, FALLBACK
+  latencyMs    Int      @default(0)
+  errorMessage String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  @@index([mediaType])
+  @@index([providerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("playback_attempts")
 }
 

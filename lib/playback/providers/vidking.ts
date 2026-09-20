@@ -1,11 +1,17 @@
-import { PlaybackProvider, PlaybackSource, ProviderHealthStatus } from "../types";
+import {
+  PlaybackProvider,
+  PlaybackSource,
+  PlaybackCandidate,
+  PlaybackRequest,
+  ProviderCapabilities,
+  ProviderHealth,
+  ProviderHealthStatus,
+} from "../types";
+import { providerHealthCache } from "../health-cache";
 
 /**
  * Vidking Embed Provider — Priority 3 (Optional Fallback)
  * Enable via: VIDKING_ENABLED=true
- *
- * Movie:  {VIDKING_BASE_URL}/embed/movie/{tmdbId}
- * TV:     {VIDKING_BASE_URL}/embed/tv/{tmdbId}/{season}/{episode}
  */
 export class VidkingProvider implements PlaybackProvider {
   id = "vidking";
@@ -18,6 +24,37 @@ export class VidkingProvider implements PlaybackProvider {
 
   private getBaseUrl(): string {
     return (process.env.VIDKING_BASE_URL?.trim() || "https://www.vidking.net").replace(/\/+$/, "");
+  }
+
+  supports(request: PlaybackRequest): boolean {
+    if (!this.enabled) return false;
+    return Boolean(request.tmdbId);
+  }
+
+  async resolve(request: PlaybackRequest): Promise<PlaybackCandidate | null> {
+    if (!this.supports(request) || !request.tmdbId) return null;
+
+    if (request.mediaType === "tv" || request.mediaType === "anime") {
+      return this.getTVPlayback(request.tmdbId, request.season || 1, request.episode || 1);
+    }
+    return this.getMoviePlayback(request.tmdbId);
+  }
+
+  getCapabilities(): ProviderCapabilities {
+    return {
+      supportsMovie: true,
+      supportsTV: true,
+      supportsAnime: true,
+      supportsSub: true,
+      supportsDub: false,
+      supportsEvents: false,
+      requiresApiKey: false,
+      hasCaptions: false,
+    };
+  }
+
+  getHealth(): ProviderHealth {
+    return providerHealthCache.getHealth(this.id);
   }
 
   async getMoviePlayback(tmdbId: number | string): Promise<PlaybackSource | null> {
@@ -34,8 +71,11 @@ export class VidkingProvider implements PlaybackProvider {
       priority: this.priority,
       mediaType: "movie",
       tmdbId: id,
+      serverLabel: "HD-3 (Vidking)",
+      serverNumber: 3,
+      language: "sub",
       statusText: "Vidking — Awaiting Player Event",
-      status: "DISCOVERED",
+      status: "CANDIDATE_FOUND",
     };
   }
 
@@ -61,8 +101,11 @@ export class VidkingProvider implements PlaybackProvider {
       tmdbId: id,
       season: s,
       episode: e,
+      serverLabel: "HD-3 (Vidking)",
+      serverNumber: 3,
+      language: "sub",
       statusText: "Vidking — Awaiting Player Event",
-      status: "DISCOVERED",
+      status: "CANDIDATE_FOUND",
     };
   }
 
@@ -82,20 +125,28 @@ export class VidkingProvider implements PlaybackProvider {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(4000),
       });
 
       const latencyMs = Date.now() - start;
+      if (res.status < 500) {
+        providerHealthCache.recordSuccess(this.id, latencyMs);
+        return {
+          status: "HTTP_REACHABLE",
+          latencyMs,
+          message: `HTTP ${res.status} (${latencyMs}ms).`,
+        };
+      }
       return {
-        status: res.status < 500 ? "HTTP_REACHABLE" : "DEGRADED",
+        status: "DEGRADED",
         latencyMs,
-        message: `HTTP ${res.status} (${latencyMs}ms).`,
+        message: `HTTP ${res.status} from probe.`,
       };
     } catch (err: any) {
       return {
         status: "DEGRADED",
         latencyMs: Date.now() - start,
-        message: `Server probe failed: ${err.message}. Embed may still function in browser.`,
+        message: `Server probe note: ${err.message}. Embed operates in browser.`,
       };
     }
   }

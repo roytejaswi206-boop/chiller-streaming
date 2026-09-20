@@ -1,5 +1,14 @@
 import { getCodeSpecterApiKey } from "@/lib/settings";
-import { PlaybackProvider, PlaybackSource, ProviderHealthStatus } from "../types";
+import {
+  PlaybackProvider,
+  PlaybackSource,
+  PlaybackCandidate,
+  PlaybackRequest,
+  ProviderCapabilities,
+  ProviderHealth,
+  ProviderHealthStatus,
+} from "../types";
+import { providerHealthCache } from "../health-cache";
 
 export class CodeSpecterProvider implements PlaybackProvider {
   id = "codespecter";
@@ -17,6 +26,37 @@ export class CodeSpecterProvider implements PlaybackProvider {
 
   private getBaseUrl(): string {
     return (process.env.CODESPECTER_API_URL?.trim() || "https://api.codespecters.com").replace(/\/+$/, "");
+  }
+
+  supports(request: PlaybackRequest): boolean {
+    if (!this.enabled) return false;
+    return Boolean(request.tmdbId);
+  }
+
+  async resolve(request: PlaybackRequest): Promise<PlaybackCandidate | null> {
+    if (!this.supports(request) || !request.tmdbId) return null;
+
+    if (request.mediaType === "tv" || request.mediaType === "anime") {
+      return this.getTVPlayback(request.tmdbId, request.season || 1, request.episode || 1);
+    }
+    return this.getMoviePlayback(request.tmdbId);
+  }
+
+  getCapabilities(): ProviderCapabilities {
+    return {
+      supportsMovie: true,
+      supportsTV: true,
+      supportsAnime: false,
+      supportsSub: true,
+      supportsDub: false,
+      supportsEvents: false,
+      requiresApiKey: true,
+      hasCaptions: false,
+    };
+  }
+
+  getHealth(): ProviderHealth {
+    return providerHealthCache.getHealth(this.id);
   }
 
   async getMoviePlayback(tmdbId: number | string): Promise<PlaybackSource | null> {
@@ -37,8 +77,12 @@ export class CodeSpecterProvider implements PlaybackProvider {
       priority: this.priority,
       mediaType: "movie",
       tmdbId: id,
+      serverLabel: "HD-4 (NexStream)",
+      serverNumber: 4,
+      language: "sub",
       statusText: "NexStream Stream",
       progressTrackingSupported: false,
+      status: "CANDIDATE_FOUND",
     };
   }
 
@@ -68,8 +112,12 @@ export class CodeSpecterProvider implements PlaybackProvider {
       tmdbId: id,
       season: s,
       episode: e,
+      serverLabel: "HD-4 (NexStream)",
+      serverNumber: 4,
+      language: "sub",
       statusText: "NexStream Stream",
       progressTrackingSupported: false,
+      status: "CANDIDATE_FOUND",
     };
   }
 
@@ -95,16 +143,17 @@ export class CodeSpecterProvider implements PlaybackProvider {
       const testUrl = `${this.getBaseUrl()}/embed/movie/550?apikey=${encodeURIComponent(apiKey)}`;
       const res = await fetch(testUrl, {
         method: "HEAD",
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(4000),
       });
 
       const latencyMs = Date.now() - start;
 
       if (res.ok || res.status === 200 || res.status === 301 || res.status === 302) {
+        providerHealthCache.recordSuccess(this.id, latencyMs);
         return {
           status: "HTTP_REACHABLE",
           latencyMs,
-          message: `Connected successfully (HTTP ${res.status}, ${latencyMs}ms). Cross-origin iframe applies (PLAYER_NOT_VERIFIABLE).`,
+          message: `Connected successfully (HTTP ${res.status}, ${latencyMs}ms). Cross-origin iframe applies.`,
         };
       }
 
@@ -114,9 +163,10 @@ export class CodeSpecterProvider implements PlaybackProvider {
         message: `Endpoint returned HTTP status ${res.status}`,
       };
     } catch (err: any) {
+      const latencyMs = Date.now() - start;
       return {
         status: "FAILED",
-        latencyMs: Date.now() - start,
+        latencyMs,
         message: err.name === "TimeoutError" ? "Connection timed out" : err.message || "Failed to reach CodeSpecter",
       };
     }

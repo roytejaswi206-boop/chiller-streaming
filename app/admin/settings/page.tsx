@@ -354,7 +354,7 @@ export default function AdminSettingsPage() {
       {/* SECTION 2: PLAYBACK PROVIDER REGISTRY                   */}
       {/* ======================================================== */}
       <div className="mb-10">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#FF3B6B]" />
@@ -363,9 +363,16 @@ export default function AdminSettingsPage() {
               </h2>
             </div>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Independent playback sources. HTTP 200 reachability is clearly distinguished from browser video playback verification.
+              Independent playback sources. Real-time concurrent resolution, dynamic scores, and fallback failover.
             </p>
           </div>
+
+          <Link
+            href="/admin/playback-test"
+            className="px-4 py-2 rounded-xl bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 text-white text-xs font-bold transition shadow-lg shadow-[#FF3B6B]/20 flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+          >
+            <span>⚡ Run Parallel Diagnostics</span>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-3">
@@ -539,6 +546,78 @@ export default function AdminSettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* Official CHILLER Intro Experience Admin Control */}
+      <div className="rounded-2xl border border-white/10 bg-[#0F172A] p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF3B6B] to-[#8A5CFF] text-white flex items-center justify-center font-bold text-lg">
+              🎬
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white tracking-tight">
+                Official CHILLER Intro Experience Control
+              </h2>
+              <p className="text-xs text-zinc-400">
+                Manage the first-launch 10s video welcome sequence and asset health.
+              </p>
+            </div>
+          </div>
+          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            Active / Production
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div className="p-4 rounded-xl bg-[#09090C] border border-white/5 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-zinc-500">Official Video Asset</span>
+            <p className="text-xs font-mono text-zinc-200">/intro/chiller-intro.mp4</p>
+            <p className="text-[11px] text-zinc-400">848 × 478 • 24 FPS • H.264 • ~10.05s</p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-[#09090C] border border-white/5 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-zinc-500">Poster Frame</span>
+            <p className="text-xs font-mono text-zinc-200">/intro/chiller-intro-poster.jpg</p>
+            <p className="text-[11px] text-zinc-400">Extracted frame for zero-latency presentation</p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-[#09090C] border border-white/5 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-zinc-500">First-Launch Logic</span>
+            <p className="text-xs font-mono text-zinc-200">localStorage / Cookies</p>
+            <p className="text-[11px] text-zinc-400">chiller_intro_seen (1-year expiration)</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/5">
+          <Link
+            href="/intro"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#8A5CFF] text-white text-xs font-bold hover:opacity-95 shadow-md shadow-[#FF3B6B]/20 transition cursor-pointer"
+          >
+            ▶ Preview Full Intro Experience
+          </Link>
+          <a
+            href="/intro/chiller-intro.mp4"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-zinc-200 transition"
+          >
+            Inspect MP4 File
+          </a>
+          <button
+            onClick={() => {
+              try {
+                localStorage.removeItem("chiller_intro_seen");
+                alert("First-launch intro state reset! Refreshing homepage will now play the intro.");
+              } catch (e) {
+                alert("Reset error: " + e);
+              }
+            }}
+            className="px-4 py-2 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-300 transition cursor-pointer"
+          >
+            Reset First-Launch State for this Device
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
