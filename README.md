@@ -1,1 +1,2004 @@
-{"repository_full_name":"roytejaswi206-boop/chiller-streaming","path":"README.md","content":"# CHILLER 🎬\n\n> **JUST CHILL.**  \n> **GOOD STORIES. BETTER DAYS.**\n\nCHILLER is a modern, cinematic streaming and content-discovery platform built as a full-stack engineering project. It brings movies, TV series, anime, documentaries, genre discovery, search, personalized watch-state features, multi-provider playback architecture, and a powerful administration layer into one unified experience.\n\n## 🌐 Live Demo\n\n**Production website:**  \nhttps://streaming-chi-red.vercel.app/\n\n> The live URL above is the public CHILLER deployment shared for this project.\n\n---\n\n## ✨ What is CHILLER?\n\nCHILLER is designed around a simple product journey:\n\n**Discover → Search → Detail → Watch → Resume → Next Episode → Discover Again**\n\nThe platform is intended to feel like a polished OTT-style product rather than a static movie catalogue or API demonstration.\n\nThe project focuses on:\n\n- cinematic dark-mode UI\n- real metadata-driven discovery\n- infinite browsing\n- movie, TV and anime experiences\n- detailed title pages\n- watchlist and history\n- continue watching and resume state\n- flexible playback-provider architecture\n- account authentication\n- role-based administration\n- provider diagnostics\n- analytics and observability\n- responsive mobile and desktop UX\n- production-oriented security and performance\n\n---\n\n## 🎨 Brand Identity\n\n### Brand\n\n**CHILLER**\n\n### Taglines\n\n**JUST CHILL.**  \n**GOOD STORIES. BETTER DAYS.**\n\n### Core palette\n\n| Token | Value |\n|---|---|\n| Primary | `#FF3B6B` |\n| Secondary | `#8A5CFF` |\n| Background | `#0F172A` |\n| Deep | `#09090C` |\n| Text | `#F8FAFC` |\n\nThe visual direction is cinematic, premium, dark, modern, immersive and slightly futuristic.\n\n---\n\n# 🚀 Core Features\n\n## 🏠 Cinematic Home\n\nThe homepage is designed around streaming-style discovery rather than a small fixed catalogue.\n\nIt can contain rails such as:\n\n- Cinematic Hero\n- Continue Watching\n- Trending Now\n- Trending Movies\n- Trending Series\n- Trending Anime\n- Popular Movies\n- Popular Series\n- Popular Anime\n- New Releases\n- Recently Added\n- Top Rated\n- Action\n- Comedy\n- Sci-Fi\n- Thriller\n- Horror\n- Romance\n- Drama\n- K-Drama\n- C-Drama\n- Indian Cinema\n- Kids & Cartoons\n- Documentaries\n- International\n- Upcoming\n- Recommended\n- Trailers\n- Latest Updates\n\nHorizontal rails are designed for:\n\n- left/right controls\n- mouse/trackpad scrolling\n- touch swiping\n- lazy loading\n- prefetching\n- infinite continuation\n- loading skeletons\n- deduplication\n- graceful empty/error states\n\n---\n\n# 🎞️ Hero & First-Launch Experience\n\nCHILLER includes a cinematic branded first-launch experience using the supplied CHILLER intro visual assets.\n\nThe intro flow is designed as:\n\n```\nCHILLER Preloader\n      ↓\nOfficial CHILLER Intro\n      ↓\nCinematic Transition\n      ↓\nHome\n```\n\nThe application supports a first-launch experience with replay/skip behavior while keeping the normal browsing experience fast for returning visitors.\n\n---\n\n# 🎬 Movies\n\nThe movie experience supports discovery through:\n\n- trending\n- popular\n- now playing\n- upcoming\n- top rated\n- genre collections\n- regional/international discovery\n\nMovie detail pages can include:\n\n- backdrop\n- poster\n- title\n- original title\n- rating\n- release date\n- runtime\n- genres\n- languages\n- country\n- overview\n- cast\n- director\n- writers\n- production information\n- trailers\n- Watch Now\n- My List\n- similar titles\n- recommendations\n\n---\n\n# 📺 TV Series\n\nThe series experience supports:\n\n- trending series\n- popular series\n- top rated\n- currently airing\n- airing today\n- new releases\n- genre discovery\n- K-Drama\n- C-Drama\n- international series\n\nSeries detail pages support:\n\n- seasons\n- episode lists\n- episode thumbnails\n- episode descriptions\n- air dates\n- runtimes\n- watch progress\n- episode navigation\n- next/previous episode flows\n\n---\n\n# 🍿 Anime\n\nAnime discovery uses a dedicated anime strategy rather than treating all animation as anime.\n\nPrimary metadata source:\n\n**AniList**\n\nFallback/enrichment:\n\n- Jikan / MyAnimeList ecosystem\n- TMDB where useful\n\nAnime features include:\n\n- trending\n- popular\n- top rated\n- currently airing\n- upcoming\n- seasonal discovery\n- genres\n- formats\n- studios\n- characters\n- voice actors\n- relations\n- franchise discovery\n- episode tracking\n\nAnime detail pages are designed around anime-specific metadata and relationships.\n\n---\n\n# 🔎 Search\n\nCHILLER includes global search across:\n\n- Movies\n- TV\n- Anime\n- People\n- Directors\n- Creators\n- Genres\n\nSearch is designed to support:\n\n- debounced input\n- autocomplete/suggestions\n- filters\n- sorting\n- infinite results\n- rapid-query handling\n- stale-request protection\n\nExample search flow:\n\n```\nSearch\n  ↓\nSuggestions\n  ↓\nResults\n  ↓\nTitle Detail\n  ↓\nWatch\n```\n\n---\n\n# 📈 Trending & Discovery\n\nThe platform supports:\n\n- today\n- this week\n- movies\n- TV\n- anime\n- all-content trending\n\nThe visible Top 10/20 treatment is a presentation layer. The underlying catalogue is designed to continue beyond the featured ranking through pagination/infinite browsing.\n\n---\n\n# 🧭 Genre, Country & Language Discovery\n\nCHILLER supports discovery routes for:\n\n- Action\n- Comedy\n- Drama\n- Horror\n- Sci-Fi\n- Thriller\n- Romance\n- Fantasy\n- Crime\n- Documentary\n- K-Drama\n- C-Drama\n- Kids\n- Countries\n- Languages\n\nThe classification strategy prefers provider metadata instead of simplistic title keyword matching.\n\n---\n\n# 👤 People & Credits\n\nPeople pages can surface:\n\n- actor/creator name\n- profile image\n- biography where available\n- known-for titles\n- movie credits\n- TV credits\n- related work\n\nMovie and series pages connect users to casts, directors and creators.\n\n---\n\n# 📅 Upcoming & Release Calendar\n\nDiscovery includes dedicated concepts for:\n\n- Upcoming\n- New Releases\n- Recently Added\n- Currently Airing\n- Release Calendar\n\nThese are treated as separate datasets rather than identical feeds.\n\n---\n\n# ▶️ Watch Experience\n\nCHILLER uses a dedicated watch architecture for:\n\n```\n/watch/movie/[id]\n/watch/tv/[id]/[season]/[episode]\n/watch/anime/[id]/[episode]\n```\n\nThe playback layer is provider-agnostic and designed to support multiple source types.\n\nPlayer capabilities can include, where supported by the active provider:\n\n- Play / Pause\n- Seek\n- Volume\n- Fullscreen\n- Rotate\n- Playback speed\n- Audio selection\n- Subtitle selection\n- Quality selection\n- Picture-in-picture\n- Next episode\n- Previous episode\n- Retry\n- Source selection\n\n---\n\n# 🔁 Multi-Provider Playback Architecture\n\nOne of the major technical goals of CHILLER is to avoid depending on a single playback source.\n\nConceptually:\n\n```\nWatch Now\n   ↓\nPlayback Orchestrator\n   ↓\nCompatible Provider\n   ↓\nPlayer\n   ↓\nPlayback\n\nProvider fails\n   ↓\nNext compatible provider\n   ↓\nPlayer\n```\n\nThe architecture is designed around adapters, provider capabilities, health monitoring, timeouts, fallback behavior and diagnostics.\n\nCandidate / supported integration slots can include documented or authorized services such as:\n\n- Jellyfin\n- Plex\n- Dailymotion\n- FileMoon\n- StreamTape\n- VdoHide\n- VidStreaming\n- Vidstream\n- EarnVids\n- Tubi\n- Pluto TV\n- The Roku Channel\n- MyCloud / MyCloude\n- MegaUp\n- MegaCloud\n- existing CHILLER playback providers\n- self-hosted HLS origins\n- playback aggregators\n\n### Important\n\nProvider support is configuration- and documentation-dependent. A provider is only considered operational when its actual authorized API/embed/player integration is configured and verified.\n\nCHILLER does **not** assume that a public login/dashboard page is an API.\n\n---\n\n# 🧠 Smart Playback Orchestration\n\nThe playback architecture is designed to track more than a simple success/error flag.\n\nPotential states include:\n\n- DISABLED\n- CONFIG_ERROR\n- AUTH_ERROR\n- NETWORK_ERROR\n- TIMEOUT\n- RATE_LIMITED\n- UNAVAILABLE\n- UNSUPPORTED\n- INVALID_RESPONSE\n- EMBED_AVAILABLE\n- PLAYER_READY\n- PLAYBACK_STARTED\n- PLAYBACK_FAILED\n- HEALTHY\n- DEGRADED\n- UNKNOWN\n\nThe system can also support:\n\n- provider priority\n- health scores\n- latency tracking\n- recent reliability\n- circuit breakers\n- automatic provider degradation\n- provider recovery\n- bounded retries\n- request deduplication\n\n---\n\n# 🛡️ Player Safety & Redirect Protection\n\nThe player architecture includes safety-oriented controls for third-party embeds where technically and legally possible.\n\nThe design can use:\n\n- iframe sandboxing\n- provider-specific embed policies\n- explicit iframe permissions\n- trusted provider origins\n- CSP/frame-src configuration\n- popup restrictions\n- top-level navigation restrictions\n- safe viewport handling\n- provider-specific compatibility modes\n\nThe goal is to reduce unwanted external navigation while preserving provider compatibility.\n\nBecause cross-origin iframes are controlled by their own origins, CHILLER does not claim that all provider behavior can be blocked in every environment.\n\n---\n\n# 🎛️ Clean Cinema Player\n\nThe player is designed to keep the viewing experience visually clean.\n\nDuring playback:\n\n```\nVIDEO\n↓\nminimal / hidden controls\n```\n\nOn interaction:\n\n```\ntap / mouse / keyboard\n↓\ncontrols appear\n↓\ninteraction ends\n↓\ncontrols auto-hide\n```\n\nThe player UI can automatically hide:\n\n- provider badges\n- status labels\n- quality labels\n- fullscreen controls\n- rotate controls\n- bottom control bars\n\nControls remain visible when appropriate, such as when the video is paused, a menu is open, or an error requires action.\n\n---\n\n# 🌐 Audio Language Support\n\nCHILLER's player architecture is designed to distinguish:\n\n**Audio tracks**\n\nfrom\n\n**Subtitles**\n\nIf the active source exposes multiple audio tracks, the player can provide a language selector such as:\n\n- English\n- Hindi\n- Japanese\n- Korean\n- Chinese\n- Spanish\n- French\n- other provider-supported tracks\n\nThe UI is intended to display only languages actually exposed by the current playback source.\n\nEnglish is not assumed to exist unless the active source provides an English audio track.\n\nUser audio preferences can be persisted for future playback where supported.\n\n---\n\n# ⏯️ Continue Watching & Resume\n\nCHILLER tracks playback progress independently from the provider whenever technically possible.\n\nStored playback state can include:\n\n- media key\n- media type\n- season\n- episode\n- current position\n- duration\n- watched percentage\n- last updated timestamp\n\nFor example:\n\n```\nMovie → 35:42\nSeries → S02 E04 → 18:22\nAnime → Episode 12 → 11:05\n```\n\nThe intended resume flow is:\n\n```\nSaved Progress\n    ↓\nPlayer Ready\n    ↓\nDuration Known\n    ↓\nApply Seek\n    ↓\nResume Playback\n```\n\nFor third-party cross-origin players, exact resume depends on whether the provider exposes a documented seek/start-time/player API.\n\n---\n\n# 📚 Watch History\n\nAuthenticated watch history can store:\n\n- title\n- media key\n- type\n- season\n- episode\n- position\n- duration\n- percentage\n- timestamp\n\nUsers can:\n\n- resume\n- remove individual entries\n- clear history\n\n---\n\n# ❤️ My List\n\nCHILLER supports watchlist workflows for:\n\n- Movies\n- Series\n- Anime\n\nGuest users can use local storage.\n\nAuthenticated users can use the database.\n\nThe architecture supports:\n\n```\nGuest List\n    ↓\nLogin\n    ↓\nServer List\n    ↓\nMerge\n    ↓\nDeduplicate\n    ↓\nSync\n```\n\n---\n\n# 👤 Authentication & Accounts\n\nCHILLER uses a real authentication architecture rather than a demo login.\n\nAccount features include:\n\n- Signup\n- Login\n- Logout\n- Session management\n- Profile\n- Security settings\n- Forgot password\n- Reset password\n- Change password\n- Watchlist\n- Watch history\n- Continue Watching\n\nPassword recovery is designed around:\n\n- hashed one-time tokens\n- expiration\n- single-use reset tokens\n- generic responses\n- account-enumeration protection\n\n---\n\n# 🔐 RBAC & Super Admin Security\n\nCHILLER includes role-based access control.\n\nRoles can include:\n\n- USER\n- EDITOR\n- MODERATOR\n- ADMIN\n- SUPER_ADMIN\n\nThe initial Super Admin authorization is restricted to the product owner's configured allowlist.\n\nSensitive authorization is enforced server-side and not through frontend UI checks alone.\n\nThe security architecture includes:\n\n- exact normalized email matching\n- database role verification\n- server-side authorization\n- admin API guards\n- audit logging\n- secure password hashing\n- bootstrap-password rotation\n- protected admin routes\n\nNo secrets should be committed to the repository.\n\n---\n\n# 🧑‍💻 Powerful Admin Panel\n\nThe admin system is designed as an operational control center rather than a decorative dashboard.\n\nPossible sections include:\n\n- Dashboard\n- Content\n- Homepage\n- Collections\n- Providers\n- Playback\n- Playback Lab\n- Users\n- Analytics\n- Search Analytics\n- Performance\n- Cache\n- Health\n- Errors\n- Audit Logs\n- Roles\n- Settings\n- Notifications\n- Scheduling\n- Monetization\n\n---\n\n# 🏠 Homepage Builder\n\nThe admin architecture can support a configurable homepage.\n\nAdministrators can control, where implemented:\n\n- rail ordering\n- section titles\n- enable/disable state\n- discovery queries\n- pinned titles\n- hero selections\n- badges\n- scheduling\n\nThe goal is to let the homepage evolve without hardcoding every section directly into the component tree.\n\n---\n\n# 🗂️ Collections\n\nAdmin-created collections can include:\n\n- title\n- slug\n- description\n- artwork\n- selected titles\n- provider query\n- ordering\n- active state\n- schedule\n\nExamples:\n\n- Best Sci-Fi\n- Essential Anime\n- Romance Collection\n- Zombie Universe\n\n---\n\n# 📊 Analytics & Observability\n\nThe architecture can record events such as:\n\n- page view\n- search\n- title impression\n- title open\n- watch start\n- playback start\n- playback failure\n- provider failure\n- provider fallback\n- episode transition\n- completion\n- My List add/remove\n\nAdmin analytics can cover:\n\n- users\n- views\n- searches\n- watch starts\n- playback failures\n- provider reliability\n- latency\n- cache performance\n- popular titles\n- popular genres\n- search demand\n\nWhere data is unavailable, the application should show a real \"Not enough data\" state instead of fabricated metrics.\n\n---\n\n# 🔎 Search Analytics\n\nPossible measurements include:\n\n- popular searches\n- search volume\n- zero-result searches\n- filtered searches\n- search-to-detail activity\n\n---\n\n# 🩺 Health & Diagnostics\n\nCHILLER is designed to expose operational health for services such as:\n\n- Database\n- Redis\n- Metadata providers\n- Playback providers\n- Storage\n- Authentication\n- Critical API routes\n\nPlayback diagnostics can include:\n\n- provider\n- media\n- latency\n- resolution result\n- player mode\n- fallback count\n- failure category\n- current circuit state\n\n---\n\n# ⚡ Performance Architecture\n\nThe project focuses on:\n\n- server-side caching\n- pagination\n- in-flight request deduplication\n- selective metadata enrichment\n- lazy loading\n- image optimization\n- prefetching\n- aborting stale searches\n- reduced request waterfalls\n- decoupled playback initialization\n- progressive rendering\n\nTypical discovery caching strategy can distinguish between:\n\n- trending feeds\n- popular feeds\n- genre/language/regional data\n- static metadata\n- playback URLs\n\nTemporary or signed playback URLs are not treated like permanent metadata.\n\n---\n\n# 🖼️ Image Strategy\n\nMajor UI surfaces prioritize:\n\n- high-quality posters\n- cinematic backdrops\n- correct aspect ratios\n- responsive rendering\n- lazy loading\n- fallback artwork\n- reduced layout shift\n\nArtwork and metadata should correspond to the same media entity.\n\n---\n\n# 📱 Responsive Design\n\nCHILLER is designed for:\n\n- phones\n- tablets\n- laptops\n- desktops\n- wide monitors\n\nMobile UX can include:\n\n- compact header\n- bottom navigation\n- touch rails\n- responsive cards\n- mobile player\n- mobile season/episode selection\n\nDesktop UX can include:\n\n- cinematic hero\n- richer rails\n- larger detail layouts\n- hover interactions\n- keyboard navigation\n\n---\n\n# ♿ Accessibility\n\nThe product architecture aims to support:\n\n- semantic HTML\n- keyboard focus\n- visible focus states\n- accessible buttons\n- screen-reader labels\n- accessible dialogs\n- accessible forms\n- reduced-motion support\n- responsive tap targets\n\n---\n\n# 🔍 SEO\n\nPublic routes are designed to support:\n\n- dynamic titles\n- descriptions\n- canonical URLs\n- OpenGraph metadata\n- robots directives\n- sitemap\n- structured metadata where appropriate\n\nExample route families:\n\n```\n/movies\n/series\n/anime\n/trending\n/search?q=\n\n/movie/[slug]-[tmdbId]\n/series/[slug]-[tmdbId]\n/anime/[slug]-[anilistId]\n\n/genre/[slug]\n/country/[slug]\n/language/[slug]\n/person/[id]\n\n/watch/...\n```\n\n---\n\n# 🧱 Technology Stack\n\n### Frontend\n\n- Next.js 16\n- React 19\n- TypeScript\n- Tailwind CSS\n- Framer Motion\n\n### Data & Backend\n\n- Prisma\n- PostgreSQL for production\n- SQLite where appropriate for local development\n- NextAuth\n- Zod\n- Axios\n\n### Playback / Media\n\n- HLS.js\n- FFmpeg / FFprobe architecture where required\n- HLS\n- native media playback\n- iframe/provider player integrations\n\n### Infrastructure\n\n- Redis\n- BullMQ / worker architecture\n- Nginx\n- multiple origins where configured\n- Vercel deployment for the web application\n\n### Supporting tooling\n\n- ESLint\n- TypeScript strict checking\n- Prisma migrations/generation\n- health-check scripts\n- video verification tooling\n- scaling tests\n\n---\n\n# 📁 Project Architecture\n\nA simplified conceptual structure:\n\n```\napp/\n├── admin/\n├── api/\n├── anime/\n├── genre/\n├── history/\n├── language/\n├── movies/\n├── my-list/\n├── profile/\n├── search/\n├── series/\n├── trending/\n├── watch/\n└── ...\n\ncomponents/\n├── video/\n├── navigation/\n├── player/\n├── ui/\n└── ...\n\nlib/\n├── auth\n├── content\n├── discovery\n├── playback\n├── security\n├── tmdb\n├── providers\n└── ...\n\nprisma/\n├── schema.prisma\n└── migrations/\n\npublic/\n├── brand/\n├── intro/\n└── ...\n```\n\nThe exact repository structure may evolve as features are added.\n\n---\n\n# 🔌 Metadata Providers\n\nThe discovery architecture is designed around provider abstraction.\n\nPrimary/general content:\n\n- TMDB\n\nAnime:\n\n- AniList\n- Jikan / MyAnimeList ecosystem\n- TMDB enrichment where useful\n\nTV enrichment:\n\n- TVmaze\n\nOptional integrations can be added through feature flags and server-side environment configuration.\n\n---\n\n# 🧩 Environment Configuration\n\nCHILLER uses environment variables for provider configuration and secrets.\n\nTypical configuration areas include:\n\n```text\nTMDB\nANILIST\nJIKAN\nTVMAZE\n\nJELLYFIN\nPLEX\nDAILYMOTION\nFILEMOON\nSTREAMTAPE\nVDOHIDE\nVIDSTREAMING\nVIDSTREAM\nEARNVIDS\nTUBI\nROKU\nPLUTO\nMYCLOUD\nMEGAUP\nMEGACLOUD\n\nREDIS\nDATABASE\nAUTH\nPLAYBACK\nANALYTICS\n```\n\nNever commit:\n\n- API keys\n- API secrets\n- access tokens\n- database credentials\n- private session secrets\n- bootstrap passwords\n\nUse secure deployment environment variables.\n\n---\n\n# 🛡️ Security Principles\n\nCHILLER is designed around:\n\n- server-side authorization\n- secure password hashing\n- secure cookies\n- protected admin routes\n- input validation\n- rate limiting where required\n- safe error messages\n- audit logging\n- least-privilege access\n- secret isolation\n- provider origin validation\n- controlled iframe permissions\n\nThe project does not intentionally implement DRM bypasses, authentication bypasses, or other access-control circumvention.\n\nProvider integrations should use documented and authorized interfaces.\n\n---\n\n# 🧪 Development & Testing\n\nAvailable project scripts include commands for:\n\n```bash\nnpm run dev\nnpm run build\nnpm run start\nnpm run lint\nnpm run typecheck\nnpm run db:push\nnpm run db:generate\nnpm run db:seed\nnpm run seed:admin\nnpm run worker\nnpm run health\nnpm run verify-video\nnpm run test:scale\n```\n\nA production-oriented QA process is intended to include:\n\n- real browser interaction\n- desktop testing\n- mobile testing\n- authentication testing\n- discovery testing\n- infinite scrolling\n- search stress testing\n- playback testing\n- provider-failure testing\n- admin authorization testing\n- console/network inspection\n- type checking\n- linting\n- production build verification\n\nHTTP 200 alone is not treated as proof that playback works.\n\n---\n\n# 🚦 Playback Verification Philosophy\n\nCHILLER distinguishes between:\n\n1. API response\n2. Source resolved\n3. Embed loaded\n4. Player ready\n5. Playback started\n6. Playback progressing\n7. Playback ended\n\nThis distinction is important for diagnosing providers that successfully load an embed but fail to actually play media.\n\n---\n\n# 📌 Product Philosophy\n\nCHILLER is intentionally built as an extensible platform.\n\nThe core principle is:\n\n> **One product, many providers, one coherent experience.**\n\nThe UI should not care whether a title came from one metadata source or another, or whether playback is provided by a self-hosted server, HLS source, official player SDK, or another supported provider.\n\nThe product should remain:\n\n- modular\n- testable\n- observable\n- secure\n- responsive\n- maintainable\n- provider-agnostic where possible\n\n---\n\n# 🗺️ Roadmap\n\n### Core Experience\n- [x] Cinematic homepage\n- [x] Movies\n- [x] Series\n- [x] Anime\n- [x] Search\n- [x] Trending\n- [x] Genre discovery\n- [x] Infinite discovery architecture\n- [x] Detail-page architecture\n- [x] Watch experience architecture\n\n### Accounts\n- [x] Login\n- [x] Signup\n- [x] Password recovery\n- [x] Profile\n- [x] My List\n- [x] Watch history\n- [x] Continue Watching\n- [x] RBAC / Super Admin security\n\n### Platform Systems\n- [x] Provider abstraction\n- [x] Provider diagnostics\n- [x] Health checks\n- [x] Playback fallback architecture\n- [x] Cache layer\n- [x] Search analytics architecture\n- [x] Admin dashboard architecture\n\n### Ongoing / Configuration-Dependent\n- [ ] Additional provider integrations\n- [ ] Expanded audio-track support across providers\n- [ ] Wider source coverage\n- [ ] Advanced monetization\n- [ ] Additional notification integrations\n- [ ] Further production hardening\n\n> Feature availability depends on provider APIs, credentials, hosting configuration, browser capabilities, and authorization for the relevant source.\n\n---\n\n# 💻 Local Development\n\nClone the repository:\n\n```bash\ngit clone https://github.com/roytejaswi206-boop/chiller-streaming.git\ncd chiller-streaming\n```\n\nInstall dependencies:\n\n```bash\nnpm install\n```\n\nConfigure environment variables:\n\n```text\n.env.local\n```\n\nGenerate Prisma client:\n\n```bash\nnpm run db:generate\n```\n\nStart development:\n\n```bash\nnpm run dev\n```\n\nThen open the local URL printed by Next.js.\n\n---\n\n# 🔐 Important Configuration Notes\n\nDo not commit `.env.local`.\n\nFor Super Admin bootstrap, use secure environment configuration and rotate the initial bootstrap credential after first login.\n\nProvider credentials should be stored in deployment secrets rather than source files.\n\n---\n\n# 🌍 Deployment\n\nThe current CHILLER web application is deployed on Vercel.\n\n**Live:**  \nhttps://streaming-chi-red.vercel.app/\n\nThe project can also be adapted to other supported hosting/infrastructure setups depending on database, Redis, media and provider requirements.\n\n---\n\n# 📸 Product Direction\n\nCHILLER aims to combine:\n\n**OTT-style discovery**  \n+  \n**rich metadata**  \n+  \n**multi-provider playback architecture**  \n+  \n**personal watch state**  \n+  \n**admin operations**  \n+  \n**modern cinematic design**\n\ninto one cohesive product.\n\n---\n\n# 👨‍💻 Creator\n\n**Tejaswi Roy**\n\nCHILLER is an independently developed full-stack project focused on streaming UX, content discovery, media systems, provider orchestration and production-oriented engineering.\n\n---\n\n# ⭐ Project Links\n\n🌐 **Live Website:**  \nhttps://streaming-chi-red.vercel.app/\n\n💻 **GitHub Repository:**  \nhttps://github.com/roytejaswi206-boop/chiller-streaming\n\n---\n\n# ⚠️ Disclaimer\n\nCHILLER is a software engineering project and platform architecture.\n\nMetadata, playback integrations, artwork, external services, APIs and media sources remain subject to the terms, licenses, availability, regional restrictions and authorization requirements of their respective providers and rights holders.\n\nOnly use media and provider integrations that you are legally authorized to access, host, distribute or embed.\n\n---\n\n## CHILLER\n\n**JUST CHILL.**  \n**GOOD STORIES. BETTER DAYS.**","message":"docs: add comprehensive CHILLER project README","branch":"main"}
+# 🎬 CHILLER
+
+### JUST CHILL.
+
+> **GOOD STORIES. BETTER DAYS.**
+
+A modern, full-stack entertainment discovery and streaming platform designed to bring **Movies, TV Series, Anime, Documentaries and more** into one cinematic experience.
+
+CHILLER is built as a scalable OTT-style web platform with a strong focus on:
+
+- 🎬 Content discovery
+- 🔎 Powerful search
+- 📺 Movies & TV series
+- 🎌 Anime discovery
+- ▶️ Multi-provider playback
+- 🔄 Smart playback fallback
+- ⏯️ Continue Watching
+- 🌍 Multi-language audio & subtitles
+- 👤 User accounts
+- 🔐 Secure authentication
+- 🛡️ Role-based administration
+- 📊 Playback telemetry
+- ⚡ Caching & performance
+- 💰 Monetization-ready architecture
+- 📱 Responsive cinematic UI
+
+---
+
+## 🌐 Live Demo
+
+### 🚀 CHILLER
+
+**Live Website:**  
+https://streaming-chi-red.vercel.app/
+
+**GitHub Repository:**  
+https://github.com/roytejaswi206-boop/chiller-streaming
+
+---
+
+# ✨ What is CHILLER?
+
+CHILLER is a next-generation entertainment platform concept that combines the experience of a modern OTT application with an API-first content discovery architecture.
+
+Instead of relying on manually entered movie and series data, CHILLER is designed around **metadata aggregation and provider abstraction**.
+
+The platform can discover content through services such as:
+
+- TMDB
+- AniList
+- Jikan
+- TVmaze
+- Other optional metadata providers
+
+Playback is handled through a separate **provider orchestration layer**, allowing multiple playback providers to coexist without coupling the entire application to a single source.
+
+The result is an architecture that can evolve from a simple streaming interface into a much larger entertainment ecosystem.
+
+---
+
+# 🎯 Vision
+
+The long-term vision of CHILLER is simple:
+
+> **One place to discover great stories.**
+
+Movies, series, anime, documentaries and other entertainment should feel like part of one unified experience rather than disconnected services.
+
+CHILLER aims to provide:
+
+```text
+Discover
+   ↓
+Explore
+   ↓
+Choose
+   ↓
+Watch
+   ↓
+Resume
+   ↓
+Continue Exploring
+```
+
+Everything is designed around keeping the user inside a smooth cinematic experience.
+
+---
+
+# 🎨 Brand Identity
+
+## Name
+
+**CHILLER**
+
+## Tagline
+
+> JUST CHILL.
+
+## Secondary tagline
+
+> GOOD STORIES. BETTER DAYS.
+
+## Primary Color
+
+```text
+#FF3B6B
+```
+
+## Secondary Color
+
+```text
+#8A5CFF
+```
+
+## Background
+
+```text
+#0F172A
+```
+
+## Deep Background
+
+```text
+#09090C
+```
+
+## Primary Text
+
+```text
+#F8FAFC
+```
+
+The visual direction combines:
+
+- Dark cinematic surfaces
+- Pink / violet accents
+- Large media artwork
+- Smooth motion
+- Glass-like UI surfaces
+- Strong typography
+- OTT-style content rails
+- Immersive player experience
+
+---
+
+# 🚀 Core Features
+
+## 🎬 Content Discovery
+
+CHILLER provides a unified discovery experience across multiple entertainment categories.
+
+### Supported discovery categories
+
+- Movies
+- TV Series
+- Anime
+- Documentaries
+- Trending content
+- Popular content
+- Top-rated content
+- New releases
+- Upcoming titles
+- Recommended content
+- Genre collections
+- K-Drama
+- C-Drama
+- Kids content
+- Search results
+
+---
+
+# 🔎 Advanced Search
+
+The search system is designed to search across multiple content sources.
+
+Users can discover:
+
+- Movies
+- Series
+- Anime
+- People
+- Genres
+- Related titles
+
+The discovery architecture supports provider fallback and deduplication so that the same title does not unnecessarily appear multiple times.
+
+---
+
+# 🏠 Dynamic Home Page
+
+The CHILLER homepage is built around a cinematic content discovery system.
+
+Typical homepage sections include:
+
+```text
+Hero
+↓
+Continue Watching
+↓
+Trending
+↓
+Trending Movies
+↓
+Trending Series
+↓
+Trending Anime
+↓
+Popular
+↓
+New Releases
+↓
+Recently Added
+↓
+Top Rated
+↓
+Genres
+↓
+K-Drama
+↓
+C-Drama
+↓
+Kids
+↓
+Documentaries
+↓
+Upcoming
+↓
+Recommended
+```
+
+Content can be dynamically populated from connected metadata providers.
+
+---
+
+# 🖼️ Rich Media Pages
+
+Every title can have a dedicated detail experience containing information such as:
+
+- Poster
+- Backdrop
+- Title
+- Original title
+- Description
+- Release date
+- Runtime
+- Genres
+- Rating
+- Cast
+- Crew
+- Related content
+- Similar titles
+- Recommendations
+- Seasons
+- Episodes
+- Available playback sources
+
+The goal is to make each title feel like a complete content page rather than a simple database entry.
+
+---
+
+# 🎌 Anime Engine
+
+Anime is treated as a dedicated content category rather than simply another movie/TV filter.
+
+### Primary anime metadata
+
+**AniList**
+
+### Anime fallback
+
+**Jikan / MyAnimeList ecosystem**
+
+The architecture supports:
+
+- Anime discovery
+- Anime search
+- Anime metadata
+- Episode information
+- Season information
+- Related anime
+- Sequels
+- Prequels
+- Recommendations
+- Anime-specific playback mapping
+
+---
+
+# 📺 TV Series
+
+CHILLER supports TV-series navigation through:
+
+```text
+Series
+   ↓
+Season
+   ↓
+Episode
+   ↓
+Playback
+```
+
+The player architecture is designed to understand:
+
+```text
+media
+season
+episode
+provider
+source
+progress
+```
+
+This allows Continue Watching to remain episode-specific instead of treating an entire series as one item.
+
+---
+
+# ▶️ Playback Architecture
+
+One of the most important architectural concepts in CHILLER is the separation between:
+
+```text
+CONTENT DISCOVERY
+        +
+PLAYBACK
+```
+
+Metadata providers and playback providers are not tightly coupled.
+
+---
+
+# 🧠 Playback Orchestrator
+
+CHILLER uses a provider abstraction layer.
+
+Conceptually:
+
+```text
+                CHILLER PLAYER
+                      │
+                      ▼
+             PLAYBACK ORCHESTRATOR
+                      │
+       ┌──────────────┼──────────────┐
+       ▼              ▼              ▼
+   Provider A     Provider B     Provider C
+       │              │              │
+       ▼              ▼              ▼
+    Source         Source         Source
+```
+
+This allows CHILLER to select compatible playback sources without rebuilding the player for every provider.
+
+---
+
+# 🔄 Smart Provider Fallback
+
+If multiple compatible providers are configured, CHILLER can attempt them according to provider health and compatibility.
+
+Example:
+
+```text
+Provider A
+   ↓
+Timeout / Failure
+   ↓
+Provider B
+   ↓
+Unavailable
+   ↓
+Provider C
+   ↓
+Playback
+```
+
+The system is designed around:
+
+- Provider compatibility
+- Timeout protection
+- Health tracking
+- Circuit breakers
+- Rate-limit protection
+- Fallback attempts
+- Request deduplication
+- Provider-specific capabilities
+
+---
+
+# 🏥 Provider Health System
+
+A provider can have statuses such as:
+
+```text
+NOT CONFIGURED
+CONFIGURED
+HEALTHY
+DEGRADED
+RATE LIMITED
+AUTH ERROR
+TIMEOUT
+DISABLED
+UNSUPPORTED
+```
+
+This allows the platform to distinguish between:
+
+> "The API responded"
+
+and:
+
+> "The video actually played."
+
+These are not the same thing.
+
+---
+
+# 🧪 Playback Verification
+
+CHILLER's playback architecture recognizes multiple stages:
+
+```text
+API Response
+      ≠
+Iframe Loaded
+      ≠
+Source Resolved
+      ≠
+Player Ready
+      ≠
+Playback Started
+      =
+Actual Playback Success
+```
+
+A provider should ideally be considered successful only after playback has actually started and the playback position advances.
+
+---
+
+# 🎥 CHILLER Player
+
+The player is designed as a centralized CHILLER-owned shell around compatible playback providers.
+
+Conceptually:
+
+```text
+PlayerShell
+│
+├── PlayerViewport
+│
+├── ProviderRenderer
+│
+├── TopChrome
+│
+├── CenterChrome
+│
+└── BottomChrome
+```
+
+This allows the interface to remain consistent even when different playback providers are used underneath.
+
+---
+
+# 🧼 Cinema Mode
+
+CHILLER uses an auto-hiding player interface.
+
+During active playback:
+
+```text
+User stops interacting
+        ↓
+Controls fade away
+        ↓
+Clean cinema experience
+```
+
+When the user interacts:
+
+```text
+Tap / Click / Mouse movement
+        ↓
+Controls appear
+        ↓
+User interaction
+        ↓
+Controls fade after inactivity
+```
+
+Controls remain visible when:
+
+- Video is paused
+- Settings are open
+- Error is displayed
+- User is interacting
+- Keyboard focus is active
+
+---
+
+# 🎛️ Player Controls
+
+Depending on provider capabilities, CHILLER can expose:
+
+- Play / Pause
+- Seek
+- Volume
+- Fullscreen
+- Rotate
+- Quality
+- Playback speed
+- Audio language
+- Subtitles
+- Picture-in-picture
+- Next episode
+- Autoplay
+- Progress
+- Resume
+
+Unsupported capabilities are not presented as fake controls.
+
+---
+
+# 🌍 Multi-Language Audio
+
+CHILLER is designed to distinguish between:
+
+```text
+Audio Language
+        ≠
+Subtitle Language
+        ≠
+Original Language Metadata
+```
+
+If a provider exposes actual audio tracks, CHILLER can present available tracks such as:
+
+```text
+English
+Hindi
+Japanese
+Korean
+Spanish
+...
+```
+
+Only actual available audio tracks should be displayed.
+
+The system must not convert metadata language information into fake audio options.
+
+---
+
+# 💬 Subtitles
+
+Subtitles are handled independently from audio.
+
+Example:
+
+```text
+Audio:
+English
+
+Subtitles:
+English
+Hindi
+Japanese
+Spanish
+Off
+```
+
+Only supported subtitle options should appear.
+
+---
+
+# ⏯️ Continue Watching
+
+CHILLER supports resume-based viewing.
+
+Example:
+
+```text
+Movie
+1h 58m
+Resume at 47:32
+```
+
+For TV:
+
+```text
+One Piece
+Season 1
+Episode 12
+Resume at 08:21
+```
+
+Progress is associated with the correct media identity.
+
+---
+
+# 🧠 Resume Lifecycle
+
+Resume is not simply:
+
+```text
+Load page → seek
+```
+
+Instead:
+
+```text
+Load saved progress
+        ↓
+Initialize player
+        ↓
+Player ready
+        ↓
+Duration available
+        ↓
+Validate saved position
+        ↓
+Apply seek
+        ↓
+Resume playback
+```
+
+A `resumeApplied` guard can prevent race conditions caused by asynchronous player initialization.
+
+---
+
+# 💾 Progress Saving
+
+Playback progress can be saved periodically and during important lifecycle events.
+
+Typical events include:
+
+- Every ~10–15 seconds
+- Pause
+- Visibility change
+- Page lifecycle events where reliable
+- Episode changes
+- Playback ended
+
+For authenticated users, server-side progress can act as the canonical record.
+
+For guests, local storage can be used.
+
+When a guest signs in, progress can be merged into the account where appropriate.
+
+---
+
+# 🔐 Authentication
+
+CHILLER includes an authentication architecture for user accounts.
+
+Authentication is designed around secure server-side session handling rather than trusting client-side role information.
+
+User accounts can eventually support:
+
+- Continue Watching
+- Watch history
+- Watchlist
+- Preferences
+- Audio preference
+- Subtitle preference
+- Profile settings
+- Personalized discovery
+
+---
+
+# 🛡️ Role-Based Access Control
+
+CHILLER supports multiple roles:
+
+```text
+USER
+ADMIN
+MODERATOR
+SUPER_ADMIN
+```
+
+The system separates normal administration from Super Admin privileges.
+
+---
+
+# 👑 Super Admin
+
+The Super Admin system is designed around server-side authorization.
+
+Super Admin access is controlled using authorized email identities and server-side checks.
+
+Important security principles include:
+
+- Database re-validation
+- Server-side role checks
+- Protected admin routes
+- Protected API routes
+- Bootstrap password flow
+- Forced password change after bootstrap
+- Audit logging
+- Role escalation protection
+
+Normal administrators cannot arbitrarily promote themselves to Super Admin.
+
+---
+
+# 🧾 Audit Logging
+
+Important administrative operations can be recorded for accountability.
+
+Examples include:
+
+- User creation
+- Role changes
+- Security changes
+- Administrative actions
+- Configuration changes
+
+Audit logging is intended to provide a traceable administrative history.
+
+---
+
+# ⚙️ Admin Dashboard
+
+The platform architecture supports a dedicated administration layer.
+
+Potential administrative areas include:
+
+```text
+/admin
+/admin/users
+/admin/providers
+/admin/playback-lab
+/admin/monetization
+/admin/settings
+```
+
+---
+
+# 🧪 Playback Lab
+
+The Playback Lab is designed for testing providers without relying solely on production playback.
+
+It can be used to inspect:
+
+- Provider configuration
+- Provider health
+- Media compatibility
+- Movie playback
+- TV playback
+- Episode playback
+- Provider errors
+- Timeouts
+- Fallback behavior
+- Player events
+
+---
+
+# 📊 Provider Capability System
+
+Each playback provider can declare supported capabilities.
+
+Example:
+
+```text
+supportsMovie
+supportsTV
+supportsEpisode
+supportsAnime
+supportsHLS
+supportsMP4
+supportsIframe
+supportsSubtitles
+supportsAudio
+supportsQuality
+supportsResume
+supportsSeek
+```
+
+This prevents CHILLER from displaying controls or selecting providers for media they cannot actually handle.
+
+---
+
+# 🗺️ Provider ID Mapping
+
+Different services may use different identifiers.
+
+CHILLER therefore separates its canonical media identity from provider-specific IDs.
+
+Conceptually:
+
+```text
+CHILLER MEDIA ID
+        │
+        ├── TMDB ID
+        │
+        ├── AniList ID
+        │
+        ├── Jikan ID
+        │
+        └── Provider-specific ID
+```
+
+This makes the architecture extensible.
+
+---
+
+# 🧩 Metadata Providers
+
+## TMDB
+
+Used primarily for:
+
+- Movies
+- TV series
+- Trending content
+- Genres
+- Cast
+- Crew
+- Images
+- Recommendations
+- Similar titles
+- Release information
+
+---
+
+## AniList
+
+Used primarily for:
+
+- Anime
+- Anime metadata
+- Characters
+- Relations
+- Seasons
+- Recommendations
+- Anime-specific discovery
+
+---
+
+## Jikan
+
+Used as an optional anime fallback.
+
+---
+
+## TVmaze
+
+Used as an optional TV enrichment source.
+
+---
+
+# 📰 News & Editorial Layer
+
+CHILLER can also support entertainment news and editorial content through a dedicated news provider abstraction.
+
+Possible content includes:
+
+- Entertainment news
+- Movie announcements
+- Anime updates
+- Release information
+- Industry stories
+- Featured articles
+
+This layer is kept separate from core metadata and playback systems.
+
+---
+
+# ⚡ Performance Architecture
+
+Performance is a major part of CHILLER's architecture.
+
+The system is designed to use:
+
+- API caching
+- Request deduplication
+- Lazy loading
+- Infinite scrolling
+- Pagination
+- Provider health caching
+- Timeouts
+- Circuit breakers
+- Server-side API access where appropriate
+- Optimized image loading
+
+---
+
+# 🧠 Request Deduplication
+
+If multiple components request the same resource at almost the same time, the architecture can avoid unnecessarily creating duplicate upstream requests.
+
+Conceptually:
+
+```text
+Component A ─┐
+Component B ─┼──> Same Request ──> Provider
+Component C ─┘
+```
+
+Instead of:
+
+```text
+A → Provider
+B → Provider
+C → Provider
+```
+
+---
+
+# 🚦 Circuit Breaker
+
+Provider failures can trigger circuit-breaker behavior.
+
+Conceptually:
+
+```text
+CLOSED
+  ↓
+Repeated failures
+  ↓
+OPEN
+  ↓
+Cooldown
+  ↓
+HALF OPEN
+  ↓
+Successful test
+  ↓
+CLOSED
+```
+
+This prevents a failing provider from continuously slowing down the entire platform.
+
+---
+
+# 🗄️ Database
+
+CHILLER uses a database architecture designed around:
+
+- Users
+- Authentication
+- Roles
+- Watch progress
+- Watch history
+- Preferences
+- Provider configuration
+- Application settings
+- Audit records
+
+### Production
+
+PostgreSQL
+
+### Local development
+
+SQLite can be used where appropriate.
+
+### ORM
+
+Prisma
+
+---
+
+# 🧰 Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js |
+| Language | TypeScript |
+| Frontend | React |
+| Styling | Tailwind CSS |
+| Database | PostgreSQL |
+| Local Database | SQLite |
+| ORM | Prisma |
+| Authentication | NextAuth |
+| Video Processing | FFmpeg / FFprobe |
+| Queue | BullMQ |
+| Cache | Redis |
+| Streaming | HLS |
+| Deployment | Vercel / compatible infrastructure |
+| Metadata | TMDB / AniList / Jikan / TVmaze |
+| Version Control | Git + GitHub |
+
+---
+
+# 🏗️ High-Level Architecture
+
+```text
+                         ┌─────────────────────┐
+                         │      CHILLER        │
+                         │     Web Client      │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │    Next.js App      │
+                         └──────────┬──────────┘
+                                    │
+                 ┌──────────────────┼──────────────────┐
+                 │                  │                  │
+                 ▼                  ▼                  ▼
+        ┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+        │   Discovery    │ │ Authentication │ │    Playback    │
+        │     Engine     │ │   & Accounts   │ │  Orchestrator  │
+        └───────┬────────┘ └───────┬────────┘ └───────┬────────┘
+                │                  │                  │
+                ▼                  ▼                  ▼
+        ┌──────────────┐    ┌──────────────┐   ┌──────────────┐
+        │ TMDB         │    │ PostgreSQL   │   │ Provider A   │
+        │ AniList      │    │ Prisma       │   │ Provider B   │
+        │ Jikan        │    │ NextAuth     │   │ Provider C   │
+        │ TVmaze       │    │              │   │ Provider ... │
+        └──────────────┘    └──────────────┘   └──────────────┘
+```
+
+---
+
+# 🔌 Provider Abstraction
+
+The platform is intentionally designed so that a new provider can be integrated through an adapter instead of rewriting the whole application.
+
+Conceptually:
+
+```text
+PlaybackProvider
+│
+├── getMovieSource()
+├── getTVSource()
+├── getEpisodeSource()
+├── checkHealth()
+├── getCapabilities()
+└── getPlaybackMetadata()
+```
+
+This makes future provider integrations much easier.
+
+---
+
+# 📡 Playback Providers
+
+CHILLER's architecture supports configurable playback provider slots.
+
+Potential integrations can include compatible:
+
+- HLS providers
+- MP4 providers
+- Iframe providers
+- Self-hosted origins
+- Authorized streaming services
+- Private media servers
+- Custom playback APIs
+
+Providers are disabled by default until their required configuration is supplied.
+
+---
+
+# 🔒 Security
+
+Security is treated as a first-class architectural concern.
+
+Important principles include:
+
+- Server-side authentication checks
+- Server-side role validation
+- Environment-based secrets
+- No secrets committed to Git
+- Protected administrative APIs
+- Protected admin pages
+- Provider allowlists
+- CSP configuration
+- Secure playback configuration
+- Audit logging
+- Rate-limit protection
+- Circuit breakers
+- Request timeouts
+
+---
+
+# 🌐 Iframe & Provider Safety
+
+Third-party iframe playback can behave differently from native CHILLER playback.
+
+The architecture therefore aims to use:
+
+- Sandboxed iframes where compatible
+- Provider origin allowlists
+- CSP `frame-src` restrictions
+- Restricted navigation permissions
+- Safe embed policies
+- Provider-specific configuration
+
+The system does not assume that every provider supports the same browser capabilities.
+
+---
+
+# 📱 Responsive Design
+
+CHILLER is designed for:
+
+- 📱 Mobile
+- 📱 Tablets
+- 💻 Laptops
+- 🖥️ Desktop
+- 📺 Large displays
+
+The interface adapts its:
+
+- Navigation
+- Content rails
+- Cards
+- Player controls
+- Settings menus
+- Typography
+- Spacing
+- Fullscreen behavior
+
+to the available viewport.
+
+---
+
+# 🔄 Rotation & Fullscreen
+
+The player architecture supports a dedicated rotation/fullscreen experience.
+
+When supported by the browser:
+
+```text
+Fullscreen
+      ↓
+Landscape Orientation Lock
+      ↓
+Cinema Player
+```
+
+When orientation locking is unavailable, the application can gracefully fall back to fullscreen and provide a device rotation hint.
+
+---
+
+# 💰 Monetization Architecture
+
+CHILLER is designed to eventually support multiple monetization models.
+
+Possible revenue channels include:
+
+### Display Advertising
+
+Possible placements:
+
+- Homepage
+- Search
+- Detail pages
+- Editorial/news pages
+- Discovery pages
+
+---
+
+### Video Advertising
+
+Video advertisements should only be integrated where CHILLER has the necessary playback control and authorization.
+
+Potential architecture:
+
+```text
+CHILLER Controlled Player
+        ↓
+Authorized Ad System
+        ↓
+Pre-roll / Mid-roll / Post-roll
+        ↓
+Content Playback
+```
+
+CHILLER should not attempt to inject its own advertising layer into an arbitrary third-party player where the platform does not control or have permission to modify that playback environment.
+
+---
+
+### Sponsorships
+
+Possible sponsored surfaces:
+
+- Featured collections
+- Homepage placements
+- Brand campaigns
+- Entertainment partnerships
+
+---
+
+### Affiliate Revenue
+
+Potential integrations could include:
+
+- Merchandise
+- Books
+- Movie products
+- Anime products
+- Entertainment services
+- Legal streaming services
+
+---
+
+### Premium Membership
+
+A future CHILLER premium tier could potentially provide:
+
+- Enhanced personalization
+- Additional account features
+- Advanced preferences
+- Premium UI features
+- Reduced first-party advertising where applicable
+
+Premium benefits must not falsely promise removal of advertisements controlled by third-party playback providers.
+
+---
+
+# 📊 Monetization Dashboard
+
+A future administration dashboard can track:
+
+```text
+Revenue
+Impressions
+Clicks
+CTR
+RPM
+Campaigns
+Ad Inventory
+Affiliate Revenue
+Sponsorships
+Premium Users
+```
+
+---
+
+# 📈 Analytics
+
+CHILLER can eventually track privacy-conscious product analytics such as:
+
+- Content views
+- Search activity
+- Playback starts
+- Playback completion
+- Resume usage
+- Provider success rate
+- Provider failure rate
+- Average watch duration
+- Popular genres
+- Popular titles
+- Search trends
+- Conversion events
+
+Analytics should be implemented with appropriate privacy controls.
+
+---
+
+# 🧱 Environment Configuration
+
+CHILLER uses environment variables for external services and sensitive configuration.
+
+Example structure:
+
+```env
+# ==============================
+# SUPER ADMIN
+# ==============================
+
+SUPER_ADMIN_EMAILS=
+SUPER_ADMIN_BOOTSTRAP_PASSWORD=
+
+# ==============================
+# METADATA
+# ==============================
+
+TMDB_ENABLED=true
+TMDB_API_KEY=
+TMDB_ACCESS_TOKEN=
+
+ANILIST_ENABLED=true
+ANILIST_API_URL=https://graphql.anilist.co
+
+JIKAN_ENABLED=true
+JIKAN_API_URL=https://api.jikan.moe/v4
+
+TVMAZE_ENABLED=true
+TVMAZE_API_URL=https://api.tvmaze.com
+
+# ==============================
+# OPTIONAL METADATA
+# ==============================
+
+THETVDB_ENABLED=false
+THETVDB_API_URL=
+THETVDB_API_KEY=
+
+WATCHMODE_ENABLED=false
+WATCHMODE_API_URL=
+WATCHMODE_API_KEY=
+
+OPENSUBTITLES_ENABLED=false
+OPENSUBTITLES_API_URL=
+OPENSUBTITLES_API_KEY=
+OPENSUBTITLES_USERNAME=
+OPENSUBTITLES_PASSWORD=
+
+# ==============================
+# PLAYBACK
+# ==============================
+
+VIDSRC_ENABLED=false
+VIDSRC_BASE_URL=
+
+CINESRC_ENABLED=false
+CINESRC_API_URL=
+
+NHD_ENABLED=false
+NHD_API_URL=
+NHD_API_KEY=
+
+CODESPECTER_ENABLED=false
+CODESPECTER_API_URL=
+CODESPECTER_API_KEY=
+
+PLAYBACK_AGGREGATOR_ENABLED=false
+PLAYBACK_AGGREGATOR_URL=
+
+# ==============================
+# PLAYBACK ORCHESTRATOR
+# ==============================
+
+PLAYBACK_AUTO_MODE=true
+PLAYBACK_PROVIDER_TIMEOUT_MS=5000
+PLAYBACK_MAX_FALLBACK_ATTEMPTS=5
+PLAYBACK_START_GRACE_MS=8000
+
+PLAYBACK_CIRCUIT_BREAKER_ENABLED=true
+PLAYBACK_CIRCUIT_FAILURE_THRESHOLD=5
+PLAYBACK_CIRCUIT_RESET_MS=60000
+
+PLAYBACK_HEALTH_CACHE_TTL_MS=30000
+PLAYBACK_REQUEST_DEDUPE=true
+PLAYBACK_TELEMETRY_ENABLED=true
+
+# ==============================
+# CACHE / INFRASTRUCTURE
+# ==============================
+
+REDIS_URL=
+
+# ==============================
+# DATABASE
+# ==============================
+
+DATABASE_URL=
+```
+
+> **Never commit real API keys, tokens, passwords, database credentials, or private provider credentials to GitHub.**
+
+---
+
+# 🚀 Local Development
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/roytejaswi206-boop/chiller-streaming.git
+```
+
+## 2. Enter the project
+
+```bash
+cd chiller-streaming
+```
+
+## 3. Install dependencies
+
+```bash
+npm install
+```
+
+## 4. Configure environment variables
+
+Create:
+
+```text
+.env.local
+```
+
+and add the required configuration.
+
+---
+
+## 5. Configure the database
+
+Run the required Prisma commands for your environment.
+
+Example:
+
+```bash
+npx prisma generate
+```
+
+For development migrations:
+
+```bash
+npx prisma migrate dev
+```
+
+---
+
+## 6. Start development server
+
+```bash
+npm run dev
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
+
+---
+
+# 🏭 Production Deployment
+
+CHILLER can be deployed using modern cloud infrastructure.
+
+The current public deployment is available through Vercel:
+
+**https://streaming-chi-red.vercel.app/**
+
+Production architecture can be expanded with:
+
+```text
+Vercel
+   +
+PostgreSQL
+   +
+Redis
+   +
+Background Workers
+   +
+Storage / Origins
+   +
+External APIs
+```
+
+---
+
+# 🧵 Background Processing
+
+For processing-heavy workflows, CHILLER's architecture can use:
+
+```text
+Redis
+  ↓
+BullMQ
+  ↓
+Worker
+  ↓
+FFmpeg / FFprobe
+  ↓
+HLS / Media Processing
+```
+
+This allows long-running jobs to remain separate from the main web application.
+
+---
+
+# 🎞️ Media Processing
+
+For self-controlled media workflows, FFmpeg / FFprobe can be used for:
+
+- Media inspection
+- Transcoding
+- HLS generation
+- Audio processing
+- Subtitle processing
+- Resolution generation
+- Media metadata extraction
+
+A typical adaptive streaming pipeline can look like:
+
+```text
+Source Media
+     ↓
+FFprobe
+     ↓
+Media Analysis
+     ↓
+FFmpeg
+     ↓
+Multiple Resolutions
+     ↓
+HLS
+     ↓
+Storage / Origin
+     ↓
+CHILLER Player
+```
+
+---
+
+# 📦 HLS Architecture
+
+Adaptive streaming can provide multiple quality levels.
+
+Example:
+
+```text
+1080p
+720p
+480p
+360p
+```
+
+The player can select an appropriate quality depending on:
+
+- Device
+- Network
+- Player support
+- Provider capabilities
+
+---
+
+# 🗂️ Suggested Project Structure
+
+A high-level structure can look like:
+
+```text
+chiller-streaming/
+│
+├── app/
+│   ├── admin/
+│   ├── api/
+│   ├── anime/
+│   ├── movies/
+│   ├── series/
+│   ├── search/
+│   ├── trending/
+│   ├── watch/
+│   └── ...
+│
+├── components/
+│   ├── player/
+│   ├── media/
+│   ├── discovery/
+│   ├── navigation/
+│   ├── admin/
+│   └── ui/
+│
+├── lib/
+│   ├── auth/
+│   ├── security/
+│   ├── discovery/
+│   ├── playback/
+│   ├── providers/
+│   ├── cache/
+│   ├── analytics/
+│   └── ...
+│
+├── prisma/
+│   └── schema.prisma
+│
+├── public/
+│
+├── scripts/
+│
+├── workers/
+│
+├── .env.example
+├── package.json
+├── next.config.*
+├── tailwind.config.*
+└── README.md
+```
+
+---
+
+# 🧠 Design Principles
+
+CHILLER follows several important engineering principles.
+
+## 1. API First
+
+Content should not be hardcoded unnecessarily.
+
+```text
+Provider
+   ↓
+API
+   ↓
+Normalization
+   ↓
+CHILLER
+   ↓
+UI
+```
+
+---
+
+## 2. Provider Agnostic
+
+The UI should not depend on a single provider.
+
+```text
+CHILLER
+   ↓
+Provider Abstraction
+   ↓
+Multiple Sources
+```
+
+---
+
+## 3. Graceful Failure
+
+A single provider failure should not automatically break the entire platform.
+
+---
+
+## 4. No Fake Capabilities
+
+If a provider does not expose:
+
+- Audio tracks
+- Subtitles
+- Seeking
+- Quality selection
+- Resume
+
+CHILLER should not pretend that it does.
+
+---
+
+## 5. Security First
+
+Secrets remain server-side.
+
+Administrative operations require authorization.
+
+---
+
+## 6. Progressive Enhancement
+
+The platform should provide the best possible experience based on actual browser and provider capabilities.
+
+---
+
+# 🧪 Testing Philosophy
+
+CHILLER should be tested at multiple levels.
+
+### API testing
+
+Verify:
+
+- Status codes
+- Payloads
+- Error handling
+- Authentication
+- Provider responses
+
+### Browser testing
+
+Verify:
+
+- Navigation
+- Search
+- Detail pages
+- Playback
+- Resume
+- Player controls
+- Mobile UI
+- Fullscreen
+- Rotation
+
+### Provider testing
+
+Verify:
+
+```text
+Configured
+   ↓
+Reachable
+   ↓
+Compatible
+   ↓
+Player Ready
+   ↓
+Playback Started
+   ↓
+Playback Progressing
+```
+
+---
+
+# 📱 Browser Compatibility
+
+Target environments include:
+
+- Chrome Desktop
+- Chrome Android
+- Edge
+- Firefox
+- Safari
+- Safari iOS
+
+Because browser support for fullscreen, orientation locking, iframe permissions and media APIs can differ, unsupported functionality should degrade gracefully.
+
+---
+
+# 🛣️ Roadmap
+
+## Phase 1 • Foundation
+
+- [x] CHILLER branding
+- [x] Modern OTT-style UI
+- [x] Next.js architecture
+- [x] TypeScript
+- [x] Tailwind
+- [x] Database architecture
+- [x] Authentication foundation
+
+---
+
+## Phase 2 • Discovery
+
+- [x] TMDB integration
+- [x] AniList integration
+- [x] Anime discovery
+- [x] Search
+- [x] Trending
+- [x] Popular
+- [x] Genres
+- [x] Content rails
+- [x] Infinite loading architecture
+
+---
+
+## Phase 3 • Playback
+
+- [x] Provider abstraction
+- [x] Playback orchestrator
+- [x] Provider capability system
+- [x] Provider health architecture
+- [x] Fallback architecture
+- [x] Player shell
+- [x] Resume architecture
+- [x] Cinema-mode controls
+
+---
+
+## Phase 4 • User Experience
+
+- [x] Continue Watching
+- [x] Responsive UI
+- [x] Fullscreen
+- [x] Rotation support
+- [x] Audio preference architecture
+- [x] Subtitle architecture
+- [ ] Advanced personalization
+- [ ] Improved recommendations
+
+---
+
+## Phase 5 • Administration
+
+- [x] Admin authentication
+- [x] RBAC
+- [x] Super Admin
+- [x] Audit logging
+- [x] User management
+- [x] Provider management
+- [x] Playback Lab
+- [ ] Advanced analytics dashboard
+- [ ] Content management tools
+
+---
+
+## Phase 6 • Monetization
+
+- [ ] Ad system
+- [ ] Ad inventory
+- [ ] Sponsorship management
+- [ ] Affiliate system
+- [ ] Premium membership
+- [ ] Revenue analytics
+- [ ] Campaign management
+
+---
+
+## Phase 7 • Scale
+
+- [ ] Redis optimization
+- [ ] Worker scaling
+- [ ] Multi-origin architecture
+- [ ] Advanced caching
+- [ ] CDN strategy
+- [ ] Automated provider health monitoring
+- [ ] Distributed telemetry
+- [ ] Advanced recommendation engine
+
+---
+
+# 💡 Future Possibilities
+
+CHILLER can eventually evolve into a broader entertainment ecosystem.
+
+Potential future features:
+
+### 👤 Personalized Profiles
+
+```text
+Profile
+   ↓
+Watch History
+   ↓
+Preferences
+   ↓
+Recommendations
+```
+
+### 🤖 AI Recommendations
+
+An AI layer could understand:
+
+- Favorite genres
+- Watch history
+- Preferred languages
+- Preferred actors
+- Preferred studios
+- Completion behavior
+
+and generate personalized recommendations.
+
+---
+
+### 🧠 Natural Language Search
+
+Future search could support queries such as:
+
+```text
+"Find me a dark mystery anime with a smart protagonist."
+
+"Show me action movies under 2 hours."
+
+"Give me something similar to Spider-Man."
+
+"Find highly rated psychological anime."
+```
+
+---
+
+### 👥 Multiple Profiles
+
+A future account could support:
+
+```text
+Main Profile
+Kids Profile
+Anime Profile
+Guest Profile
+```
+
+---
+
+### 📺 Watch Together
+
+A future watch-party system could support:
+
+```text
+Create Room
+      ↓
+Invite Friends
+      ↓
+Synchronized Playback
+      ↓
+Chat
+      ↓
+Watch Together
+```
+
+---
+
+# ⚖️ Content & Legal Responsibility
+
+CHILLER is designed as a technology platform and content-discovery architecture.
+
+Metadata and media may originate from external services.
+
+Users and operators are responsible for ensuring that the content, playback sources, distribution methods, advertising and other integrations they use are properly authorized and comply with applicable laws, licenses and provider terms.
+
+CHILLER should only be used with content and services that the operator is legally permitted to access, display, distribute or embed.
+
+Third-party providers may have their own:
+
+- Terms of Service
+- Copyright policies
+- API restrictions
+- Geographic restrictions
+- Advertising rules
+- Embedding requirements
+- Licensing requirements
+
+CHILLER does not override or bypass those restrictions.
+
+---
+
+# 🙏 Credits & Acknowledgements
+
+CHILLER is built with the help of the modern open-source and developer ecosystem.
+
+Special thanks to projects and services including:
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Prisma
+- PostgreSQL
+- Redis
+- BullMQ
+- FFmpeg
+- TMDB
+- AniList
+- Jikan
+- TVmaze
+- Vercel
+- GitHub
+- The broader open-source community
+
+---
+
+# 👨‍💻 Developer
+
+## Tejaswi Roy
+
+**B.Tech CSE (AI & ML)**
+
+Developer • Full-Stack Engineer • AI/ML Enthusiast • Product Builder
+
+CHILLER is an ongoing personal project focused on exploring:
+
+- Full-stack development
+- Streaming architecture
+- API aggregation
+- Modern UI/UX
+- Authentication
+- Distributed systems
+- Media processing
+- AI-powered personalization
+- Cloud deployment
+- Product engineering
+
+---
+
+# 🌐 CHILLER Links
+
+### 🚀 Live Application
+
+https://streaming-chi-red.vercel.app/
+
+### 💻 GitHub
+
+https://github.com/roytejaswi206-boop/chiller-streaming
+
+---
+
+# ⭐ Project Status
+
+**CHILLER is an actively evolving project.**
+
+The platform is continuously being improved across:
+
+```text
+UI/UX
++
+Discovery
++
+Playback
++
+Authentication
++
+Security
++
+Performance
++
+Infrastructure
++
+Monetization
++
+Personalization
+```
+
+The goal is not simply to build another streaming website.
+
+The goal is to build a **complete entertainment platform architecture**.
+
+---
+
+# 🎬 CHILLER
+
+## JUST CHILL.
+
+> **GOOD STORIES. BETTER DAYS.**
+
+**Discover something. Press play. Just chill. 🍿**
