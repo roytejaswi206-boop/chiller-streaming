@@ -789,8 +789,8 @@ export function ExternalPlayer({
         }`}
         style={{
           aspectRatio: isFullscreen ? undefined : "16/9",
-          maxHeight: isFullscreen ? "100vh" : "80vh",
-          height: isFullscreen ? "100vh" : undefined,
+          maxHeight: isFullscreen ? "100dvh" : "80dvh",
+          height: isFullscreen ? "100dvh" : undefined,
         }}
       >
         {/* ── Top-Left Overlay Badges (Clean Cinema Mode: Auto-Hides on Playback) ── */}

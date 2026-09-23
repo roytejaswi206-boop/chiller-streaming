@@ -116,7 +116,7 @@ export function WatchExperience({
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
   const sourceDropdownRef = React.useRef<HTMLDivElement>(null);
 
-  // Close source dropdown when clicking or touching outside
+  // Close source dropdown when clicking, touching outside or pressing Escape
   useEffect(() => {
     if (!sourceDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
@@ -124,11 +124,18 @@ export function WatchExperience({
         setSourceDropdownOpen(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSourceDropdownOpen(false);
+      }
+    };
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("touchstart", handleClickOutside, { passive: true });
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [sourceDropdownOpen]);
 
@@ -851,7 +858,7 @@ export function WatchExperience({
 
                 {/* Dropdown Menu */}
                 {sourceDropdownOpen && (
-                  <div className="absolute left-0 bottom-full mb-2 z-40 w-64 p-2 rounded-2xl bg-[#12121a] border border-white/15 shadow-2xl backdrop-blur-xl space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute left-0 bottom-full mb-2 z-40 w-64 max-w-[calc(100vw-2rem)] p-2 rounded-2xl bg-[#12121a] border border-white/15 shadow-2xl backdrop-blur-xl space-y-1 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-3 py-1.5 text-[10px] font-mono uppercase text-zinc-500 border-b border-white/5 flex items-center justify-between">
                       <span>Available Sources ({sources.length})</span>
                       <span className="text-[9px] text-zinc-400">Tap to switch</span>

@@ -120,7 +120,7 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full h-16 border-b border-white/[0.08] bg-[#09090C]/90 backdrop-blur-xl px-4 lg:px-8 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 w-full h-16 border-b border-white/[0.08] bg-[#09090C]/90 backdrop-blur-xl px-3 sm:px-4 lg:px-8 flex items-center justify-between gap-3 sm:gap-4">
       {/* Brand Logo & Main Navigation */}
       <div className="flex items-center gap-8">
         <Link href="/">
@@ -314,7 +314,8 @@ export function Header() {
         {/* Mobile Search Button */}
         <Link
           href="/search"
-          className="sm:hidden p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition"
+          aria-label="Search movies, anime, and series"
+          className="sm:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/5 active:scale-95 transition touch-manipulation"
         >
           <IconSearch className="w-5 h-5" />
         </Link>

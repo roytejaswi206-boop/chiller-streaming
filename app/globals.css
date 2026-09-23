@@ -124,7 +124,26 @@ body {
 
 /* Ensure no page-level horizontal overflow */
 html, body {
-  max-width: 100%;
+  max-width: 100vw;
   overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Accessibility: Respect user prefers-reduced-motion setting */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Small-screen safe typography scaling */
+@media (max-width: 380px) {
+  :root {
+    font-size: 15px;
+  }
 }
 
