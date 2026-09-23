@@ -1371,6 +1371,19 @@ export function ExternalPlayer({
             />
           )
         )}
+
+        {/* Subtle CHILLER Brand Watermark (Non-obtrusive, bottom-right) */}
+        <div
+          className="absolute bottom-3 right-3 z-10 pointer-events-none select-none transition-opacity duration-300 opacity-40 flex items-center gap-1.5"
+          aria-hidden="true"
+        >
+          <img
+            src="/branding/chiller-player-watermark.png"
+            alt=""
+            className="w-5 h-5 object-contain drop-shadow-[0_0_8px_rgba(255,59,107,0.35)]"
+          />
+          <span className="text-[10px] font-black tracking-widest text-white/50 uppercase">CHILLER</span>
+        </div>
       </div>
 
       {/* ── Sub-Player Action Bar: Quick Toggles (AutoPlay, AutoNext, SkipIntro) ── */}

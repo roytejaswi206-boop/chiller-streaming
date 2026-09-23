@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CHILLER • Offline</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" href="/favicon-32x32.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #09090C;
+      color: #F8FAFC;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .card {
+      max-width: 440px;
+      width: 100%;
+      background: #0F172A;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 28px;
+      padding: 40px 28px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+    .emblem {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 24px;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(255, 59, 107, 0.25);
+    }
+    .emblem img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 13px;
+      color: #94A3B8;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    button {
+      background: linear-gradient(135deg, #FF3B6B 0%, #8A5CFF 100%);
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(255, 59, 107, 0.3);
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    button:active { transform: scale(0.96); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="emblem">
+      <img src="/branding/chiller-app-icon.png" alt="CHILLER" />
+    </div>
+    <h1>You're Currently Offline</h1>
+    <p>CHILLER requires an active network connection to stream titles and browse the cinematic catalog. Please check your internet connection.</p>
+    <button onclick="window.location.reload()">Try Again</button>
+  </div>
+</body>
+</html>

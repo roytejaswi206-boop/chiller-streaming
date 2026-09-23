@@ -53,14 +53,18 @@ export default async function HomePage() {
       <main className="flex-1 p-4 lg:p-8 max-w-[1680px] overflow-hidden">
         {!isConfigured ? (
           <div className="rounded-3xl border border-white/10 bg-[#0F172A] p-8 lg:p-12 text-center max-w-2xl mx-auto my-12 shadow-2xl">
-            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#FF3B6B] to-[#8A5CFF] text-white text-2xl font-black flex items-center justify-center mx-auto mb-6 shadow-xl shadow-[#FF3B6B]/25">
-              C
+            <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+              <img
+                src="/branding/chiller-icon-emblem.webp"
+                alt="CHILLER"
+                className="w-full h-full object-contain drop-shadow-[0_4px_20px_rgba(255,59,107,0.5)]"
+              />
             </div>
             <h1 className="text-2xl lg:text-3xl font-black text-white tracking-tight mb-2">
               Welcome to CHILLER
             </h1>
-            <p className="text-sm font-semibold text-[#FF3B6B] uppercase tracking-widest mb-4">
-              JUST CHILL.
+            <p className="text-xs font-black text-[#FF3B6B] uppercase tracking-[0.25em] mb-4">
+              WATCH BEYOND
             </p>
             <p className="text-sm text-zinc-300 leading-relaxed mb-8">
               Chiller is ready to stream. Configure your <strong>TMDB</strong> API credentials in the settings dashboard to begin discovering thousands of titles.

@@ -132,15 +132,19 @@ export function Sidebar() {
         <div className="absolute top-0 right-0 w-24 h-24 bg-[#FF3B6B]/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#8A5CFF]/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FF3B6B] to-[#8A5CFF] text-white flex items-center justify-center mx-auto mb-2 text-xs font-black shadow-lg shadow-[#FF3B6B]/20">
-          C
+        <div className="w-10 h-10 mx-auto mb-2 flex items-center justify-center">
+          <img
+            src="/branding/chiller-icon-emblem.webp"
+            alt="CHILLER"
+            className="w-full h-full object-contain drop-shadow-[0_2px_10px_rgba(255,59,107,0.4)]"
+          />
         </div>
 
-        <h4 className="text-xs font-black text-white tracking-wide mb-1">
+        <h4 className="text-xs font-black text-white tracking-wider mb-0.5">
           CHILLER
         </h4>
-        <p className="text-[10px] text-zinc-400 mb-2.5 font-medium">
-          JUST CHILL.
+        <p className="text-[9px] text-[#FF3B6B] mb-2 font-black tracking-widest uppercase">
+          WATCH BEYOND
         </p>
 
         <span className="inline-block px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/10 text-[9px] font-bold text-zinc-300">

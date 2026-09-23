@@ -3,6 +3,7 @@ export interface ChillerLogoProps {
   withText?: boolean;
   variant?: "dark" | "light" | "mono";
   size?: "sm" | "md" | "lg";
+  showTagline?: boolean;
 }
 
 export function ChillerLogo({
@@ -10,74 +11,49 @@ export function ChillerLogo({
   withText = true,
   variant = "dark",
   size = "md",
+  showTagline = true,
 }: ChillerLogoProps) {
   const isMono = variant === "mono";
-  const gradId = `chiller-c-grad-${variant}`;
+
+  // Derive height for wordmark based on size
+  const wordmarkHeight =
+    size === "sm" ? "h-3.5" : size === "lg" ? "h-6" : "h-[18px]";
 
   return (
     <div className="flex items-center gap-2.5 select-none cursor-pointer group">
-      {/* "C + Play" Brand Mark */}
+      {/* "C + Play" Glowing Master Emblem */}
       <div className={`relative flex items-center justify-center shrink-0 ${className}`}>
-        <svg
-          viewBox="0 0 44 44"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full drop-shadow-[0_4px_16px_rgba(255,59,107,0.4)] transition-transform duration-300 group-hover:scale-105"
-        >
-          {/* Stylized "C" Arc */}
-          <path
-            d="M32 10.5C28.5 7 23.5 5 18 5C9.7 5 3 11.7 3 20C3 28.3 9.7 35 18 35C23.5 35 28.5 33 32 29.5"
-            stroke={`url(#${gradId})`}
-            strokeWidth="5.5"
-            strokeLinecap="round"
-          />
-
-          {/* Inset Play Triangle */}
-          <path
-            d="M17 14L27 20L17 26V14Z"
-            fill={isMono ? "#E2E8F0" : "#FF3B6B"}
-            className="drop-shadow-[0_2px_8px_rgba(255,59,107,0.6)]"
-          />
-
-          <defs>
-            {isMono ? (
-              <linearGradient id={gradId} x1="3" y1="5" x2="32" y2="35" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#94A3B8" />
-                <stop offset="1" stopColor="#475569" />
-              </linearGradient>
-            ) : (
-              <linearGradient id={gradId} x1="3" y1="5" x2="35" y2="35" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#FF3B6B" />
-                <stop offset="0.6" stopColor="#D946EF" />
-                <stop offset="1" stopColor="#8A5CFF" />
-              </linearGradient>
-            )}
-          </defs>
-        </svg>
+        <img
+          src="/branding/chiller-icon-emblem.webp"
+          alt="CHILLER"
+          width={48}
+          height={48}
+          className={`w-full h-full object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_2px_12px_rgba(255,59,107,0.45)] ${
+            isMono ? "grayscale" : ""
+          }`}
+          loading="eager"
+          decoding="async"
+        />
       </div>
 
-      {/* Brand Typography */}
+      {/* Brand Typography & Tagline */}
       {withText && (
-        <div className="flex flex-col leading-none">
-          <div className="flex items-center font-black tracking-tight text-white font-sans text-xl">
-            <span>Ch</span>
-            {/* 'i' with play mark dot */}
-            <span className="relative inline-block mx-[0.5px]">
-              <svg
-                viewBox="0 0 10 10"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-2.5 h-2.5 -top-2.5 left-[1px] absolute text-[#FF3B6B]"
-              >
-                <path d="M1.5 1.5L8.5 5L1.5 8.5V1.5Z" fill="#FF3B6B" />
-              </svg>
-              i
+        <div className="flex flex-col justify-center leading-none">
+          <img
+            src="/branding/chiller-wordmark.webp"
+            alt="CHILLER"
+            height={20}
+            className={`${wordmarkHeight} w-auto object-contain brightness-105 filter drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] ${
+              isMono ? "grayscale" : ""
+            }`}
+            loading="eager"
+            decoding="async"
+          />
+          {showTagline && (
+            <span className="hidden sm:inline-block text-[7.5px] font-black tracking-[0.26em] text-zinc-400 group-hover:text-[#FF3B6B] transition-colors mt-0.5 uppercase">
+              WATCH BEYOND
             </span>
-            <span>ller</span>
-          </div>
-          <span className="text-[8px] font-extrabold tracking-[0.2em] text-zinc-400 mt-0.5 uppercase">
-            JUST CHILL.
-          </span>
+          )}
         </div>
       )}
     </div>
