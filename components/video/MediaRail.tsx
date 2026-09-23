@@ -70,15 +70,15 @@ export function MediaRail({
       {/* Rail Content (Horizontal Scroll) */}
       <div
         ref={scrollContainerRef}
-        className="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1 -mx-1 px-1"
+        className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1 -mx-1 px-1 snap-x snap-mandatory touch-pan-x"
       >
         {items.map((item) => (
           <div
             key={`${item.mediaType}-${item.id}`}
-            className={`shrink-0 ${
+            className={`shrink-0 snap-start ${
               layout === "backdrop"
-                ? "w-[260px] sm:w-[320px]"
-                : "w-[150px] sm:w-[180px] lg:w-[200px]"
+                ? "w-[220px] min-[375px]:w-[260px] sm:w-[320px]"
+                : "w-[130px] min-[375px]:w-[150px] sm:w-[180px] lg:w-[200px]"
             }`}
           >
             <MediaCard {...item} layout={layout} />

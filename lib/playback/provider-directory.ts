@@ -641,7 +641,7 @@ export const PROVIDER_DIRECTORY: Record<string, ProviderDirectoryEntry> = {
       supportsMP4: false,
       supportsIframe: true,
       supportsSubtitles: true,
-      supportsAudio: true,
+      supportsAudio: false,
       supportsQuality: true,
       supportsResume: false,
       supportsSeek: true,

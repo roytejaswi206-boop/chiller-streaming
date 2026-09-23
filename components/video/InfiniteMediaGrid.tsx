@@ -135,7 +135,7 @@ export function InfiniteMediaGrid({
 
   if (initialLoading) {
     return (
-      <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 ${className}`}>
+      <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4 ${className}`}>
         {Array.from({ length: 18 }).map((_, i) => (
           <div key={i} className="aspect-[2/3] rounded-2xl bg-[#0F172A] border border-white/5 animate-pulse" />
         ))}
@@ -158,7 +158,7 @@ export function InfiniteMediaGrid({
   return (
     <div className={`space-y-8 ${className}`}>
       {/* Responsive Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4">
         {items.map((item, idx) => (
           <MediaCard
             key={`${item.type}-${item.id}-${idx}`}

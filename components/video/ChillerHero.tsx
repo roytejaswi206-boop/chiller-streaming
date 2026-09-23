@@ -119,7 +119,7 @@ export function ChillerHero({ items }: ChillerHeroProps) {
   };
 
   return (
-    <div className="relative w-full rounded-3xl overflow-hidden mb-10 min-h-[380px] sm:min-h-[460px] lg:min-h-[520px] flex items-end border border-white/[0.08] shadow-2xl bg-[#09090C]">
+    <div className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden mb-8 sm:mb-10 min-h-[320px] sm:min-h-[440px] lg:min-h-[520px] flex items-end border border-white/[0.08] shadow-2xl bg-[#09090C]">
       {/* Cinematic Backdrop Image */}
       <Image
         src={backdropUrl}
@@ -166,11 +166,11 @@ export function ChillerHero({ items }: ChillerHeroProps) {
       )}
 
       {/* Content Container */}
-      <div className="relative z-20 p-6 sm:p-10 lg:p-14 max-w-2xl">
+      <div className="relative z-20 p-4 sm:p-8 lg:p-14 max-w-2xl">
         {/* Badges / Metadata */}
-        <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 text-xs">
           <span
-            className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest backdrop-blur-md shadow-md ${
+            className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest backdrop-blur-md shadow-md ${
               activeItem.mediaType === "anime"
                 ? "bg-[#8A5CFF]/90 text-white border border-[#8A5CFF]/40"
                 : activeItem.mediaType === "tv"
@@ -181,29 +181,29 @@ export function ChillerHero({ items }: ChillerHeroProps) {
             {activeItem.mediaType.toUpperCase()}
           </span>
 
-          <span className="px-2.5 py-0.5 rounded-full bg-black/40 border border-white/15 text-[10px] font-extrabold text-[#F8FAFC] tracking-wider uppercase">
+          <span className="px-2 sm:px-2.5 py-0.5 rounded-full bg-black/40 border border-white/15 text-[9px] sm:text-[10px] font-extrabold text-[#F8FAFC] tracking-wider uppercase">
             4K UHD
           </span>
 
-          <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-semibold text-zinc-300">
+          <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] sm:text-[10px] font-semibold text-zinc-300">
             Dolby Vision
           </span>
 
           {activeItem.genres && activeItem.genres.slice(0, 3).map((g) => (
             <span
               key={g}
-              className="px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold text-zinc-200 border border-white/10"
+              className="px-2 sm:px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur-md text-[10px] sm:text-[11px] font-semibold text-zinc-200 border border-white/10"
             >
               {g}
             </span>
           ))}
 
           {activeItem.releaseYear && (
-            <span className="text-zinc-400 font-semibold">{activeItem.releaseYear}</span>
+            <span className="text-zinc-400 font-semibold text-xs">{activeItem.releaseYear}</span>
           )}
 
           {activeItem.rating !== undefined && activeItem.rating > 0 && (
-            <span className="flex items-center gap-1 text-amber-400 font-bold ml-1">
+            <span className="flex items-center gap-1 text-amber-400 font-bold ml-1 text-xs">
               <IconStar className="w-3.5 h-3.5 fill-amber-400" />
               <span>{activeItem.rating.toFixed(1)}</span>
             </span>
@@ -211,20 +211,20 @@ export function ChillerHero({ items }: ChillerHeroProps) {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-md mb-3 line-clamp-2">
+        <h1 className="text-xl sm:text-3xl lg:text-5xl font-black text-white tracking-tight drop-shadow-md mb-2 sm:mb-3 line-clamp-2">
           {activeItem.title}
         </h1>
 
         {/* Short description */}
-        <p className="text-xs sm:text-sm text-zinc-300 line-clamp-3 leading-relaxed max-w-xl mb-6 drop-shadow">
+        <p className="text-xs sm:text-sm text-zinc-300 line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-xl mb-4 sm:mb-6 drop-shadow">
           {activeItem.overview}
         </p>
 
         {/* CTAs */}
-        <div className="flex flex-wrap items-center gap-3.5">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5">
           <Link
             href={watchUrl}
-            className="flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-xs sm:text-sm font-black tracking-wide transition duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-[1.02] active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-xs sm:text-sm font-black tracking-wide transition duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-[1.02] active:scale-95 cursor-pointer touch-manipulation"
           >
             <IconPlay className="w-4 h-4 fill-white" />
             <span>Watch Now</span>

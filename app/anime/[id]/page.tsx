@@ -30,6 +30,32 @@ export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) 
       const anime = await anilistProvider.getAnime(animeId);
 
       if (anime) {
+        let recommendations: any[] = [];
+        try {
+          const tmdbTV = await getTVDetails(animeId).catch(() => null);
+          if (tmdbTV?.recommendations?.results?.length) {
+            recommendations = tmdbTV.recommendations.results.slice(0, 10);
+          } else if (tmdbTV?.similar?.results?.length) {
+            recommendations = tmdbTV.similar.results.slice(0, 10);
+          } else {
+            const trending = await anilistProvider.getTrending(1, 10).catch(() => ({ items: [] }));
+            recommendations = (trending.items || [])
+              .filter((item) => String(item.externalIds.anilistId || item.id) !== String(animeId))
+              .slice(0, 10)
+              .map((item) => ({
+                id: item.externalIds.anilistId || parseInt(item.id.replace(/\D/g, ""), 10) || item.id,
+                title: item.title,
+                name: item.title,
+                poster_path: item.posterUrl,
+                backdrop_path: item.backdropUrl,
+                vote_average: item.rating,
+                first_air_date: item.releaseDate || item.year,
+              }));
+          }
+        } catch {
+          // Graceful fallback for recommendations
+        }
+
         return (
           <div className="flex min-h-[calc(100vh-4rem)] bg-[#09090C]">
             <Sidebar />
@@ -49,7 +75,7 @@ export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) 
                 totalSeasons={1}
                 seasons={[{ season_number: 1, name: "Season 1", episode_count: (anime as any).episodes || 12 }]}
                 cast={[]}
-                recommendations={[]}
+                recommendations={recommendations}
               />
             </main>
           </div>

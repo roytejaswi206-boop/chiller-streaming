@@ -35,7 +35,7 @@ export function SeasonSelector({
             <button
               key={season.season_number}
               onClick={() => onSelectSeason(season.season_number)}
-              className={`group shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+              className={`group shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-all duration-150 cursor-pointer touch-manipulation active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF3B6B] ${
                 isSelected
                   ? "bg-[#FF3B6B] border-[#FF3B6B] text-white shadow-lg shadow-[#FF3B6B]/25"
                   : "bg-[#0F172A] border-white/10 text-zinc-300 hover:border-white/25 hover:bg-[#1E293B] hover:text-white"

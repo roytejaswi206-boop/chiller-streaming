@@ -13,6 +13,7 @@ export interface ExternalIds {
   imdbId?: string;
   anilistId?: number;
   malId?: number;
+  kitsuId?: string;
   tvmazeId?: number;
   tvdbId?: number;
 }

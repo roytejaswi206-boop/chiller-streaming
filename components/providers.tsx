@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { SessionProvider } from "next-auth/react";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 interface AgeGateContextType {
   isAgeVerified: boolean;
@@ -43,7 +44,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <AgeGateContext.Provider value={{ isAgeVerified, verifyAge, openAgeGate }}>
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </AgeGateContext.Provider>
     </SessionProvider>
   );

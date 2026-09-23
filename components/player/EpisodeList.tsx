@@ -137,7 +137,7 @@ export function EpisodeList({
               <button
                 key={i}
                 onClick={() => setActiveChunkIndex(i)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold shrink-0 transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer touch-manipulation active:scale-95 ${
                   isCurrent
                     ? "bg-[#FF3B6B]/20 text-[#FF3B6B] border border-[#FF3B6B]/40"
                     : "bg-[#09090C] text-zinc-400 hover:text-white border border-white/5"
@@ -165,12 +165,15 @@ export function EpisodeList({
               : "/placeholder-backdrop.jpg";
 
             return (
-              <div
+              <button
+                type="button"
                 key={ep.id}
                 onClick={() => onSelectEpisode(ep.episode_number)}
-                className={`group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-200 cursor-pointer ${
+                aria-pressed={isPlaying}
+                aria-label={`Episode ${ep.episode_number}: ${ep.name || ""}`}
+                className={`group relative flex flex-col rounded-xl overflow-hidden border text-left transition-all duration-150 cursor-pointer touch-manipulation active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF3B6B] ${
                   isPlaying
-                    ? "border-[#FF3B6B] bg-[#FF3B6B]/10 shadow-lg shadow-[#FF3B6B]/15"
+                    ? "border-[#FF3B6B] bg-[#FF3B6B]/10 shadow-lg shadow-[#FF3B6B]/15 ring-1 ring-[#FF3B6B]"
                     : "border-white/[0.06] bg-[#09090C]/70 hover:border-white/20 hover:bg-[#1E293B]/50"
                 }`}
               >
@@ -237,7 +240,7 @@ export function EpisodeList({
                     </p>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

@@ -3,6 +3,7 @@ import {
   PlaybackSource,
   PlaybackCandidate,
   PlaybackRequest,
+  PlaybackPool,
   ProviderCapabilities,
   ProviderHealth,
   ProviderHealthStatus,
@@ -17,9 +18,11 @@ export class VidSrcProvider implements PlaybackProvider {
   id = "vidsrc";
   name = "VidSrc";
   enabled = process.env.VIDSRC_ENABLED !== "false";
+  pools: PlaybackPool[] = ["GENERAL"];
   requiresApiKey = false;
   supportsMovie = true;
   supportsTV = true;
+  supportsAnime = false;
   priority = 2;
 
   private getBaseUrl(): string {
@@ -37,13 +40,16 @@ export class VidSrcProvider implements PlaybackProvider {
 
   supports(request: PlaybackRequest): boolean {
     if (!this.enabled) return false;
+    if (request.mediaType === "anime" || request.mediaClass === "ANIME" || request.targetPool === "ANIME") {
+      return false;
+    }
     return Boolean(request.tmdbId);
   }
 
   async resolve(request: PlaybackRequest): Promise<PlaybackCandidate | null> {
     if (!this.supports(request) || !request.tmdbId) return null;
 
-    if (request.mediaType === "tv" || request.mediaType === "anime") {
+    if (request.mediaType === "tv") {
       return this.getTVPlayback(request.tmdbId, request.season || 1, request.episode || 1);
     }
     return this.getMoviePlayback(request.tmdbId);
@@ -53,7 +59,7 @@ export class VidSrcProvider implements PlaybackProvider {
     return {
       supportsMovie: true,
       supportsTV: true,
-      supportsAnime: true,
+      supportsAnime: false,
       supportsSub: true,
       supportsDub: false,
       supportsEvents: true,

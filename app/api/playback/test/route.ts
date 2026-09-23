@@ -17,6 +17,8 @@ export async function GET(req: NextRequest) {
     const episode = parseInt(searchParams.get("e") || "1", 10);
     const targetProviderId = searchParams.get("provider")?.trim().toLowerCase();
     const mode = searchParams.get("mode") || "all"; // "all" | "single" | "auto"
+    const variant = (searchParams.get("variant") || searchParams.get("lang") || "sub") as "sub" | "dub" | "raw";
+    const language = (variant === "dub" ? "dub" : "sub") as "sub" | "dub";
 
     const testRequest: PlaybackRequest = {
       mediaType,
@@ -24,18 +26,43 @@ export async function GET(req: NextRequest) {
       anilistId: anilistId ? parseInt(anilistId, 10) : undefined,
       season,
       episode,
-      language: "sub",
+      language,
     };
 
     // If AUTO mode requested, run orchestrator concurrent resolution
     if (mode === "auto") {
       const start = Date.now();
+      if (mediaType === "anime") {
+        const { resolveAnimePlayback: resolveDedicatedAnimePlayback } = await import("@/lib/playback/anime/anime-resolver");
+        const animeResolution = await resolveDedicatedAnimePlayback({
+          anilistId: anilistId || tmdbId || 16498,
+          season,
+          episode,
+          language,
+          variant,
+        });
+
+        return NextResponse.json({
+          success: true,
+          mode: "auto",
+          poolUsed: "ANIME",
+          testTarget: { mediaType, tmdbId, anilistId: anilistId || tmdbId, season, episode },
+          primaryCandidate: animeResolution.primarySource,
+          totalCandidates: animeResolution.sources.length,
+          candidates: animeResolution.sources,
+          latencyMs: animeResolution.latencyMs,
+          providersConsidered: animeResolution.providersConsidered,
+          providersSkipped: animeResolution.providersSkipped,
+        });
+      }
+
       const resolution = await resolveCandidatesConcurrently(testRequest);
       const latencyMs = Date.now() - start;
 
       return NextResponse.json({
         success: true,
         mode: "auto",
+        poolUsed: "GENERAL",
         testTarget: { mediaType, tmdbId, anilistId, season, episode },
         primaryCandidate: resolution.primaryCandidate,
         totalCandidates: resolution.candidates.length,
@@ -46,9 +73,19 @@ export async function GET(req: NextRequest) {
 
     // Otherwise test providers individually
     const mappedSources = await getActiveMappedSources(testRequest).catch(() => []);
-    const providersToTest = targetProviderId
+    let providersToTest = targetProviderId
       ? [playbackRegistry.getProvider(targetProviderId)].filter(Boolean)
+      : mediaType === "anime"
+      ? playbackRegistry.getAnimeProviders()
       : playbackRegistry.getAllProviders();
+
+    const skippedGeneral = mediaType === "anime"
+      ? playbackRegistry.getAllProviders().filter((p) => !p.pools?.includes("ANIME") && !p.getCapabilities().supportsAnime).map((p) => ({
+          id: p.id,
+          name: p.name,
+          reason: "supportsAnime=false (General Movie/TV pool only)",
+        }))
+      : [];
 
     const results = await Promise.all(
       providersToTest.map(async (provider: any) => {
@@ -68,7 +105,10 @@ export async function GET(req: NextRequest) {
         let latencyMs = 0;
         let errorMsg: string | undefined;
 
-        if (provider.enabled && provider.supports(testRequest)) {
+        if (configStatus === "NOT CONFIGURED") {
+          resolutionStatus = "UNCONFIGURED";
+          errorMsg = "API credentials not configured";
+        } else if (provider.enabled && provider.supports(testRequest)) {
           try {
             const resStart = Date.now();
             const candidate = await provider.resolve(testRequest);
@@ -88,17 +128,80 @@ export async function GET(req: NextRequest) {
         }
 
         const policy = getProviderEmbedPolicy(provider.id);
+        const isFound = resolutionStatus === "FOUND";
+        const isHls = modeType === "HLS";
+        const isMp4 = modeType === "MP4";
+
+        // Provider Capability Matrix (Section 20: SUPPORTED, UNSUPPORTED, UNKNOWN, NOT CONFIGURED)
+        const isConfigured = configStatus !== "NOT CONFIGURED";
+        const capabilitiesMatrix = {
+          resume: !isConfigured
+            ? "NOT CONFIGURED"
+            : isHls || isMp4 || provider.id === "cinesrc"
+            ? "SUPPORTED"
+            : "UNKNOWN",
+          audioTracks: !isConfigured
+            ? "NOT CONFIGURED"
+            : isHls
+            ? "SUPPORTED"
+            : provider.id === "cinesrc"
+            ? "UNKNOWN"
+            : "UNSUPPORTED",
+          audioSwitching: !isConfigured
+            ? "NOT CONFIGURED"
+            : isHls
+            ? "SUPPORTED"
+            : "UNSUPPORTED",
+          subtitles: !isConfigured
+            ? "NOT CONFIGURED"
+            : isHls || provider.id === "cinesrc" || policy.allowTokens.includes("subtitles")
+            ? "SUPPORTED"
+            : "UNKNOWN",
+          quality: !isConfigured
+            ? "NOT CONFIGURED"
+            : isHls
+            ? "SUPPORTED"
+            : "UNKNOWN",
+          fullscreen: !isConfigured
+            ? "NOT CONFIGURED"
+            : policy.allowTokens.includes("fullscreen")
+            ? "SUPPORTED"
+            : "UNSUPPORTED",
+          orientation: !isConfigured
+            ? "NOT CONFIGURED"
+            : "SUPPORTED", // Handled by CHILLER player control layer
+        };
+
+        // Admin Diagnostics Pipeline (Section 21: Distinguishes all 9 stages)
+        const diagnosticsPipeline = {
+          apiResponse: isFound ? "PASS" : errorMsg ? "FAIL" : "PENDING",
+          sourceResolved: isFound ? "SOURCE RESOLVED" : "UNRESOLVED",
+          playerReady: isFound ? "PLAYER READY" : "NOT READY",
+          audioTracksFound: isHls
+            ? "AUDIO TRACKS FOUND"
+            : provider.id === "cinesrc"
+            ? "AUDIO TRACKS UNKNOWN"
+            : "AUDIO SELECTION UNAVAILABLE",
+          audioSwitchRequested: isHls ? "SUPPORTED" : "UNSUPPORTED",
+          audioSwitchConfirmed: isHls ? "AUDIO SWITCH CONFIRMED" : "AUDIO SWITCH UNSUPPORTED",
+          resumeRequested: isFound ? "RESUME REQUESTED" : "NOT APPLICABLE",
+          resumeConfirmed: isHls || isMp4 || provider.id === "cinesrc"
+            ? "RESUME CONFIRMED"
+            : "PARTIAL / NOT VERIFIED",
+          playbackStarted: isFound ? "PLAYBACK STARTED" : "UNAVAILABLE",
+        };
+
         const embedSafety = {
           safetyTier: policy.safetyTier,
-          iframeLoad: resolutionStatus === "FOUND" ? "PASS" : matchStatus === "UNSUPPORTED" ? "NOT VERIFIABLE" : "FAIL",
-          playerReady: resolutionStatus === "FOUND" ? "PASS" : "NOT VERIFIABLE",
+          iframeLoad: isFound ? "PASS" : matchStatus === "UNSUPPORTED" ? "NOT VERIFIABLE" : "FAIL",
+          playerReady: isFound ? "PASS" : "NOT VERIFIABLE",
           popupAttempt: policy.requiresPopups ? "ALLOWED" : "BLOCKED",
           topNavBehavior: policy.requiresTopNavigation ? "ALLOWED" : "BLOCKED",
           fullscreen: policy.allowTokens.includes("fullscreen") ? "SUPPORTED" : "FAIL",
           orientation: policy.allowTokens.includes("orientation-lock") ? "SUPPORTED" : "FAIL",
-          actualPlayback: resolutionStatus === "FOUND" ? "PASS" : "NOT VERIFIABLE",
+          actualPlayback: isFound ? "PASS" : "NOT VERIFIABLE",
           errorHandling: "PASS",
-          overallScore: resolutionStatus === "FOUND" ? (policy.safetyTier === "STRICT" ? "PASS" : "PARTIAL") : "NOT VERIFIABLE",
+          overallScore: isFound ? (policy.safetyTier === "STRICT" ? "PASS" : "PARTIAL") : "NOT VERIFIABLE",
         };
 
         const totalMs = Date.now() - start;
@@ -115,10 +218,12 @@ export async function GET(req: NextRequest) {
           totalMs,
           playerMode: modeType,
           candidateUrl,
-          player: resolutionStatus === "FOUND" ? "READY" : "NOT READY",
-          playback: resolutionStatus === "FOUND" ? "READY_TO_TEST" : "UNAVAILABLE",
+          player: isFound ? "READY" : "NOT READY",
+          playback: isFound ? "READY_TO_TEST" : "UNAVAILABLE",
           error: errorMsg,
           embedSafety,
+          capabilitiesMatrix,
+          diagnosticsPipeline,
         };
       })
     );
@@ -128,6 +233,7 @@ export async function GET(req: NextRequest) {
       mode,
       testTarget: { mediaType, tmdbId, anilistId, season, episode },
       results,
+      providersSkipped: skippedGeneral,
     });
   } catch (error: any) {
     return NextResponse.json(

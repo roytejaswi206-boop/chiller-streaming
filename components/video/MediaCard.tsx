@@ -20,6 +20,8 @@ export interface MediaCardProps {
   badges?: string[];
   progressSeconds?: number;
   durationSeconds?: number;
+  customHref?: string;
+  resumeLabel?: string;
 }
 
 function MediaCardComponent({
@@ -37,14 +39,17 @@ function MediaCardComponent({
   badges = [],
   progressSeconds,
   durationSeconds,
+  customHref,
+  resumeLabel,
 }: MediaCardProps) {
-  // Detail page URL
+  // Detail or direct resume URL
   const detailUrl =
-    mediaType === "anime"
+    customHref ||
+    (mediaType === "anime"
       ? `/anime/${id}`
       : mediaType === "tv"
       ? `/series/${id}`
-      : `/movies/${id}`;
+      : `/movies/${id}`);
 
   const imageSrc =
     layout === "backdrop"
@@ -76,7 +81,7 @@ function MediaCardComponent({
   return (
     <Link
       href={detailUrl}
-      className={`group relative flex flex-col rounded-2xl overflow-hidden bg-[#0F172A] border border-white/[0.08] hover:border-[#FF3B6B]/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#FF3B6B]/15 cursor-pointer select-none ${className}`}
+      className={`group relative flex flex-col rounded-2xl overflow-hidden bg-[#0F172A] border border-white/[0.08] hover:border-[#FF3B6B]/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#FF3B6B]/15 cursor-pointer select-none touch-manipulation active:scale-[0.98] ${className}`}
     >
       {/* Image container */}
       <div
@@ -120,14 +125,20 @@ function MediaCardComponent({
               {typeLabel}
             </span>
 
-            {badges.slice(0, 1).map((b) => (
-              <span
-                key={b}
-                className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-[#FF3B6B]/80 text-white backdrop-blur-md border border-[#FF3B6B]/40 shadow-sm"
-              >
-                {b}
+            {resumeLabel ? (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#FF3B6B] text-white backdrop-blur-md shadow-md">
+                {resumeLabel}
               </span>
-            ))}
+            ) : (
+              badges.slice(0, 1).map((b) => (
+                <span
+                  key={b}
+                  className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-[#FF3B6B]/80 text-white backdrop-blur-md border border-[#FF3B6B]/40 shadow-sm"
+                >
+                  {b}
+                </span>
+              ))
+            )}
           </div>
 
           {rating !== undefined && rating > 0 && (

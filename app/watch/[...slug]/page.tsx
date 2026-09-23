@@ -7,7 +7,16 @@ export const dynamic = "force-dynamic";
 
 interface WatchPageProps {
   params: Promise<{ slug: string[] }>;
-  searchParams: Promise<{ s?: string; e?: string; season?: string; episode?: string; type?: string }>;
+  searchParams: Promise<{
+    s?: string;
+    e?: string;
+    season?: string;
+    episode?: string;
+    type?: string;
+    audio?: string;
+    lang?: string;
+    language?: string;
+  }>;
 }
 
 export default async function WatchPage({ params, searchParams }: WatchPageProps) {
@@ -16,8 +25,10 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
 
   const season = parseInt(sParams.s || sParams.season || "1", 10);
   const episode = parseInt(sParams.e || sParams.episode || "1", 10);
+  const audio = sParams.audio || (sParams.lang === "dub" || sParams.language === "dub" ? "en" : undefined);
+  const language = (sParams.lang || sParams.language || (sParams.audio === "en" ? "dub" : "sub")) as "sub" | "dub";
 
-  const content = await resolveContent(slug, { season, episode });
+  const content = await resolveContent(slug, { season, episode, language, audio });
 
   if (!content) {
     notFound();

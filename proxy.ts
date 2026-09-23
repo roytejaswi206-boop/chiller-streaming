@@ -50,11 +50,11 @@ export async function proxy(request: NextRequest) {
   }
 
   // ────────────────────────────────────────────────────────────────────────
-  // 2. Protect /admin routes
+  // 2. Protect /admin routes (except public diagnostic playback-lab)
   //    Unauthenticated users → /login
   //    Authenticated non-admins → /  (forbidden)
   // ────────────────────────────────────────────────────────────────────────
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/playback-lab")) {
     if (!token) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("callbackUrl", pathname);

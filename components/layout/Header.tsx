@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { ChillerLogo, IconMoon, IconSearch } from "@/components/icons";
@@ -12,12 +13,86 @@ export function Header() {
   const router = useRouter();
   const { data: session } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+  // Debounced search autocomplete
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=1`);
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.results || []).slice(0, 6);
+          setSuggestions(items);
+          setShowSuggestions(items.length > 0);
+          setSelectedIndex(-1);
+        }
+      } catch {
+        // Non-blocking
+      } finally {
+        setIsSearching(false);
+      }
+    }, 220);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Click outside listener to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      setShowSuggestions(false);
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === "Enter" && selectedIndex >= 0) {
+      e.preventDefault();
+      const selected = suggestions[selectedIndex];
+      if (selected) {
+        setShowSuggestions(false);
+        const targetUrl =
+          selected.mediaType === "movie"
+            ? `/movie/${selected.id}`
+            : selected.mediaType === "anime"
+            ? `/anime/${selected.id}`
+            : `/series/${selected.id}`;
+        router.push(targetUrl);
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
     }
   };
 
@@ -124,19 +199,115 @@ export function Header() {
         </nav>
       </div>
 
-      {/* Center Search Bar */}
-      <form onSubmit={handleSearch} className="flex-1 max-w-md hidden sm:block">
-        <div className="relative flex items-center">
-          <IconSearch className="absolute left-3.5 w-4 h-4 text-zinc-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search movies, anime, series..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-9 pl-9 pr-4 rounded-full bg-[#0F172A] border border-white/10 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-1 focus:ring-[#FF3B6B] transition"
-          />
-        </div>
-      </form>
+      {/* Center Search Bar with Autocomplete */}
+      <div ref={searchContainerRef} className="relative flex-1 max-w-md hidden sm:block">
+        <form onSubmit={handleSearch}>
+          <div className="relative flex items-center">
+            <IconSearch className="absolute left-3.5 w-4 h-4 text-zinc-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search movies, anime, series..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => {
+                if (suggestions.length > 0) setShowSuggestions(true);
+              }}
+              onKeyDown={handleKeyDown}
+              className="w-full h-9 pl-9 pr-8 rounded-full bg-[#0F172A] border border-white/10 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-1 focus:ring-[#FF3B6B] transition"
+            />
+            {isSearching && (
+              <div className="absolute right-3 w-3.5 h-3.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+            )}
+          </div>
+        </form>
+
+        {/* Instant Suggestions Dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute left-0 right-0 top-11 rounded-2xl border border-white/10 bg-[#0F172A]/98 backdrop-blur-2xl p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+            <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center justify-between border-b border-white/5 pb-1 mb-1">
+              <span>Quick Suggestions</span>
+              <span>{suggestions.length} results</span>
+            </div>
+
+            {suggestions.map((item, idx) => {
+              const isSelected = selectedIndex === idx;
+              const targetUrl =
+                item.mediaType === "movie"
+                  ? `/movie/${item.id}`
+                  : item.mediaType === "anime"
+                  ? `/anime/${item.id}`
+                  : `/series/${item.id}`;
+
+              const typeBadgeColors: Record<string, string> = {
+                movie: "bg-[#FF3B6B]/20 text-[#FF3B6B] border-[#FF3B6B]/30",
+                tv: "bg-sky-500/20 text-sky-400 border-sky-500/30",
+                anime: "bg-[#8A5CFF]/20 text-[#8A5CFF] border-[#8A5CFF]/30",
+              };
+
+              return (
+                <Link
+                  key={`${item.mediaType}-${item.id}`}
+                  href={targetUrl}
+                  onClick={() => setShowSuggestions(false)}
+                  className={`flex items-center gap-3 p-2 rounded-xl transition ${
+                    isSelected ? "bg-white/10 text-white" : "hover:bg-white/5 text-zinc-200"
+                  }`}
+                >
+                  <div className="relative w-8 h-11 rounded-lg overflow-hidden bg-zinc-800 flex-shrink-0 border border-white/10">
+                    {item.posterUrl ? (
+                      <Image
+                        src={item.posterUrl}
+                        alt={item.title || "Poster"}
+                        fill
+                        sizes="32px"
+                        className="object-cover"
+                        unoptimized={item.posterUrl.startsWith("http")}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-500 font-bold">
+                        🎬
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{item.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span
+                        className={`px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded border ${
+                          typeBadgeColors[item.mediaType] || typeBadgeColors.movie
+                        }`}
+                      >
+                        {item.mediaType === "tv" ? "SERIES" : item.mediaType?.toUpperCase()}
+                      </span>
+                      {item.releaseYear && (
+                        <span className="text-[10px] text-zinc-400 font-medium">
+                          {item.releaseYear}
+                        </span>
+                      )}
+                      {item.rating > 0 && (
+                        <span className="text-[10px] text-amber-400 font-bold flex items-center gap-0.5">
+                          ★ {item.rating.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+
+            <button
+              onClick={() => {
+                setShowSuggestions(false);
+                router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+              }}
+              className="w-full text-center py-2 text-[11px] font-bold text-zinc-400 hover:text-white border-t border-white/5 mt-1 transition"
+            >
+              Press Enter to view all results for &ldquo;{searchQuery.trim()}&rdquo; →
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Right Utilities */}
       <div className="flex items-center gap-3">
@@ -248,16 +419,16 @@ export function Header() {
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <Link
               href="/login"
-              className="py-1.5 px-4 rounded-full text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/5 transition"
+              className="py-1.5 px-2.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/5 transition"
             >
               Login
             </Link>
             <Link
               href="/register"
-              className="py-1.5 px-4 rounded-full text-xs font-bold text-white bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 shadow-md shadow-[#FF3B6B]/20 transition"
+              className="py-1.5 px-3 sm:px-4 rounded-full text-[11px] sm:text-xs font-bold text-white bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 shadow-md shadow-[#FF3B6B]/20 transition"
             >
               Sign Up
             </Link>

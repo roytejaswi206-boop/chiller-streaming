@@ -6,6 +6,10 @@ interface ProviderHealthMetrics {
   successCount: number;
   failureCount: number;
   consecutiveFailures: number;
+  subSuccessCount: number;
+  subFailureCount: number;
+  dubSuccessCount: number;
+  dubFailureCount: number;
   lastSuccess?: string;
   lastFailure?: string;
   lastError?: string;
@@ -30,6 +34,10 @@ class ProviderHealthCache {
         successCount: 0,
         failureCount: 0,
         consecutiveFailures: 0,
+        subSuccessCount: 0,
+        subFailureCount: 0,
+        dubSuccessCount: 0,
+        dubFailureCount: 0,
         averageStartupMs: 1200,
         recentStartupMs: 1200,
         latencies: [],
@@ -39,13 +47,19 @@ class ProviderHealthCache {
     return entry;
   }
 
-  recordSuccess(providerId: string, latencyMs?: number): void {
+  recordSuccess(providerId: string, latencyMs?: number, variant?: string): void {
     const entry = this.getOrCreate(providerId);
     entry.successCount++;
     entry.consecutiveFailures = 0;
     entry.lastSuccess = new Date().toISOString();
     entry.status = "ACTIVE";
     entry.cooldownUntil = undefined;
+
+    if (variant === "dub") {
+      entry.dubSuccessCount++;
+    } else {
+      entry.subSuccessCount++;
+    }
 
     if (latencyMs && latencyMs > 0) {
       entry.latencies.push(latencyMs);
@@ -57,12 +71,18 @@ class ProviderHealthCache {
     }
   }
 
-  recordFailure(providerId: string, error?: string): void {
+  recordFailure(providerId: string, error?: string, variant?: string): void {
     const entry = this.getOrCreate(providerId);
     entry.failureCount++;
     entry.consecutiveFailures++;
     entry.lastFailure = new Date().toISOString();
     entry.lastError = error || "Playback or resolution failure";
+
+    if (variant === "dub") {
+      entry.dubFailureCount++;
+    } else {
+      entry.subFailureCount++;
+    }
 
     if (entry.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
       entry.cooldownUntil = Date.now() + this.COOLDOWN_DURATION_MS;
@@ -92,6 +112,7 @@ class ProviderHealthCache {
     options: {
       mediaType?: string;
       language?: string;
+      variant?: string;
       hasLanguageSupport?: boolean;
     } = {}
   ): number {
@@ -102,13 +123,29 @@ class ProviderHealthCache {
 
     let score = 50; // Base score
 
-    // Reliability factor: ratio of successes
+    // Reliability factor: ratio of successes (with variant weight if specified)
     const total = entry.successCount + entry.failureCount;
     if (total > 0) {
       const successRate = entry.successCount / total;
       score += Math.round(successRate * 30); // Up to +30 pts
     } else {
       score += 20; // Untested gets neutral boost
+    }
+
+    // Variant-specific weighting
+    const isDub = options.variant === "dub" || options.language === "dub";
+    if (isDub) {
+      const dubTotal = entry.dubSuccessCount + entry.dubFailureCount;
+      if (dubTotal > 0) {
+        const dubRate = entry.dubSuccessCount / dubTotal;
+        score += Math.round((dubRate - 0.5) * 10);
+      }
+    } else {
+      const subTotal = entry.subSuccessCount + entry.subFailureCount;
+      if (subTotal > 0) {
+        const subRate = entry.subSuccessCount / subTotal;
+        score += Math.round((subRate - 0.5) * 10);
+      }
     }
 
     // Latency factor: faster startup earns more points
@@ -142,6 +179,12 @@ class ProviderHealthCache {
       recentStartupMs: entry.recentStartupMs,
       cooldownUntil: entry.cooldownUntil,
       score: this.calculateScore(providerId),
+      variantHealth: {
+        subSuccess: entry.subSuccessCount,
+        subFailures: entry.subFailureCount,
+        dubSuccess: entry.dubSuccessCount,
+        dubFailures: entry.dubFailureCount,
+      },
     };
   }
 

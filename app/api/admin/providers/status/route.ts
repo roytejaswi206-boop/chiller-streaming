@@ -50,6 +50,7 @@ export async function GET() {
           hasCaptions: caps.hasCaptions,
           requiresApiKey: caps.requiresApiKey,
         },
+        pools: p.pools || (caps.supportsAnime ? ["ANIME"] : ["GENERAL"]),
         health: {
           status: health.status,
           latencyMs: health.latencyMs || 0,
@@ -71,9 +72,14 @@ export async function GET() {
       };
     });
 
+    const generalProviders = providers.filter((p) => p.pools.includes("GENERAL"));
+    const animeProviders = providers.filter((p) => p.pools.includes("ANIME"));
+
     return NextResponse.json({
       success: true,
       providers,
+      generalProviders,
+      animeProviders,
       healthStats,
       count: providers.length,
     });

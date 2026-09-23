@@ -214,6 +214,8 @@ model WatchHistory {
   videoId         String?
   video           Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
   tmdbId          Int?
+  anilistId       Int?
+  mediaKey        String?  // e.g. anilist:16498:ep1 or tmdb:tv:100088:s1e1 or tmdb:movie:550
   mediaType       String?  @default("movie") // movie, tv, anime
   title           String?
   posterUrl       String?
@@ -229,6 +231,8 @@ model WatchHistory {
   @@index([userId])
   @@index([videoId])
   @@index([tmdbId])
+  @@index([anilistId])
+  @@index([mediaKey])
   @@index([lastWatchedAt])
   @@map("watch_history")
 }

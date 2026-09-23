@@ -4,6 +4,8 @@ import { selectBestOrigin } from "@/lib/origin-manager";
 import { PlaybackCandidate, PlaybackSource } from "./types";
 import { resolveCandidatesConcurrently } from "./orchestrator";
 import { parseMediaSlug } from "./identity";
+import { resolveAnimePlayback as resolveDedicatedAnimePlayback } from "./anime/anime-resolver";
+import { classifyMedia } from "./media-classifier";
 
 export interface PlaybackResolution {
   sourceType: "OWNED" | "EXTERNAL" | "UNAVAILABLE";
@@ -90,24 +92,27 @@ export async function resolveTVPlayback(
 }
 
 /**
- * Resolves anime episode candidates concurrently with normalized AniList / TMDB identity.
+ * Resolves anime episode candidates concurrently using the dedicated ANIME PLAYBACK POOL.
  */
 export async function resolveAnimePlayback(
   anilistId: number | string,
   episode: number,
-  tmdbId?: number | string
+  tmdbId?: number | string,
+  options: { language?: "sub" | "dub"; preferredAudio?: string; title?: string } = {}
 ): Promise<{ sources: PlaybackSource[]; primarySource: PlaybackSource | null; latencyMs?: number }> {
-  const { candidates, primaryCandidate, fastestMs } = await resolveCandidatesConcurrently({
-    mediaType: "anime",
+  const result = await resolveDedicatedAnimePlayback({
     anilistId,
-    tmdbId: tmdbId || anilistId,
+    tmdbId,
     episode,
+    language: options.language,
+    preferredAudio: options.preferredAudio,
+    title: options.title,
   });
 
   return {
-    sources: candidates,
-    primarySource: primaryCandidate,
-    latencyMs: fastestMs,
+    sources: result.sources,
+    primarySource: result.primarySource,
+    latencyMs: result.latencyMs,
   };
 }
 
@@ -120,7 +125,7 @@ export function parseSlug(slug: string | string[]) {
  */
 export async function resolveContent(
   slug: string | string[],
-  options: { season?: number; episode?: number; language?: "sub" | "dub" } = {}
+  options: { season?: number; episode?: number; language?: "sub" | "dub"; audio?: string } = {}
 ): Promise<PlaybackResolution | null> {
   const parsed = parseMediaSlug(slug);
 
@@ -134,42 +139,77 @@ export async function resolveContent(
     const episode = Math.max(1, options.episode || parsed.episode || 1);
 
     try {
-      if (mediaType === "anime" && parsed.anilistId) {
-        const { AniListContentProvider } = await import("@/lib/content/providers/anilist");
-        const anilistProvider = new AniListContentProvider();
-        const anime = await anilistProvider.getAnime(parsed.anilistId);
+      if (mediaType === "anime") {
+        const { animeMetadataFabric } = await import("@/lib/media/anime/metadata-fabric");
+        const anime = await animeMetadataFabric.getAnime({
+          anilistId: parsed.anilistId,
+          malId: parsed.malId,
+          title: parsed.title,
+        });
 
-        if (anime) {
-          const { sources, primarySource, latencyMs } = await resolveAnimePlayback(
-            parsed.anilistId,
-            episode,
-            parsed.tmdbId
-          );
+        const anilistIdToUse = parsed.anilistId || anime?.identity.ids.anilistId || parsed.tmdbId;
 
-          return {
-            sourceType: sources.length > 0 ? "EXTERNAL" : "UNAVAILABLE",
-            provider: primarySource ? primarySource.providerId : "none",
-            sources,
-            title: anime.title,
-            originalTitle: (anime as any).nativeTitle,
-            overview: anime.overview || "No description provided.",
-            posterUrl: anime.posterUrl || "/placeholder-poster.png",
-            backdropUrl: anime.backdropUrl || "",
-            releaseYear: anime.year || (anime.releaseDate ? anime.releaseDate.split("-")[0] : ""),
-            genres: anime.genres || [],
-            rating: anime.rating || 0,
-            mediaType: "anime",
-            anilistId: parsed.anilistId,
-            tmdbId: parsed.tmdbId,
-            season: 1,
-            episode,
-            totalSeasons: 1,
-            embedUrl: primarySource?.url,
-            recommendations: [],
-            startupLatencyMs: latencyMs,
-            errorMessage: sources.length === 0 ? "Playback is currently unavailable." : undefined,
-          };
-        }
+        const { sources, primarySource, latencyMs } = await resolveAnimePlayback(
+          anilistIdToUse || "0",
+          episode,
+          parsed.tmdbId,
+          { language: options.language, preferredAudio: options.audio, title: anime?.title }
+        );
+
+        const totalEpCount = Math.max(1, anime?.totalEpisodes || (anime as any)?.episodes || 12);
+        const generatedEpisodes = Array.from({ length: totalEpCount }, (_, i) => ({
+          id: i + 1,
+          name: `Episode ${i + 1}`,
+          overview: `Episode ${i + 1} of ${anime?.title || "series"}`,
+          episode_number: i + 1,
+          season_number: 1,
+          still_path: anime?.backdropUrl || anime?.posterUrl || null,
+          vote_average: anime?.rating || 8.0,
+        }));
+
+        const animeSeasonDetails = {
+          _id: `anime-${anilistIdToUse}-s1`,
+          id: 1,
+          name: "Season 1",
+          overview: anime?.overview || "",
+          poster_path: anime?.posterUrl || null,
+          season_number: 1,
+          episodes: generatedEpisodes,
+        };
+
+        const animeSeasons = [
+          {
+            season_number: 1,
+            name: "Season 1",
+            episode_count: totalEpCount,
+          },
+        ];
+
+        return {
+          sourceType: sources.length > 0 ? "EXTERNAL" : "UNAVAILABLE",
+          provider: primarySource ? primarySource.providerId : "none",
+          sources,
+          title: anime?.title || `Anime #${parsed.anilistId}`,
+          originalTitle: (anime as any)?.nativeTitle || anime?.originalTitle,
+          overview: anime?.overview || "No description provided.",
+          posterUrl: anime?.posterUrl || "/placeholder-poster.png",
+          backdropUrl: anime?.backdropUrl || "",
+          releaseYear: anime?.year || (anime?.releaseDate ? anime.releaseDate.split("-")[0] : ""),
+          genres: anime?.genres || ["Animation", "Anime"],
+          rating: anime?.rating || 0,
+          mediaType: "anime",
+          anilistId: parsed.anilistId,
+          tmdbId: parsed.tmdbId,
+          season: 1,
+          episode,
+          totalSeasons: 1,
+          seasons: animeSeasons,
+          currentSeasonDetails: animeSeasonDetails as any,
+          embedUrl: primarySource?.url,
+          recommendations: [],
+          startupLatencyMs: latencyMs,
+          errorMessage: sources.length === 0 ? "Playback is currently unavailable." : undefined,
+        };
       }
 
       if (mediaType === "movie") {
@@ -219,10 +259,10 @@ export async function resolveContent(
         let { sources, primarySource, latencyMs } = playbackData;
 
         // If Japanese animation, also fetch anime candidates concurrently
-        const isAnime =
-          mediaType === "anime" ||
-          ((tvData as any).original_language === "ja" &&
-            tvData.genres?.some((g) => g.id === 16 || g.name === "Animation"));
+        const isAnime = Boolean(
+          (tvData as any).original_language === "ja" &&
+            tvData.genres?.some((g) => g.id === 16 || g.name === "Animation")
+        );
 
         if (isAnime && parsed.anilistId) {
           const animeRes = await resolveAnimePlayback(parsed.anilistId, episode, tmdbId);

@@ -15,6 +15,7 @@ interface ProviderData {
   docsUrl: string;
   envFlag: string;
   setupStatus: string;
+  pools?: string[];
   capabilities: {
     supportsMovie: boolean;
     supportsTV: boolean;
@@ -48,6 +49,7 @@ interface ProviderData {
 export default function AdminProvidersPage() {
   const [providers, setProviders] = useState<ProviderData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPool, setSelectedPool] = useState<"ALL" | "GENERAL" | "ANIME">("ALL");
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -100,6 +102,12 @@ export default function AdminProvidersPage() {
   };
 
   const filteredProviders = providers.filter((p) => {
+    const isAnimeProvider = p.pools?.includes("ANIME") || p.capabilities?.supportsAnime;
+    const isGeneralProvider = p.pools?.includes("GENERAL") || p.capabilities?.supportsMovie || p.capabilities?.supportsTV;
+
+    if (selectedPool === "GENERAL" && !isGeneralProvider) return false;
+    if (selectedPool === "ANIME" && !isAnimeProvider) return false;
+
     const matchesCategory =
       filterCategory === "ALL" || p.category === filterCategory;
     const matchesSearch =
@@ -185,18 +193,24 @@ export default function AdminProvidersPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href="/admin/providers/sources"
-            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition"
+            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition"
           >
             🗺️ Source Mapping
           </Link>
           <Link
             href="/admin/playback-lab"
-            className="px-4 py-2 rounded-xl bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 text-xs font-bold text-white shadow-lg shadow-[#FF3B6B]/20 transition"
+            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition"
           >
-            🧪 Playback Lab
+            🧪 General Lab
+          </Link>
+          <Link
+            href="/admin/playback-lab/anime"
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#8A5CFF] to-[#A78BFA] hover:brightness-110 text-xs font-bold text-white shadow-lg shadow-[#8A5CFF]/25 transition"
+          >
+            ⛩️ Anime Lab
           </Link>
           <button
             onClick={loadProviders}
@@ -208,11 +222,51 @@ export default function AdminProvidersPage() {
         </div>
       </div>
 
+      {/* Dual Playback Pools Selector (Section 30) */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-[#09090C] border border-white/10 w-fit">
+        <button
+          onClick={() => setSelectedPool("ALL")}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            selectedPool === "ALL"
+              ? "bg-white text-black shadow-md"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          All Providers ({providers.length})
+        </button>
+        <button
+          onClick={() => setSelectedPool("GENERAL")}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            selectedPool === "GENERAL"
+              ? "bg-[#FF3B6B] text-white shadow-lg shadow-[#FF3B6B]/25"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <span>🎬 POOL A: GENERAL</span>
+          <span className="text-[10px] opacity-75 font-mono">
+            ({providers.filter((p) => p.pools?.includes("GENERAL") || p.capabilities?.supportsMovie).length})
+          </span>
+        </button>
+        <button
+          onClick={() => setSelectedPool("ANIME")}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            selectedPool === "ANIME"
+              ? "bg-[#8A5CFF] text-white shadow-lg shadow-[#8A5CFF]/25"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <span>⛩️ POOL B: ANIME</span>
+          <span className="text-[10px] opacity-75 font-mono">
+            ({providers.filter((p) => p.pools?.includes("ANIME") || p.capabilities?.supportsAnime).length})
+          </span>
+        </button>
+      </div>
+
       {/* Filter Tabs & Search */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex flex-wrap gap-2">
           {[
-            { id: "ALL", label: "All Providers" },
+            { id: "ALL", label: "All Categories" },
             { id: "VIDEO_HOST", label: "Video Hosts" },
             { id: "SELF_HOSTED", label: "Self-Hosted" },
             { id: "PLATFORM", label: "Platforms / AVOD" },

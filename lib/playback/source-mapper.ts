@@ -32,7 +32,7 @@ export interface MappedSourceRecord {
  * Builds standard canonical mediaKey for mapping
  */
 export function buildMediaKey(
-  mediaType: "movie" | "tv" | "anime",
+  mediaType: "movie" | "tv" | "anime" | "video",
   id: number | string,
   season?: number,
   episode?: number

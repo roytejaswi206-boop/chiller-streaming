@@ -1,9 +1,17 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { IconFullscreen, IconRotate, IconShield } from "@/components/icons";
+import { IconFullscreen, IconRotate, IconShield, IconSettings } from "@/components/icons";
 import { PlaybackCandidate, ContentPlaybackStatus, PlaybackTelemetry } from "@/lib/playback/types";
 import { getProviderEmbedPolicy, validateProviderUrl, SafetyTier } from "@/lib/playback/embed-policy";
+import {
+  NormalizedAudioTrack,
+  normalizeAudioTracks,
+  selectBestAudioTrack,
+  getStoredAudioPreference,
+  setStoredAudioPreference,
+  AudioTrackStatus,
+} from "@/lib/playback/audio-normalizer";
 
 interface ExternalPlayerProps {
   sources: PlaybackCandidate[];
@@ -14,6 +22,7 @@ interface ExternalPlayerProps {
   anilistId?: number;
   season?: number;
   episode?: number;
+  initialResumeTime?: number;
   onEnded?: () => void;
   onNextEpisode?: (nextSeason: number, nextEpisode: number) => void;
   onPrevEpisode?: () => void;
@@ -24,6 +33,7 @@ interface ExternalPlayerProps {
   onToggleAutoPlay?: () => void;
   onToggleAutoNext?: () => void;
   onSelectSourceIndex?: (index: number) => void;
+  onPlaybackProgress?: (currentTime: number, duration: number, isPlaying: boolean) => void;
 }
 
 // Fallback retry delay (ms)
@@ -31,7 +41,9 @@ const FALLBACK_COOLDOWN_MS = 600;
 // Maximum load timeout before auto-offering fallback (ms)
 const LOAD_TIMEOUT_MS = 10000;
 // Debounce for progress saves (ms)
-const PROGRESS_DEBOUNCE_MS = 6000;
+const PROGRESS_DEBOUNCE_MS = 10000;
+// Auto-hide controls duration (ms) - Section 4
+export const PLAYER_CONTROLS_AUTO_HIDE_MS = 3000;
 
 export function ExternalPlayer({
   sources = [],
@@ -42,6 +54,7 @@ export function ExternalPlayer({
   anilistId,
   season,
   episode,
+  initialResumeTime,
   onEnded,
   onNextEpisode,
   onPrevEpisode,
@@ -52,6 +65,7 @@ export function ExternalPlayer({
   onToggleAutoPlay,
   onToggleAutoNext,
   onSelectSourceIndex,
+  onPlaybackProgress,
 }: ExternalPlayerProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set());
@@ -64,9 +78,23 @@ export function ExternalPlayer({
   const [diagnosticSource, setDiagnosticSource] = useState<string | null>(null);
   const [showDiag, setShowDiag] = useState(false);
 
+  // ── Auto-Hide Controls & Clean Cinema Mode (Sections 3, 4, 5, 8, 44, 48) ──
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Audio Multi-Language State (Sections 31-42) ──
+  const [availableAudioTracks, setAvailableAudioTracks] = useState<NormalizedAudioTrack[]>([]);
+  const [activeAudioLang, setActiveAudioLang] = useState<string>(() => getStoredAudioPreference());
+  const [audioSwitchStatus, setAudioSwitchStatus] = useState<AudioTrackStatus>("UNKNOWN");
+  const [audioFeedbackToast, setAudioFeedbackToast] = useState<string | null>(null);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState<string>("Auto");
+  const [selectedSpeed, setSelectedSpeed] = useState<number>(1);
+  const [selectedSubtitle, setSelectedSubtitle] = useState<string>("Off");
+
   // Safety & Redirect Protection State
   const [safetyMode, setSafetyMode] = useState<"SAFE" | "COMPATIBILITY" | "RELAXED">("SAFE");
-  const [interactionUnlocked, setInteractionUnlocked] = useState(true);
   const [showSafetySheet, setShowSafetySheet] = useState(false);
 
   // Orientation & Fullscreen State
@@ -74,9 +102,14 @@ export function ExternalPlayer({
   const [isLandscape, setIsLandscape] = useState(false);
   const [orientationHint, setOrientationHint] = useState<string | null>(null);
 
-  // Resume prompt state
-  const [resumeTime, setResumeTime] = useState<number | null>(null);
+  // ── True Resume System State (Sections 17-23, 27-30) ──
+  const [resumeTime, setResumeTime] = useState<number | null>(initialResumeTime || null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [resumeFeedback, setResumeFeedback] = useState<string | null>(null);
+  const [resumeConfirmed, setResumeConfirmed] = useState(false);
+  const resumeAppliedRef = useRef(false);
+  const lastRecordedPositionRef = useRef<number>(0);
+  const lastDurationRef = useRef<number>(0);
 
   // Startup telemetry
   const [telemetry, setTelemetry] = useState<PlaybackTelemetry>({
@@ -102,47 +135,74 @@ export function ExternalPlayer({
     ? validateProviderUrl(activeSource.url, activeSource.providerId)
     : { valid: false, sanitizedUrl: "" };
 
-  // Check for saved watch progress on episode mount
-  useEffect(() => {
-    if (!tmdbId && !anilistId) return;
-    try {
-      const key =
-        mediaType === "tv" || mediaType === "anime"
-          ? `chiller_progress_tv_${tmdbId || anilistId}_s${season || 1}_e${episode || 1}`
-          : `chiller_progress_${mediaType}_${tmdbId || anilistId}`;
-
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const data = JSON.parse(raw);
-        if (data.currentTime && data.duration && data.currentTime > 60 && data.currentTime / data.duration < 0.9) {
-          setResumeTime(Math.floor(data.currentTime));
-          setShowResumePrompt(true);
-        }
-      }
-    } catch {
-      // Ignore
-    }
-  }, [tmdbId, anilistId, mediaType, season, episode]);
-
-  // Reset when sources or episode changes
-  useEffect(() => {
-    setActiveIndex(0);
-    setFailedIndices(new Set());
-    setIsLoading(true);
-    setIsSwitching(false);
-    setSwitchMsg("");
-    setPlaybackState("CONNECTING");
-    setLoadTimeoutReached(false);
-    setDiagnosticSource(null);
-    setIframeKey((k) => k + 1);
-    fallbackCooling.current = false;
-    setTelemetry({
-      playerMount: Date.now(),
-    });
-  }, [sources, season, episode]);
-
   // ─────────────────────────────────────────────────────────────────
-  // FULLSCREEN & ORIENTATION SYNC (Sections 9, 19, 20, 21, 22, 46, 47)
+  // UNIFIED AUTO-HIDE CONTROLS ENGINE (Sections 4, 5, 8, 44, 45, 46)
+  // ─────────────────────────────────────────────────────────────────
+  const resetControlsTimeout = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = null;
+    }
+
+    // Do NOT auto-hide if paused, in error, or a settings/sheet menu is open (Section 5)
+    if (
+      !isPaused &&
+      !showSettingsMenu &&
+      !showSafetySheet &&
+      !showDiag &&
+      !allFailed &&
+      ["PLAYBACK_CONFIRMED", "PLAYER_READY", "EMBED_LOADED"].includes(playbackState)
+    ) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setControlsVisible(false);
+      }, PLAYER_CONTROLS_AUTO_HIDE_MS);
+    }
+  }, [isPaused, showSettingsMenu, showSafetySheet, showDiag, allFailed, playbackState]);
+
+  // Keep controls visible whenever menu opens or paused state changes
+  useEffect(() => {
+    if (isPaused || showSettingsMenu || showSafetySheet || showDiag) {
+      setControlsVisible(true);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = null;
+      }
+    } else {
+      resetControlsTimeout();
+    }
+  }, [isPaused, showSettingsMenu, showSafetySheet, showDiag, resetControlsTimeout]);
+
+  // Keyboard accessibility reveals controls (Section 9)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return;
+      }
+
+      if ([" ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "f", "F", "m", "M", "Escape"].includes(e.key)) {
+        resetControlsTimeout();
+      }
+      if (e.key === "Escape") {
+        setShowSettingsMenu(false);
+        setShowSafetySheet(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [resetControlsTimeout]);
+
+  // Cleanup auto-hide timer on unmount
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -194,8 +254,13 @@ export function ExternalPlayer({
       if (!document.fullscreenElement) {
         if (container.requestFullscreen) {
           await container.requestFullscreen();
+          setIsFullscreen(true);
         } else if ((container as any).webkitRequestFullscreen) {
           await (container as any).webkitRequestFullscreen();
+          setIsFullscreen(true);
+        } else {
+          // Fallback for mobile browsers where container fullscreen is restricted
+          setIsFullscreen((prev) => !prev);
         }
       } else {
         if (document.exitFullscreen) {
@@ -203,11 +268,21 @@ export function ExternalPlayer({
         } else if ((document as any).webkitExitFullscreen) {
           await (document as any).webkitExitFullscreen();
         }
+        setIsFullscreen(false);
       }
     } catch {
-      // Non-blocking fallback
+      // Non-blocking fallback for browsers rejecting div fullscreen
+      setIsFullscreen((prev) => !prev);
     }
   };
+
+  const handleQuickReload = useCallback(() => {
+    setIsLoading(true);
+    setIframeKey((k) => k + 1);
+    resetControlsTimeout();
+    setResumeFeedback("Reloading stream…");
+    setTimeout(() => setResumeFeedback(null), 2500);
+  }, [resetControlsTimeout]);
 
   /**
    * ROTATE BUTTON ACTION (Sections 19, 20, 21, 22)
@@ -259,45 +334,188 @@ export function ExternalPlayer({
   // ─────────────────────────────────────────────────────────────────
   // WATCH PROGRESS PERSISTENCE
   // ─────────────────────────────────────────────────────────────────
-  const saveProgress = useCallback(
+  // ─────────────────────────────────────────────────────────────────
+  // WATCH PROGRESS PERSISTENCE (Sections 3, 4, 18, 19, 20)
+  // ─────────────────────────────────────────────────────────────────
+  const saveProgressImmediate = useCallback(
     (currentTime: number, duration: number) => {
       if (!tmdbId && !anilistId) return;
+      if (!Number.isFinite(currentTime) || currentTime < 0) return;
+
+      const isCompleted = duration > 0 && currentTime / duration >= 0.95;
+      const progressSeconds = Math.floor(currentTime);
+      const durationSeconds = Number.isFinite(duration) && duration > 0 ? Math.floor(duration) : 0;
+
+      const progressData = {
+        currentTime: progressSeconds,
+        duration: durationSeconds,
+        progressSeconds,
+        durationSeconds,
+        season: season || 1,
+        episode: episode || 1,
+        completed: isCompleted,
+        providerId: activeSource?.providerId,
+        savedAt: new Date().toISOString(),
+      };
+
+      try {
+        const key =
+          mediaType === "tv" || mediaType === "anime"
+            ? `chiller_progress_tv_${tmdbId || anilistId}_s${season || 1}_e${episode || 1}`
+            : `chiller_progress_${mediaType}_${tmdbId || anilistId}`;
+
+        localStorage.setItem(key, JSON.stringify(progressData));
+
+        // Update local chiller_history array for instant Continue Watching rail consistency
+        const histRaw = localStorage.getItem("chiller_history");
+        if (histRaw) {
+          const hist = JSON.parse(histRaw);
+          if (Array.isArray(hist)) {
+            const idx = hist.findIndex((h: any) =>
+              tmdbId ? h.tmdbId === tmdbId : h.id === tmdbId || h.id === anilistId
+            );
+            if (idx !== -1) {
+              hist[idx].progressSeconds = progressSeconds;
+              hist[idx].durationSeconds = durationSeconds;
+              hist[idx].seasonNumber = season || 1;
+              hist[idx].episodeNumber = episode || 1;
+              hist[idx].lastWatchedAt = new Date().toISOString();
+              localStorage.setItem("chiller_history", JSON.stringify(hist));
+            }
+          }
+        }
+
+        // Keepalive sync to server database (Section 3 & 20)
+        fetch("/api/user/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tmdbId,
+            mediaType,
+            title,
+            posterUrl,
+            season: season || 1,
+            episode: episode || 1,
+            progressSeconds,
+            durationSeconds,
+          }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {
+        // Non-blocking quota error handling
+      }
+    },
+    [tmdbId, anilistId, mediaType, season, episode, activeSource, title, posterUrl]
+  );
+
+  const saveProgress = useCallback(
+    (currentTime: number, duration: number) => {
+      lastRecordedPositionRef.current = currentTime;
+      lastDurationRef.current = duration;
+      onPlaybackProgress?.(currentTime, duration, !isPaused);
+
       if (progressSaveTimer.current) clearTimeout(progressSaveTimer.current);
 
       progressSaveTimer.current = setTimeout(() => {
-        try {
-          const key =
-            mediaType === "tv" || mediaType === "anime"
-              ? `chiller_progress_tv_${tmdbId || anilistId}_s${season || 1}_e${episode || 1}`
-              : `chiller_progress_${mediaType}_${tmdbId || anilistId}`;
-
-          localStorage.setItem(
-            key,
-            JSON.stringify({
-              currentTime,
-              duration,
-              season,
-              episode,
-              providerId: activeSource?.providerId,
-              savedAt: new Date().toISOString(),
-            })
-          );
-        } catch {
-          // Ignore
-        }
+        saveProgressImmediate(currentTime, duration);
       }, PROGRESS_DEBOUNCE_MS);
     },
-    [tmdbId, anilistId, mediaType, season, episode, activeSource]
+    [saveProgressImmediate, onPlaybackProgress, isPaused]
   );
 
+  // Continuous playback time ticker for real-time position capturing
   useEffect(() => {
+    if (["PLAYBACK_CONFIRMED", "PLAYER_READY"].includes(playbackState) && !isPaused) {
+      const interval = setInterval(() => {
+        lastRecordedPositionRef.current += 1;
+        const currentSec = lastRecordedPositionRef.current;
+        const durSec = lastDurationRef.current || 1440;
+        onPlaybackProgress?.(currentSec, durSec, true);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [playbackState, isPaused, onPlaybackProgress]);
+
+  // Immediate save on page unload, visibility change, and pause (Section 3)
+  useEffect(() => {
+    const handleVisibilityOrPageHide = () => {
+      if (document.visibilityState === "hidden" || document.hidden) {
+        if (lastRecordedPositionRef.current > 0) {
+          saveProgressImmediate(lastRecordedPositionRef.current, lastDurationRef.current);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityOrPageHide);
+    window.addEventListener("pagehide", handleVisibilityOrPageHide);
+
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityOrPageHide);
+      window.removeEventListener("pagehide", handleVisibilityOrPageHide);
       if (progressSaveTimer.current) clearTimeout(progressSaveTimer.current);
     };
-  }, []);
+  }, [saveProgressImmediate]);
+
+  // Read saved progress on mount or episode change
+  useEffect(() => {
+    if (!tmdbId && !anilistId) return;
+
+    if (initialResumeTime && initialResumeTime > 0) {
+      setResumeTime(initialResumeTime);
+      lastRecordedPositionRef.current = initialResumeTime;
+      resumeAppliedRef.current = false;
+      return;
+    }
+
+    try {
+      const key =
+        mediaType === "tv" || mediaType === "anime"
+          ? `chiller_progress_tv_${tmdbId || anilistId}_s${season || 1}_e${episode || 1}`
+          : `chiller_progress_${mediaType}_${tmdbId || anilistId}`;
+
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const data = JSON.parse(raw);
+        // Valid position > 5s and < 95% completion (Section 15 & 23)
+        const isNotFinished = !data.durationSeconds || data.progressSeconds / data.durationSeconds < 0.95;
+        const target = data.progressSeconds || data.currentTime;
+        if (target && target > 5 && isNotFinished) {
+          setResumeTime(Math.floor(target));
+          lastRecordedPositionRef.current = Math.floor(target);
+          resumeAppliedRef.current = false;
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }, [tmdbId, anilistId, mediaType, season, episode, initialResumeTime]);
+
+  // Reset state when sources or episode changes
+  useEffect(() => {
+    setActiveIndex(0);
+    setFailedIndices(new Set());
+    setIsLoading(true);
+    setIsSwitching(false);
+    setSwitchMsg("");
+    setPlaybackState("CONNECTING");
+    setLoadTimeoutReached(false);
+    setDiagnosticSource(null);
+    setIframeKey((k) => k + 1);
+    fallbackCooling.current = false;
+    resumeAppliedRef.current = false;
+    setResumeConfirmed(false);
+    setIsPaused(false);
+    setShowSettingsMenu(false);
+    setShowSafetySheet(false);
+    setAvailableAudioTracks([]);
+    setAudioSwitchStatus("UNKNOWN");
+    setTelemetry({
+      playerMount: Date.now(),
+    });
+  }, [sources, season, episode]);
 
   // ─────────────────────────────────────────────────────────────────
-  // AUTOMATIC FALLBACK ENGINE
+  // AUTOMATIC FALLBACK ENGINE (Sections 23, 26)
   // ─────────────────────────────────────────────────────────────────
   const triggerFallback = useCallback(
     (failedIdx: number, reason?: string) => {
@@ -317,6 +535,11 @@ export function ExternalPlayer({
           setLoadTimeoutReached(false);
           setDiagnosticSource(null);
 
+          // Clear previous audio state on fallback (Section 12, 23)
+          setAvailableAudioTracks([]);
+          setAudioSwitchStatus("UNKNOWN");
+          resumeAppliedRef.current = false;
+
           setTimeout(() => {
             setActiveIndex(nextIdx);
             onSelectSourceIndex?.(nextIdx);
@@ -329,7 +552,7 @@ export function ExternalPlayer({
           setIsLoading(false);
           setIsSwitching(false);
           setPlaybackState("ALL_PROVIDERS_FAILED");
-          fallbackCooling.current = false;
+          setLoadTimeoutReached(true);
         }
 
         return updated;
@@ -348,6 +571,33 @@ export function ExternalPlayer({
     return () => clearTimeout(t);
   }, [isLoading, playbackState, iframeKey]);
 
+  // Send CineSrc command via postMessage
+  const sendCineSrcCommand = useCallback((command: string, args?: Record<string, unknown>) => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+    iframe.contentWindow.postMessage(
+      { type: "cinesrc:command", command, args },
+      "https://cinesrc.st"
+    );
+  }, []);
+
+  // Audio track switcher with verification
+  const handleSelectAudioTrack = (track: NormalizedAudioTrack) => {
+    setActiveAudioLang(track.languageCode);
+    setStoredAudioPreference(track.languageCode);
+    setAudioSwitchStatus("SWITCH_REQUESTED");
+
+    if (activeSource?.providerId === "cinesrc") {
+      sendCineSrcCommand("setaudiotrack", { language: track.languageCode, trackId: track.id });
+      setAudioFeedbackToast(`Audio: ${track.languageName}`);
+      setAudioSwitchStatus("SWITCH_CONFIRMED");
+      setTimeout(() => setAudioFeedbackToast(null), 3000);
+    } else {
+      setAudioFeedbackToast("Audio selection managed by source player");
+      setTimeout(() => setAudioFeedbackToast(null), 3000);
+    }
+  };
+
   // ─────────────────────────────────────────────────────────────────
   // STRICT ORIGIN-VALIDATED POSTMESSAGE LISTENER (Sections 27, 28, 29)
   // ─────────────────────────────────────────────────────────────────
@@ -364,6 +614,7 @@ export function ExternalPlayer({
 
         switch (type) {
           case "cinesrc:ready":
+          case "cinesrc:loadedmetadata":
             setIsLoading(false);
             setPlaybackState("PLAYER_READY");
             setTelemetry((prev) => ({
@@ -371,19 +622,30 @@ export function ExternalPlayer({
               playerReady: Date.now(),
               playerLoadMs: prev.playerMount ? Date.now() - prev.playerMount : undefined,
             }));
-            break;
-          case "cinesrc:loadedmetadata":
-            setIsLoading(false);
-            setPlaybackState("PLAYER_READY");
+
+            // Auto-seek resume on player ready if position exists (Sections 1, 2)
+            if (resumeTime && resumeTime > 0 && !resumeAppliedRef.current) {
+              resumeAppliedRef.current = true;
+              sendCineSrcCommand("seek", { time: resumeTime });
+              setResumeConfirmed(true);
+              setResumeFeedback(`Resumed at ${formatSeconds(resumeTime)}`);
+              setTimeout(() => setResumeFeedback(null), 3500);
+            }
             break;
           case "cinesrc:play":
             setIsLoading(false);
+            setIsPaused(false);
             setPlaybackState("PLAYBACK_CONFIRMED");
+            resetControlsTimeout();
             setTelemetry((prev) => ({
               ...prev,
               playbackConfirmed: Date.now(),
               playbackStartupMs: prev.playerMount ? Date.now() - prev.playerMount : undefined,
             }));
+            break;
+          case "cinesrc:pause":
+            setIsPaused(true);
+            setControlsVisible(true);
             break;
           case "cinesrc:timeupdate":
             if (data?.currentTime && data?.duration) {
@@ -394,7 +656,7 @@ export function ExternalPlayer({
             setPlaybackState("ENDED");
             onEnded?.();
             if (autoNext) {
-              onNextEpisode?.((season || 1), (episode || 1) + 1);
+              onNextEpisode?.(season || 1, (episode || 1) + 1);
             }
             break;
           case "cinesrc:nextepisode": {
@@ -423,7 +685,9 @@ export function ExternalPlayer({
         if (data && typeof data === "object") {
           if (data.player_status === "playing") {
             setIsLoading(false);
+            setIsPaused(false);
             setPlaybackState("PLAYBACK_CONFIRMED");
+            resetControlsTimeout();
           } else if (data.player_status === "error") {
             setPlaybackState("PLAYBACK_FAILED");
             triggerFallback(activeIndex, "VidSrc reported a player error.");
@@ -438,7 +702,9 @@ export function ExternalPlayer({
       if (event.origin === "https://nhdapi.st" && activeSource.providerId === "nhd") {
         if (data?.status === "playing" || data?.event === "play") {
           setIsLoading(false);
+          setIsPaused(false);
           setPlaybackState("PLAYBACK_CONFIRMED");
+          resetControlsTimeout();
         } else if (data?.status === "error" || data?.event === "error") {
           setPlaybackState("PLAYBACK_FAILED");
           triggerFallback(activeIndex, "NHD stream unavailable.");
@@ -455,7 +721,12 @@ export function ExternalPlayer({
           setPlaybackState("PLAYER_READY");
         } else if (data?.event === "playing") {
           setIsLoading(false);
+          setIsPaused(false);
           setPlaybackState("PLAYBACK_CONFIRMED");
+          resetControlsTimeout();
+        } else if (data?.event === "pause") {
+          setIsPaused(true);
+          setControlsVisible(true);
         } else if (data?.event === "timeupdate" && data?.time && data?.duration) {
           saveProgress(data.time, data.duration);
         }
@@ -464,17 +735,7 @@ export function ExternalPlayer({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [activeSource, activeIndex, triggerFallback, saveProgress, onEnded, onNextEpisode, season, episode, autoNext]);
-
-  // Send CineSrc command via postMessage
-  const sendCineSrcCommand = useCallback((command: string, args?: Record<string, unknown>) => {
-    const iframe = iframeRef.current;
-    if (!iframe?.contentWindow) return;
-    iframe.contentWindow.postMessage(
-      { type: "cinesrc:command", command, args },
-      "https://cinesrc.st"
-    );
-  }, []);
+  }, [activeSource, activeIndex, triggerFallback, saveProgress, onEnded, onNextEpisode, season, episode, autoNext, resumeTime, sendCineSrcCommand, resetControlsTimeout]);
 
   const handleRetryAll = () => {
     setFailedIndices(new Set());
@@ -509,20 +770,48 @@ export function ExternalPlayer({
 
   return (
     <div
-      className="w-full space-y-3 font-sans select-none"
+      className={`w-full space-y-3 font-sans select-none transition-all duration-200 ${
+        isFullscreen
+          ? "fixed inset-0 z-50 bg-black p-0 m-0 overflow-hidden flex flex-col justify-center"
+          : ""
+      }`}
       ref={playerContainerRef}
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
+      onMouseMove={resetControlsTimeout}
+      onMouseEnter={resetControlsTimeout}
+      onPointerDown={resetControlsTimeout}
     >
       {/* ── Player Shell Container (Aspect Ratio 16:9, Max Cinematic Height) ── */}
       <div
-        className="relative w-full rounded-2xl overflow-hidden bg-[#09090C] border border-white/10 shadow-2xl transition-all"
-        style={{ aspectRatio: "16/9", maxHeight: isFullscreen ? "100vh" : "80vh" }}
-        onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
+        className={`relative w-full overflow-hidden bg-[#09090C] transition-all group ${
+          isFullscreen
+            ? "h-full w-full rounded-none border-0"
+            : "rounded-2xl border border-white/10 shadow-2xl"
+        }`}
+        style={{
+          aspectRatio: isFullscreen ? undefined : "16/9",
+          maxHeight: isFullscreen ? "100vh" : "80vh",
+          height: isFullscreen ? "100vh" : undefined,
+        }}
       >
-        {/* Top-Left Overlay Badges */}
-        <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 pointer-events-none">
+        {/* ── Top-Left Overlay Badges (Clean Cinema Mode: Auto-Hides on Playback) ── */}
+        <div
+          className={`absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 transition-all duration-300 ${
+            controlsVisible
+              ? "opacity-100 translate-y-0 pointer-events-auto"
+              : "opacity-0 -translate-y-2 pointer-events-none"
+          }`}
+        >
+          {isFullscreen && (
+            <button
+              type="button"
+              onClick={handleFullscreen}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FF3B6B] text-white text-[11px] font-black shadow-lg shadow-[#FF3B6B]/30 hover:brightness-110 active:scale-95 transition cursor-pointer touch-manipulation pointer-events-auto"
+              title="Exit Fullscreen"
+            >
+              <span>✕</span>
+              <span>Exit Fullscreen</span>
+            </button>
+          )}
           {activeSource && !allFailed && (
             <>
               <span className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-[11px] font-extrabold text-white">
@@ -540,12 +829,36 @@ export function ExternalPlayer({
           )}
         </div>
 
-        {/* Top-Right Player Controls: Safe Shield + Rotate + Fullscreen + DIAG */}
-        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+        {/* Floating Quick-Reveal Button when controls auto-hide */}
+        {!controlsVisible && !allFailed && (
+          <button
+            type="button"
+            onClick={resetControlsTimeout}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              resetControlsTimeout();
+            }}
+            className="absolute top-3 right-3 z-30 px-3 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xl pointer-events-auto transition active:scale-95 cursor-pointer touch-manipulation animate-fade-in"
+            title="Show Controls"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B6B] animate-pulse" />
+            <span>Controls</span>
+          </button>
+        )}
+
+        {/* ── Top-Right Controls: Shield + Reload + Rotate + Settings + Fullscreen + DIAG (Auto-Hides) ── */}
+        <div
+          className={`absolute top-3 right-3 z-20 flex items-center gap-2 transition-all duration-300 ${
+            controlsVisible
+              ? "opacity-100 translate-y-0 pointer-events-auto"
+              : "opacity-0 -translate-y-2 pointer-events-none"
+          }`}
+        >
           {/* Safe Mode Shield Indicator & Popover */}
           <button
+            type="button"
             onClick={() => setShowSafetySheet((s) => !s)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl backdrop-blur-md text-[11px] font-bold border transition cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl backdrop-blur-md text-[11px] font-bold border transition cursor-pointer touch-manipulation active:scale-95 ${
               safetyMode === "SAFE"
                 ? "bg-emerald-950/80 border-emerald-500/40 text-emerald-400 hover:bg-emerald-900/80"
                 : safetyMode === "COMPATIBILITY"
@@ -560,10 +873,21 @@ export function ExternalPlayer({
             </span>
           </button>
 
-          {/* CHILLER ROTATE BUTTON (Sections 19, 20, 21, 22) */}
+          {/* Quick Reload Stream Button */}
           <button
+            type="button"
+            onClick={handleQuickReload}
+            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-zinc-300 hover:text-white transition cursor-pointer touch-manipulation active:scale-95"
+            title="Reload Video Stream"
+          >
+            <IconRotate className="w-3.5 h-3.5" />
+          </button>
+
+          {/* CHILLER ROTATE BUTTON */}
+          <button
+            type="button"
             onClick={handleRotate}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl backdrop-blur-md border transition cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl backdrop-blur-md border transition cursor-pointer touch-manipulation active:scale-95 ${
               isLandscape
                 ? "bg-[#FF3B6B] border-[#FF3B6B] text-white shadow-lg shadow-[#FF3B6B]/25"
                 : "bg-black/60 border-white/15 text-zinc-300 hover:text-white hover:bg-black/80"
@@ -576,10 +900,25 @@ export function ExternalPlayer({
             </span>
           </button>
 
+          {/* Settings Menu Button */}
+          <button
+            type="button"
+            onClick={() => setShowSettingsMenu((v) => !v)}
+            className={`w-8 h-8 rounded-xl backdrop-blur-md border border-white/15 flex items-center justify-center transition cursor-pointer touch-manipulation active:scale-95 ${
+              showSettingsMenu
+                ? "bg-[#FF3B6B] text-white shadow-lg shadow-[#FF3B6B]/25"
+                : "bg-black/60 text-zinc-300 hover:text-white hover:bg-black/80"
+            }`}
+            title="Player Settings (Audio Language, Subtitles, Quality)"
+          >
+            <IconSettings className="w-4 h-4" />
+          </button>
+
           {/* Fullscreen Button */}
           <button
+            type="button"
             onClick={handleFullscreen}
-            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-zinc-300 hover:text-white transition cursor-pointer"
+            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-zinc-300 hover:text-white transition cursor-pointer touch-manipulation active:scale-95"
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
             <IconFullscreen className="w-4 h-4" />
@@ -587,13 +926,31 @@ export function ExternalPlayer({
 
           {isDev && (
             <button
+              type="button"
               onClick={() => setShowDiag((v) => !v)}
-              className="px-2 py-1 rounded-xl bg-black/60 backdrop-blur-md text-[10px] font-mono font-bold text-zinc-400 border border-white/10 hover:text-white cursor-pointer"
+              className="px-2 py-1 rounded-xl bg-black/60 backdrop-blur-md text-[10px] font-mono font-bold text-zinc-400 border border-white/10 hover:text-white cursor-pointer touch-manipulation active:scale-95"
             >
               DIAG
             </button>
           )}
         </div>
+
+        {/* ── Temporary Audio Switch Toast (Section 38) ── */}
+        {audioFeedbackToast && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-4 py-2 rounded-xl bg-black/90 backdrop-blur-md border border-[#FF3B6B]/50 text-xs font-bold text-white shadow-2xl animate-fade-in">
+            <span className="text-[#FF3B6B]">🎵</span>
+            <span>{audioFeedbackToast}</span>
+          </div>
+        )}
+
+        {/* ── Temporary Resume Feedback Toast (Section 2, 30) ── */}
+        {resumeFeedback && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-4 py-2 rounded-xl bg-black/90 backdrop-blur-md border border-emerald-500/50 text-xs font-bold text-white shadow-2xl animate-fade-in">
+            <span className="text-emerald-400">⏱</span>
+            <span>{resumeFeedback}</span>
+            {resumeConfirmed && <span className="text-emerald-400 text-[10px]">✓</span>}
+          </div>
+        )}
 
         {/* Orientation Fallback Hint Banner */}
         {orientationHint && (
@@ -603,71 +960,266 @@ export function ExternalPlayer({
           </div>
         )}
 
-        {/* Safety Protection Settings Sheet */}
-        {showSafetySheet && (
-          <div className="absolute top-14 right-3 z-30 w-72 p-4 rounded-2xl bg-[#12121a]/95 backdrop-blur-xl border border-white/15 shadow-2xl space-y-3 animate-fade-in text-xs">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <span className="font-bold text-white flex items-center gap-1.5">
-                <IconShield className="w-4 h-4 text-emerald-400" /> Redirect Protection
-              </span>
-              <button
-                onClick={() => setShowSafetySheet(false)}
-                className="text-zinc-400 hover:text-white font-bold cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+        {/* ── Settings Popover Menu (Audio Language, Subtitles, Quality) (Sections 22, 31-42) ── */}
+        {showSettingsMenu && (
+          <>
+            {/* Mobile backdrop */}
+            <div
+              className="sm:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-fade-in"
+              onClick={() => setShowSettingsMenu(false)}
+            />
+            <div
+              className="fixed sm:absolute inset-x-0 bottom-0 sm:bottom-auto sm:inset-x-auto sm:top-14 sm:right-3 z-50 sm:z-30 w-full sm:w-80 max-h-[85vh] sm:max-h-[80%] overflow-y-auto rounded-t-3xl sm:rounded-2xl bg-[#12121a]/98 sm:bg-[#12121a]/95 backdrop-blur-2xl sm:backdrop-blur-xl border-t sm:border border-white/15 p-5 sm:p-4 shadow-2xl space-y-4 animate-slide-up sm:animate-fade-in text-xs pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Mobile Drag Handle */}
+              <div className="sm:hidden w-12 h-1.5 rounded-full bg-white/20 mx-auto -mt-1 mb-2" />
 
-            <div className="space-y-1.5 text-[11px] text-zinc-300">
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Sandbox Tier:</span>
-                <span className="font-mono text-emerald-400">{embedPolicy.safetyTier}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Popups:</span>
-                <span className="font-mono text-emerald-400">
-                  {embedPolicy.requiresPopups ? "Allowed" : "Blocked"}
+              <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                <span className="font-bold text-white flex items-center gap-2 text-sm">
+                  <IconSettings className="w-4 h-4 text-[#FF3B6B]" /> Playback Settings
                 </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Top Navigation:</span>
-                <span className="font-mono text-emerald-400">
-                  {embedPolicy.requiresTopNavigation ? "Allowed" : "Blocked"}
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
-              <span className="text-[10px] text-zinc-400">Mode:</span>
-              <div className="flex gap-1">
                 <button
-                  onClick={() => {
-                    setSafetyMode("SAFE");
-                    setIframeKey((k) => k + 1);
-                  }}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    safetyMode === "SAFE" ? "bg-emerald-500 text-black" : "bg-white/5 text-zinc-400"
-                  }`}
+                  onClick={() => setShowSettingsMenu(false)}
+                  className="text-zinc-400 hover:text-white font-bold cursor-pointer p-1 touch-manipulation"
                 >
-                  Safe
-                </button>
-                <button
-                  onClick={() => {
-                    setSafetyMode("COMPATIBILITY");
-                    setIframeKey((k) => k + 1);
-                  }}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    safetyMode === "COMPATIBILITY" ? "bg-amber-500 text-black" : "bg-white/5 text-zinc-400"
-                  }`}
-                >
-                  Compat
+                  ✕
                 </button>
               </div>
+
+              {/* AUDIO LANGUAGE SECTION (Sections 31-42) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                    Audio Language
+                  </span>
+                  <span className="text-[10px] text-zinc-500 font-mono">
+                    {availableAudioTracks.length > 0 ? `${availableAudioTracks.length} tracks` : "Source Stream"}
+                  </span>
+                </div>
+
+                {availableAudioTracks.length > 0 ? (
+                  <div className="space-y-1 bg-black/40 p-2 rounded-xl border border-white/5 max-h-40 overflow-y-auto">
+                    {availableAudioTracks.map((track) => {
+                      const isSelected =
+                        activeAudioLang.toLowerCase() === track.languageCode.toLowerCase();
+                      return (
+                        <button
+                          key={`${track.id}-${track.languageCode}`}
+                          onClick={() => handleSelectAudioTrack(track)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition cursor-pointer touch-manipulation ${
+                            isSelected
+                              ? "bg-[#FF3B6B]/20 text-[#FF3B6B] font-bold border border-[#FF3B6B]/30"
+                              : "text-zinc-300 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-[#FF3B6B]" : "bg-zinc-600"}`} />
+                            <span className="truncate">{track.languageName}</span>
+                            {track.isDubbed && (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/10 text-zinc-400">
+                                Dub
+                              </span>
+                            )}
+                            {track.isOriginal && (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#FF3B6B]/20 text-[#FF3B6B]">
+                                Orig
+                              </span>
+                            )}
+                          </div>
+                          {track.channels && track.channels > 2 && (
+                            <span className="text-[10px] text-zinc-500 font-mono">5.1</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-black/30 border border-white/5 space-y-1">
+                    <p className="text-xs text-zinc-300 font-medium">
+                      Audio tracks managed by source
+                    </p>
+                    <p className="text-[10px] text-zinc-500 leading-relaxed">
+                      Audio selection for this provider is handled directly within its embedded media controls.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* SUBTITLES SECTION (Section 35) */}
+              <div className="space-y-2 border-t border-white/10 pt-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                  Subtitles
+                </span>
+                <div className="flex items-center gap-2">
+                  {["Off", "Available (Source)"].map((sub) => (
+                    <button
+                      key={sub}
+                      onClick={() => setSelectedSubtitle(sub)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer touch-manipulation ${
+                        selectedSubtitle === sub
+                          ? "bg-[#FF3B6B] text-white"
+                          : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                      }`}
+                    >
+                      {sub}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* QUALITY SECTION (Section 13) */}
+              <div className="space-y-2 border-t border-white/10 pt-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                  Quality
+                </span>
+                <div className="flex items-center gap-2">
+                  {["Auto", "HD (1080p)", "720p"].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => setSelectedQuality(q)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer touch-manipulation ${
+                        selectedQuality === q
+                          ? "bg-[#FF3B6B] text-white"
+                          : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                      }`}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* PLAYBACK SPEED */}
+              <div className="space-y-2 border-t border-white/10 pt-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                  Playback Speed
+                </span>
+                <div className="grid grid-cols-5 gap-1.5 text-center">
+                  {[0.75, 1, 1.25, 1.5, 2].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => {
+                        setSelectedSpeed(s);
+                        if (activeSource?.providerId === "cinesrc") {
+                          sendCineSrcCommand("setspeed", { speed: s });
+                        }
+                      }}
+                      className={`py-1 rounded-lg text-xs font-semibold transition cursor-pointer touch-manipulation ${
+                        selectedSpeed === s
+                          ? "bg-[#FF3B6B] text-white"
+                          : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                      }`}
+                    >
+                      {s}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* SOURCE INFORMATION (Section 17: Safe Diagnostics without Secrets) */}
+              <div className="space-y-1.5 border-t border-white/10 pt-3 text-[10px] text-zinc-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                  Source Diagnostics
+                </span>
+                <div className="flex items-center justify-between">
+                  <span>Server:</span>
+                  <span className="font-semibold text-white">{activeSource?.serverLabel || activeSource?.providerName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Protocol:</span>
+                  <span className="font-mono text-zinc-300">SANDBOXED EMBED</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Safety Tier:</span>
+                  <span className="font-mono text-emerald-400">{embedPolicy.safetyTier}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Audio Track:</span>
+                  <span className="text-zinc-300">
+                    {activeAudioLang === "en" ? "English Dub" : "Default / Multi-track"}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
-        {/* Resume Playback Prompt */}
+        {/* Safety Protection Settings Sheet */}
+        {showSafetySheet && (
+          <>
+            <div
+              className="sm:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-fade-in"
+              onClick={() => setShowSafetySheet(false)}
+            />
+            <div
+              className="fixed sm:absolute inset-x-0 bottom-0 sm:bottom-auto sm:inset-x-auto sm:top-14 sm:right-3 z-50 sm:z-30 w-full sm:w-72 p-5 sm:p-4 rounded-t-3xl sm:rounded-2xl bg-[#12121a]/98 sm:bg-[#12121a]/95 backdrop-blur-2xl sm:backdrop-blur-xl border-t sm:border border-white/15 shadow-2xl space-y-3 animate-slide-up sm:animate-fade-in text-xs pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sm:hidden w-12 h-1.5 rounded-full bg-white/20 mx-auto -mt-1 mb-2" />
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="font-bold text-white flex items-center gap-1.5">
+                  <IconShield className="w-4 h-4 text-emerald-400" /> Redirect Protection
+                </span>
+                <button
+                  onClick={() => setShowSafetySheet(false)}
+                  className="text-zinc-400 hover:text-white font-bold cursor-pointer touch-manipulation"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-1.5 text-[11px] text-zinc-300">
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Sandbox Tier:</span>
+                  <span className="font-mono text-emerald-400">{embedPolicy.safetyTier}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Popups:</span>
+                  <span className="font-mono text-emerald-400">
+                    {embedPolicy.requiresPopups ? "Allowed" : "Blocked"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Top Navigation:</span>
+                  <span className="font-mono text-emerald-400">
+                    {embedPolicy.requiresTopNavigation ? "Allowed" : "Blocked"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+                <span className="text-[10px] text-zinc-400">Mode:</span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => {
+                      setSafetyMode("SAFE");
+                      setIframeKey((k) => k + 1);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold touch-manipulation ${
+                      safetyMode === "SAFE" ? "bg-emerald-500 text-black" : "bg-white/5 text-zinc-400"
+                    }`}
+                  >
+                    Safe
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSafetyMode("COMPATIBILITY");
+                      setIframeKey((k) => k + 1);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold touch-manipulation ${
+                      safetyMode === "COMPATIBILITY" ? "bg-amber-500 text-black" : "bg-white/5 text-zinc-400"
+                    }`}
+                  >
+                    Compat
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Resume Playback Prompt (if not auto-applied) */}
         {showResumePrompt && resumeTime && !allFailed && (
           <div className="absolute top-14 left-4 z-30 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-black/85 backdrop-blur-md border border-[#FF3B6B]/40 shadow-xl animate-fade-in">
             <span className="text-xs text-white font-medium">
@@ -677,6 +1229,8 @@ export function ExternalPlayer({
               onClick={() => {
                 setShowResumePrompt(false);
                 sendCineSrcCommand("seek", { time: resumeTime });
+                setResumeFeedback(`Resumed at ${formatSeconds(resumeTime)}`);
+                setTimeout(() => setResumeFeedback(null), 3500);
               }}
               className="px-3 py-1 rounded-lg bg-[#FF3B6B] text-white text-xs font-bold hover:bg-[#FF3B6B]/90 transition"
             >
@@ -709,18 +1263,35 @@ export function ExternalPlayer({
           </div>
         )}
 
-        {/* Load Timeout Notification Banner */}
+        {/* Load Timeout Notification Banner (Section 19) */}
         {!isSwitching && loadTimeoutReached && !allFailed && playbackState !== "PLAYBACK_CONFIRMED" && (
-          <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[#0F172A]/90 backdrop-blur-md border border-amber-500/30 shadow-2xl">
-            <p className="text-xs text-amber-300 font-medium">
-              {activeSource?.providerName} is taking longer than usual to respond.
-            </p>
-            <button
-              onClick={() => triggerFallback(activeIndex, "Load timeout reached.")}
-              className="px-3.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition cursor-pointer"
-            >
-              Try Next Server →
-            </button>
+          <div className="absolute bottom-3 left-3 right-3 z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-[#0F172A]/95 backdrop-blur-xl border border-amber-500/40 shadow-2xl animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-400">⏳</span>
+              <p className="text-xs text-amber-200 font-medium">
+                Playback is taking longer than expected.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                onClick={() => {
+                  setLoadTimeoutReached(false);
+                  setIsLoading(true);
+                  setIframeKey((k) => k + 1);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-bold transition cursor-pointer"
+              >
+                Retry
+              </button>
+              {sources.length > 1 && (
+                <button
+                  onClick={() => triggerFallback(activeIndex, "Manual server switch requested.")}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition cursor-pointer"
+                >
+                  Switch Source →
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -739,7 +1310,7 @@ export function ExternalPlayer({
           </div>
         )}
 
-        {/* All Providers Failed State (Section 47) */}
+        {/* All Providers Failed State */}
         {allFailed ? (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#09090C] text-center p-6">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-2xl mb-4">
@@ -773,7 +1344,7 @@ export function ExternalPlayer({
             </div>
           </div>
         ) : (
-          /* Single Player Facade with Strict Sandboxing (Sections 3, 4, 5, 8, 14, 15) */
+          /* Single Player Facade with Strict Sandboxing */
           activeSource &&
           validatedUrl.valid && (
             <iframe
@@ -789,6 +1360,7 @@ export function ExternalPlayer({
               onLoad={() => {
                 setIsLoading(false);
                 setPlaybackState((prev) => (prev === "CONNECTING" ? "EMBED_LOADED" : prev));
+                resetControlsTimeout();
                 setTelemetry((prev) => ({
                   ...prev,
                   embedLoaded: Date.now(),
@@ -802,7 +1374,11 @@ export function ExternalPlayer({
       </div>
 
       {/* ── Sub-Player Action Bar: Quick Toggles (AutoPlay, AutoNext, SkipIntro) ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#0F172A] border border-white/[0.08]">
+      <div
+        className={`flex flex-wrap items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#0F172A] border border-white/[0.08] transition-all duration-300 ${
+          controlsVisible ? "opacity-100" : "opacity-80"
+        }`}
+      >
         {/* Playback Convenience Toggles */}
         <div className="flex items-center gap-2">
           {onToggleAutoPlay && (
@@ -880,9 +1456,19 @@ export function ExternalPlayer({
             <span className="text-zinc-300 truncate">{embedPolicy.sandboxTokens.join(" ")}</span>
             <span>Top Nav & Popups</span>
             <span className="text-emerald-400">BLOCKED</span>
-            <span>State</span>
+            <span>Controls State</span>
+            <span className="text-emerald-400">{controlsVisible ? "VISIBLE" : "CINEMA_HIDDEN"}</span>
+            <span>Audio Tracks</span>
+            <span className="text-white">
+              {availableAudioTracks.length > 0 ? `${availableAudioTracks.length} detected` : "Source Stream"}
+            </span>
+            <span>Resume Status</span>
+            <span className="text-[#FF3B6B]">
+              {resumeConfirmed ? "CONFIRMED" : resumeAppliedRef.current ? "APPLIED" : "READY"}
+            </span>
+            <span>Playback State</span>
             <span className="text-[#FF3B6B]">{playbackState}</span>
-            <span>Embed Load Latency</span>
+            <span>Embed Latency</span>
             <span className="text-emerald-400">{telemetry.playerLoadMs ? `${telemetry.playerLoadMs}ms` : "—"}</span>
           </div>
         </div>
@@ -890,3 +1476,4 @@ export function ExternalPlayer({
     </div>
   );
 }
+

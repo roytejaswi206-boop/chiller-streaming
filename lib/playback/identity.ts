@@ -48,7 +48,7 @@ export function parseMediaSlug(slug: string | string[]): MediaIdentity | null {
     if (!isNaN(parsedId) && parsedId > 0) {
       if (type === "movie" || type === "movies") return { mediaType: "movie", tmdbId: parsedId };
       if (type === "tv" || type === "series") return { mediaType: "tv", tmdbId: parsedId, season, episode };
-      if (type === "anime") return { mediaType: "anime", anilistId: parsedId, tmdbId: parsedId, season: 1, episode: season || episode };
+      if (type === "anime") return { mediaType: "anime", anilistId: parsedId, season: 1, episode: season || episode };
     }
   }
 
@@ -57,7 +57,7 @@ export function parseMediaSlug(slug: string | string[]): MediaIdentity | null {
     const parts = normalized.replace("anime-", "").split("-");
     const id = parseInt(parts[0], 10);
     const episode = parts.length >= 2 ? parseInt(parts[1], 10) : undefined;
-    return isNaN(id) ? null : { mediaType: "anime", anilistId: id, tmdbId: id, episode };
+    return isNaN(id) ? null : { mediaType: "anime", anilistId: id, episode };
   }
 
   // Pattern: movie-550

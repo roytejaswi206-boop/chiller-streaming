@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchUnified } from "@/lib/content/resolver";
+import { unifiedSearch } from "@/lib/media/search/unified-search";
 import { ContentType } from "@/lib/content/types";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, results: [], total: 0 });
     }
 
-    const results = await searchUnified(query, type || undefined);
+    const results = await unifiedSearch.search(query, {
+      type: (type as any) || "all",
+      limit: 30,
+    });
 
     return NextResponse.json({
       success: true,

@@ -1,4 +1,13 @@
-import { PlaybackProvider, PlaybackRequest, ProviderHealth, ProviderHealthStatus } from "./types";
+import {
+  PlaybackProvider,
+  PlaybackRequest,
+  AnimePlaybackRequest,
+  ProviderHealth,
+  ProviderHealthStatus,
+  PlaybackPool,
+} from "./types";
+
+// ── General Playback Pool Providers ──
 import { CineSrcProvider } from "./providers/cinesrc";
 import { VidSrcProvider } from "./providers/vidsrc";
 import { VidkingProvider } from "./providers/vidking";
@@ -18,92 +27,217 @@ import { MyCloudProvider } from "./providers/mycloud";
 import { MegaCloudProvider } from "./providers/megacloud";
 import { MegaUpProvider } from "./providers/megaup";
 import { TubiProvider, RokuProvider, PlutoProvider } from "./providers/platforms";
+
+// ── Anime Playback Pool Providers ──
+import {
+  NHDAnimeProvider,
+  AnimeProviderA,
+  AnimeProviderB,
+  AnimeProviderC,
+  MegaCloudAnimeProvider,
+} from "./providers/anime";
+
 import { providerHealthCache } from "./health-cache";
 
 /**
- * CHILLER CENTRALIZED PLAYBACK PROVIDER REGISTRY
+ * CHILLER DUAL-POOL PLAYBACK REGISTRY
  *
- * All providers implement the standardized PlaybackProvider interface:
- *   - supports(request)
- *   - resolve(request)
- *   - getCapabilities()
- *   - getHealth()
- *   - healthCheck()
+ * Maintains two specialized, isolated provider pools:
+ * 1. GENERAL_PLAYBACK_PROVIDERS (Movies, TV series, Documentaries)
+ * 2. ANIME_PLAYBACK_PROVIDERS (Anime, Anime movies, OVAs, ONAs)
  *
- * Independent failure boundaries: A failure of one provider never breaks another.
+ * Strict isolation: General providers are never queried for anime unless verified and in the ANIME pool.
+ * Independent failure boundaries: A failure of one provider never affects another.
  */
 class ProviderRegistry {
-  private providers: Map<string, PlaybackProvider> = new Map();
+  private generalProviders: Map<string, PlaybackProvider> = new Map();
+  private animeProviders: Map<string, PlaybackProvider> = new Map();
+  private allProvidersMap: Map<string, PlaybackProvider> = new Map();
 
   constructor() {
-    // 1. Primary automated resolvers
-    this.register(new CineSrcProvider());
-    this.register(new VidSrcProvider());
-    this.register(new VidkingProvider());
-    this.register(new CodeSpecterProvider());
-    this.register(new AggregatorProvider());
-    this.register(new NHDProvider());
+    // ── 1. Register General Providers (POOL A) ──
+    const generalList: PlaybackProvider[] = [
+      new CineSrcProvider(),
+      new VidSrcProvider(),
+      new VidkingProvider(),
+      new CodeSpecterProvider(),
+      new AggregatorProvider(),
+      new NHDProvider(),
+      new FileMoonProvider(),
+      new VdoHideProvider(),
+      new StreamTapeProvider(),
+      new EarnVidsProvider(),
+      new VidstreamProvider(),
+      new VidStreamingProvider(),
+      new DailymotionProvider(),
+      new JellyfinProvider(),
+      new PlexProvider(),
+      new MyCloudProvider(),
+      new MegaCloudProvider(),
+      new MegaUpProvider(),
+      new TubiProvider(),
+      new RokuProvider(),
+      new PlutoProvider(),
+    ];
 
-    // 2. Video Hosts & Media Services (FileMoon, VdoHide, StreamTape, EarnVids, Vidstream, VidStreaming)
-    this.register(new FileMoonProvider());
-    this.register(new VdoHideProvider());
-    this.register(new StreamTapeProvider());
-    this.register(new EarnVidsProvider());
-    this.register(new VidstreamProvider());
-    this.register(new VidStreamingProvider());
+    for (const p of generalList) {
+      if (!p.pools || p.pools.length === 0) {
+        p.pools = ["GENERAL"];
+      }
+      this.registerGeneral(p);
+    }
 
-    // 3. Official Platform Integrations (Dailymotion)
-    this.register(new DailymotionProvider());
+    // ── 2. Register Dedicated Anime Providers (POOL B) ──
+    const animeList: PlaybackProvider[] = [
+      new NHDAnimeProvider(),
+      new AnimeProviderA(),
+      new AnimeProviderB(),
+      new AnimeProviderC(),
+      new MegaCloudAnimeProvider(),
+    ];
 
-    // 4. Self-Hosted Media Servers (Jellyfin, Plex)
-    this.register(new JellyfinProvider());
-    this.register(new PlexProvider());
+    for (const p of animeList) {
+      if (!p.pools || p.pools.length === 0) {
+        p.pools = ["ANIME"];
+      }
+      this.registerAnime(p);
+    }
+  }
 
-    // 5. Cloud Media Platforms & Fast Channels (MyCloud, MegaCloud, MegaUp, Tubi, Roku, Pluto)
-    this.register(new MyCloudProvider());
-    this.register(new MegaCloudProvider());
-    this.register(new MegaUpProvider());
-    this.register(new TubiProvider());
-    this.register(new RokuProvider());
-    this.register(new PlutoProvider());
+  registerGeneral(provider: PlaybackProvider) {
+    this.generalProviders.set(provider.id, provider);
+    this.allProvidersMap.set(provider.id, provider);
+  }
+
+  registerAnime(provider: PlaybackProvider) {
+    this.animeProviders.set(provider.id, provider);
+    this.allProvidersMap.set(provider.id, provider);
   }
 
   register(provider: PlaybackProvider) {
-    this.providers.set(provider.id, provider);
+    const isAnime = provider.pools?.includes("ANIME") || provider.getCapabilities().supportsAnime;
+    const isGeneral = provider.pools?.includes("GENERAL") || provider.getCapabilities().supportsMovie || provider.getCapabilities().supportsTV;
+
+    if (isAnime) this.animeProviders.set(provider.id, provider);
+    if (isGeneral) this.generalProviders.set(provider.id, provider);
+    this.allProvidersMap.set(provider.id, provider);
   }
 
   getProvider(id: string): PlaybackProvider | undefined {
-    return this.providers.get(id);
+    return this.allProvidersMap.get(id);
+  }
+
+  getGeneralProvider(id: string): PlaybackProvider | undefined {
+    return this.generalProviders.get(id);
+  }
+
+  getAnimeProvider(id: string): PlaybackProvider | undefined {
+    return this.animeProviders.get(id);
   }
 
   getAllProviders(): PlaybackProvider[] {
-    return Array.from(this.providers.values()).sort((a, b) => a.priority - b.priority);
+    return Array.from(this.allProvidersMap.values()).sort((a, b) => a.priority - b.priority);
   }
 
-  getEnabledProviders(): PlaybackProvider[] {
-    return this.getAllProviders().filter((p) => p.enabled);
+  getGeneralProviders(): PlaybackProvider[] {
+    return Array.from(this.generalProviders.values()).sort((a, b) => a.priority - b.priority);
+  }
+
+  getAnimeProviders(): PlaybackProvider[] {
+    return Array.from(this.animeProviders.values()).sort((a, b) => a.priority - b.priority);
+  }
+
+  getEnabledGeneralProviders(): PlaybackProvider[] {
+    return this.getGeneralProviders().filter((p) => p.enabled);
+  }
+
+  getEnabledAnimeProviders(): PlaybackProvider[] {
+    return this.getAnimeProviders().filter((p) => p.enabled);
   }
 
   /**
-   * Ranks providers for a given request based on dynamic score and priority.
-   * Ranking determines candidate order without blocking concurrent execution.
+   * Ranks providers for Anime playback.
    */
-  rankProviders(request: PlaybackRequest): PlaybackProvider[] {
-    const eligible = this.getEnabledProviders().filter((p) => p.supports(request));
+  rankAnimeProviders(request: AnimePlaybackRequest | PlaybackRequest): PlaybackProvider[] {
+    const isDub = (request as any).variant === "dub" || request.language === "dub" || request.preferredAudio === "en";
+    const isRaw = (request as any).variant === "raw";
+
+    const eligible = this.getEnabledAnimeProviders().filter((p) => {
+      const caps = p.getCapabilities();
+      if (!caps.supportsAnime) return false;
+      // If RAW explicitly requested, filter out providers that do not declare RAW support
+      if (isRaw && !caps.supportsRaw) return false;
+      // If DUB explicitly requested, filter out providers that do not declare DUB support
+      if (isDub && !caps.supportsDub) return false;
+      // If SUB requested, ensure SUB support
+      if (!isDub && !isRaw && !caps.supportsSub) return false;
+
+      return p.supports({
+        mediaType: "anime",
+        anilistId: request.anilistId,
+        malId: request.malId,
+        season: request.season,
+        episode: request.episode,
+        language: request.language,
+        preferredAudio: request.preferredAudio,
+      });
+    });
+
     return eligible.sort((a, b) => {
       const scoreA = providerHealthCache.calculateScore(a.id, {
-        mediaType: request.mediaType,
+        mediaType: "anime",
         language: request.language,
-        hasLanguageSupport: request.language === "dub" ? a.getCapabilities().supportsDub : true,
+        variant: (request as any).variant,
+        hasLanguageSupport: isDub ? a.getCapabilities().supportsDub : a.getCapabilities().supportsSub,
       });
       const scoreB = providerHealthCache.calculateScore(b.id, {
-        mediaType: request.mediaType,
+        mediaType: "anime",
         language: request.language,
-        hasLanguageSupport: request.language === "dub" ? b.getCapabilities().supportsDub : true,
+        variant: (request as any).variant,
+        hasLanguageSupport: isDub ? b.getCapabilities().supportsDub : b.getCapabilities().supportsSub,
       });
       if (scoreB !== scoreA) return scoreB - scoreA;
       return a.priority - b.priority;
     });
+  }
+
+  /**
+   * Ranks providers for General Movie/TV playback.
+   * Strictly filters to general pool.
+   */
+  rankGeneralProviders(request: PlaybackRequest): PlaybackProvider[] {
+    const eligible = this.getEnabledGeneralProviders().filter((p) => p.supports(request));
+    return eligible.sort((a, b) => {
+      const isEnglishReq = request.language === "dub" || request.preferredAudio === "en";
+      const scoreA = providerHealthCache.calculateScore(a.id, {
+        mediaType: request.mediaType,
+        language: request.language,
+        hasLanguageSupport: isEnglishReq ? a.getCapabilities().supportsDub : true,
+      });
+      const scoreB = providerHealthCache.calculateScore(b.id, {
+        mediaType: request.mediaType,
+        language: request.language,
+        hasLanguageSupport: isEnglishReq ? b.getCapabilities().supportsDub : true,
+      });
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return a.priority - b.priority;
+    });
+  }
+
+  /**
+   * Dual-pool ranking router:
+   * Directs Anime requests to rankAnimeProviders, Movie/TV to rankGeneralProviders.
+   */
+  rankProviders(request: PlaybackRequest): PlaybackProvider[] {
+    if (
+      request.mediaClass === "ANIME" ||
+      request.mediaClass === "ANIME_MOVIE" ||
+      request.mediaType === "anime" ||
+      request.targetPool === "ANIME"
+    ) {
+      return this.rankAnimeProviders(request);
+    }
+    return this.rankGeneralProviders(request);
   }
 
   recordSuccess(providerId: string, latencyMs?: number) {
@@ -126,7 +260,7 @@ class ProviderRegistry {
     providerId?: string
   ): Promise<Record<string, { status: ProviderHealthStatus; latencyMs?: number; message?: string }>> {
     const targets = providerId
-      ? ([this.providers.get(providerId)].filter(Boolean) as PlaybackProvider[])
+      ? ([this.allProvidersMap.get(providerId)].filter(Boolean) as PlaybackProvider[])
       : this.getAllProviders();
 
     const results: Record<string, { status: ProviderHealthStatus; latencyMs?: number; message?: string }> = {};

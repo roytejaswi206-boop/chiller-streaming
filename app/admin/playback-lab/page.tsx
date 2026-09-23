@@ -17,6 +17,26 @@ interface ProviderTestResult {
   player: string;
   playback: string;
   error?: string;
+  capabilitiesMatrix?: {
+    resume: string;
+    audioTracks: string;
+    audioSwitching: string;
+    subtitles: string;
+    quality: string;
+    fullscreen: string;
+    orientation: string;
+  };
+  diagnosticsPipeline?: {
+    apiResponse: string;
+    sourceResolved: string;
+    playerReady: string;
+    audioTracksFound: string;
+    audioSwitchRequested: string;
+    audioSwitchConfirmed: string;
+    resumeRequested: string;
+    resumeConfirmed: string;
+    playbackStarted: string;
+  };
   embedSafety?: {
     safetyTier: string;
     iframeLoad: string;
@@ -334,9 +354,65 @@ export default function PlaybackLabPage() {
                       </div>
                     )}
 
+                    {/* Provider Capability Matrix (Section 20) */}
+                    {res.capabilitiesMatrix && (
+                      <div className="mt-2.5 pt-2.5 border-t border-white/5 space-y-1 bg-black/40 p-2 rounded-lg text-[10px]">
+                        <div className="flex justify-between font-bold text-zinc-300">
+                          <span>📊 Capability Matrix:</span>
+                          <span className="text-zinc-400 font-mono text-[9px]">v3.0</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-zinc-400 pt-1 font-mono text-[9px]">
+                          <div>Resume: <span className={res.capabilitiesMatrix.resume === "SUPPORTED" ? "text-emerald-400 font-bold" : res.capabilitiesMatrix.resume === "UNKNOWN" ? "text-amber-400" : "text-zinc-500"}>{res.capabilitiesMatrix.resume}</span></div>
+                          <div>Audio: <span className={res.capabilitiesMatrix.audioTracks === "SUPPORTED" ? "text-emerald-400 font-bold" : res.capabilitiesMatrix.audioTracks === "UNKNOWN" ? "text-amber-400" : "text-zinc-500"}>{res.capabilitiesMatrix.audioTracks}</span></div>
+                          <div>AudioSwitch: <span className={res.capabilitiesMatrix.audioSwitching === "SUPPORTED" ? "text-emerald-400 font-bold" : "text-zinc-500"}>{res.capabilitiesMatrix.audioSwitching}</span></div>
+                          <div>Subtitles: <span className={res.capabilitiesMatrix.subtitles === "SUPPORTED" ? "text-emerald-400 font-bold" : "text-zinc-500"}>{res.capabilitiesMatrix.subtitles}</span></div>
+                          <div>Quality: <span className={res.capabilitiesMatrix.quality === "SUPPORTED" ? "text-emerald-400 font-bold" : "text-zinc-500"}>{res.capabilitiesMatrix.quality}</span></div>
+                          <div>Orientation: <span className="text-emerald-400 font-bold">{res.capabilitiesMatrix.orientation}</span></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Admin Diagnostics Pipeline (Section 21) */}
+                    {res.diagnosticsPipeline && (
+                      <div className="mt-2 pt-2 border-t border-white/5 space-y-1 bg-black/40 p-2 rounded-lg text-[10px]">
+                        <div className="flex justify-between font-bold text-zinc-300">
+                          <span>🔬 Diagnostics Pipeline:</span>
+                          <span className={res.diagnosticsPipeline.playbackStarted === "PLAYBACK STARTED" ? "text-emerald-400" : "text-amber-400"}>
+                            {res.diagnosticsPipeline.playbackStarted}
+                          </span>
+                        </div>
+                        <div className="space-y-0.5 text-zinc-400 pt-1 font-mono text-[9px]">
+                          <div className="flex justify-between">
+                            <span>1. API:</span>
+                            <span className={res.diagnosticsPipeline.apiResponse === "PASS" ? "text-emerald-400" : "text-rose-400"}>{res.diagnosticsPipeline.apiResponse}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>2. Source:</span>
+                            <span className="text-zinc-200">{res.diagnosticsPipeline.sourceResolved}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>3. Player:</span>
+                            <span className="text-zinc-200">{res.diagnosticsPipeline.playerReady}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>4. Audio Tracks:</span>
+                            <span className={res.diagnosticsPipeline.audioTracksFound === "AUDIO TRACKS FOUND" ? "text-emerald-400" : "text-zinc-400"}>{res.diagnosticsPipeline.audioTracksFound}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>5. Audio Switch:</span>
+                            <span className={res.diagnosticsPipeline.audioSwitchConfirmed === "AUDIO SWITCH CONFIRMED" ? "text-emerald-400" : "text-zinc-500"}>{res.diagnosticsPipeline.audioSwitchConfirmed}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>6. Resume:</span>
+                            <span className={res.diagnosticsPipeline.resumeConfirmed === "RESUME CONFIRMED" ? "text-emerald-400 font-bold" : "text-amber-400"}>{res.diagnosticsPipeline.resumeConfirmed}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Embed Safety & Redirect Protection 2.0 Diagnostics */}
                     {res.embedSafety && (
-                      <div className="mt-2.5 pt-2.5 border-t border-white/5 space-y-1 bg-black/30 p-2 rounded-lg text-[10px]">
+                      <div className="mt-2 pt-2 border-t border-white/5 space-y-1 bg-black/30 p-2 rounded-lg text-[10px]">
                         <div className="flex justify-between font-bold text-zinc-300">
                           <span>🛡️ Embed Safety:</span>
                           <span

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
 import {
   IconForward10,
@@ -10,10 +10,20 @@ import {
   IconPip,
   IconPlay,
   IconRewind10,
+  IconRotate,
   IconSettings,
   IconVolume,
 } from "@/components/icons";
 import { formatDuration } from "@/lib/utils";
+import {
+  NormalizedAudioTrack,
+  normalizeAudioTracks,
+  getStoredAudioPreference,
+  setStoredAudioPreference,
+  selectBestAudioTrack,
+} from "@/lib/playback/audio-normalizer";
+
+const PLAYER_CONTROLS_AUTO_HIDE_MS = 3000;
 
 export interface VideoPlayerProps {
   streamUrl: string;
@@ -24,6 +34,7 @@ export interface VideoPlayerProps {
   audioTracks?: { language: string; label: string }[];
   qualities?: { quality: string; bitrate?: number }[];
   autoPlay?: boolean;
+  initialTime?: number;
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
   onViewRegistered?: () => void;
@@ -37,6 +48,7 @@ export function VideoPlayer({
   subtitles = [],
   qualities = [],
   autoPlay = false,
+  initialTime = 0,
   onTimeUpdate,
   onEnded,
   onViewRegistered,
@@ -56,13 +68,27 @@ export function VideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [orientationHint, setOrientationHint] = useState<string | null>(null);
 
   // Settings & Menus
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"audio" | "quality" | "speed" | "subtitles">("audio");
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [selectedQuality, setSelectedQuality] = useState<string>("Auto");
   const [selectedSubtitle, setSelectedSubtitle] = useState<string>("Off");
   const [theaterMode, setTheaterMode] = useState(false);
+
+  // Audio Tracks (Source-Aware Real Audio)
+  const [availableAudioTracks, setAvailableAudioTracks] = useState<NormalizedAudioTrack[]>([]);
+  const [activeAudioTrackId, setActiveAudioTrackId] = useState<string>("");
+  const [audioSwitchStatus, setAudioSwitchStatus] = useState<"IDLE" | "SWITCHING" | "CONFIRMED" | "FAILED" | "UNSUPPORTED">("IDLE");
+  const [audioToast, setAudioToast] = useState<string | null>(null);
+
+  // Resume State
+  const resumeAppliedRef = useRef(false);
+  const [resumeToast, setResumeToast] = useState<string | null>(null);
 
   // Scrubbing & Hover Tooltip
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -76,13 +102,72 @@ export function VideoPlayer({
   // View count threshold tracker (register view after 5s or 10% playback)
   const viewRegisteredRef = useRef(false);
 
-  // 1. Initialize HLS or Native Video
+  // Single Controls Auto-Hide Timer
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetControlsTimeout = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = null;
+    }
+
+    // Only auto-hide if actively playing, not scrubbing, and no menu is open
+    if (isPlaying && !showSettingsMenu && !isScrubbing && !hasError) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setControlsVisible(false);
+      }, PLAYER_CONTROLS_AUTO_HIDE_MS);
+    }
+  }, [isPlaying, showSettingsMenu, isScrubbing, hasError]);
+
+  // Keep controls visible whenever menu opens or paused state changes
+  useEffect(() => {
+    if (!isPlaying || showSettingsMenu || isScrubbing || hasError) {
+      setControlsVisible(true);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = null;
+      }
+    } else {
+      resetControlsTimeout();
+    }
+  }, [isPlaying, showSettingsMenu, isScrubbing, hasError, resetControlsTimeout]);
+
+  // Seek resume function with actual position verification (Sections 1, 2)
+  const applyResumeSeek = useCallback((targetTime: number) => {
+    const video = videoRef.current;
+    if (!video || resumeAppliedRef.current || targetTime <= 0) return;
+
+    resumeAppliedRef.current = true;
+    try {
+      video.currentTime = targetTime;
+      setCurrentTime(targetTime);
+
+      // Verify seek confirmation against actual player position
+      setTimeout(() => {
+        const actual = video.currentTime;
+        if (Math.abs(actual - targetTime) <= 5) {
+          setResumeToast(`Resumed at ${formatDuration(actual)}`);
+        } else {
+          setResumeToast(`Resume sought to ${formatDuration(targetTime)}`);
+        }
+        setTimeout(() => setResumeToast(null), 3500);
+      }, 300);
+    } catch (err) {
+      console.warn("Resume seek error:", err);
+    }
+  }, []);
+
+  // 1. Initialize HLS or Native Video with Audio Track Detection
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     setHasError(false);
     setIsBuffering(true);
+    resumeAppliedRef.current = false;
+    setAvailableAudioTracks([]);
+    setActiveAudioTrackId("");
 
     const activeUrl = allUrls[currentOriginIdx] || streamUrl;
 
@@ -103,9 +188,67 @@ export function VideoPlayer({
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsBuffering(false);
+
+        // Audio track inspection from HLS manifest (Section 6, 8, 9)
+        if (hls.audioTracks && hls.audioTracks.length > 0) {
+          const rawTracks = hls.audioTracks.map((t, idx) => ({
+            id: String(t.id ?? idx),
+            label: t.name || t.lang || `Track ${idx + 1}`,
+            language: t.lang || t.name,
+            isDefault: t.default,
+          }));
+          const normalized = normalizeAudioTracks(rawTracks);
+          setAvailableAudioTracks(normalized);
+
+          // Apply saved user language preference or default
+          const storedPref = getStoredAudioPreference();
+          const best = selectBestAudioTrack(normalized, storedPref);
+          if (best) {
+            const hlsIdx = hls.audioTracks.findIndex((t, idx) => String(t.id ?? idx) === String(best.id));
+            if (hlsIdx !== -1 && hls.audioTrack !== hlsIdx) {
+              hls.audioTrack = hlsIdx;
+              setActiveAudioTrackId(String(best.id));
+            } else {
+              setActiveAudioTrackId(String(best.id));
+            }
+          } else {
+            setActiveAudioTrackId(String(hls.audioTrack >= 0 ? hls.audioTrack : 0));
+          }
+        }
+
+        // Apply resume on manifest parsed
+        if (initialTime && initialTime > 0) {
+          applyResumeSeek(initialTime);
+        }
+
         if (autoPlay) {
           video.play().catch(() => {});
         }
+      });
+
+      // Listen for dynamic audio track updates
+      hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_event, data) => {
+        if (data.audioTracks && data.audioTracks.length > 0) {
+          const raw = data.audioTracks.map((t, idx) => ({
+            id: String(t.id ?? idx),
+            label: t.name || t.lang || `Track ${idx + 1}`,
+            language: t.lang || t.name,
+            isDefault: t.default,
+          }));
+          setAvailableAudioTracks(normalizeAudioTracks(raw));
+        }
+      });
+
+      // Verify actual audio track switch confirmation (Section 7, 8, 9)
+      hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_event, data) => {
+        const switchedId = String(data.id);
+        setActiveAudioTrackId(switchedId);
+        setAudioSwitchStatus("CONFIRMED");
+
+        const track = hls.audioTracks[data.id];
+        const label = track ? track.name || track.lang || `Track ${data.id + 1}` : "Changed";
+        setAudioToast(`Audio: ${label}`);
+        setTimeout(() => setAudioToast(null), 3000);
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -124,6 +267,25 @@ export function VideoPlayer({
       video.src = activeUrl;
       video.addEventListener("loadedmetadata", () => {
         setIsBuffering(false);
+
+        // Feature detection for native audioTracks (Section 10)
+        const nativeTracks = (video as any).audioTracks;
+        if (nativeTracks && typeof nativeTracks.length === "number" && nativeTracks.length > 0) {
+          const raw = Array.from(nativeTracks).map((t: any, idx: number) => ({
+            id: String(t.id || idx),
+            label: t.label || t.language || `Track ${idx + 1}`,
+            language: t.language || t.label,
+            isDefault: t.enabled,
+          }));
+          setAvailableAudioTracks(normalizeAudioTracks(raw));
+        } else {
+          setAudioSwitchStatus("UNSUPPORTED");
+        }
+
+        if (initialTime && initialTime > 0) {
+          applyResumeSeek(initialTime);
+        }
+
         if (autoPlay) video.play().catch(() => {});
       });
     }
@@ -133,10 +295,49 @@ export function VideoPlayer({
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
     };
-  }, [currentOriginIdx, streamUrl]);
+  }, [currentOriginIdx, streamUrl, initialTime, applyResumeSeek, autoPlay]);
 
-  // 2. Play / Pause Handling
+  // Audio track switcher with verification
+  const handleAudioTrackChange = (trackId: string) => {
+    setAudioSwitchStatus("SWITCHING");
+
+    if (hlsRef.current) {
+      const idx = hlsRef.current.audioTracks.findIndex(
+        (t, i) => String(t.id ?? i) === trackId
+      );
+      if (idx !== -1) {
+        hlsRef.current.audioTrack = idx;
+        const sel = availableAudioTracks.find((t) => String(t.id) === trackId);
+        if (sel) {
+          setStoredAudioPreference(sel.languageCode);
+        }
+      }
+      return;
+    }
+
+    // Native audioTracks fallback
+    const video = videoRef.current;
+    const nativeTracks = video ? (video as any).audioTracks : null;
+    if (nativeTracks && typeof nativeTracks.length === "number") {
+      for (let i = 0; i < nativeTracks.length; i++) {
+        nativeTracks[i].enabled = String(nativeTracks[i].id || i) === trackId;
+      }
+      setActiveAudioTrackId(trackId);
+      setAudioSwitchStatus("CONFIRMED");
+      const sel = availableAudioTracks.find((t) => String(t.id) === trackId);
+      if (sel) {
+        setStoredAudioPreference(sel.languageCode);
+        setAudioToast(`Audio: ${sel.label}`);
+        setTimeout(() => setAudioToast(null), 3000);
+      }
+    }
+  };
+
+  // Play / Pause Handling
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -147,21 +348,22 @@ export function VideoPlayer({
       video.pause();
       setIsPlaying(false);
     }
+    resetControlsTimeout();
   };
 
-  // 3. 10-Second Seek Controls
+  // 10-Second Seek Controls
   const seekRelative = (seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
     const target = Math.max(0, Math.min(video.duration || 0, video.currentTime + seconds));
     video.currentTime = target;
     setCurrentTime(target);
+    resetControlsTimeout();
   };
 
-  // 4. Keyboard Shortcuts
+  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Avoid hotkeys when user is focused on an input or textarea
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
         return;
@@ -190,28 +392,18 @@ export function VideoPlayer({
           e.preventDefault();
           toggleMute();
           break;
+        case "Escape":
+          setShowSettingsMenu(false);
+          break;
       }
+      resetControlsTimeout();
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isPlaying, isMuted, volume]);
 
-  // 5. Auto-Hide Controls on Inactivity
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const resetControlsTimeout = () => {
-    setControlsVisible(true);
-    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    if (isPlaying) {
-      controlsTimeoutRef.current = setTimeout(() => {
-        setControlsVisible(false);
-        setShowSettingsMenu(false);
-      }, 3000);
-    }
-  };
-
-  // 6. Time and Buffer Progress Updates
+  // Time and Buffer Progress Updates
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -227,7 +419,7 @@ export function VideoPlayer({
       setBufferedPercent((bufferedEnd / (dur || 1)) * 100);
     }
 
-    // View Registration (Configurable rule: minimum 5s or 10% progress)
+    // View Registration
     if (!viewRegisteredRef.current && (cur >= 5 || (dur > 0 && cur / dur >= 0.1))) {
       viewRegisteredRef.current = true;
       if (onViewRegistered) onViewRegistered();
@@ -236,15 +428,48 @@ export function VideoPlayer({
     if (onTimeUpdate) onTimeUpdate(cur, dur);
   };
 
-  // 7. Fullscreen & PiP
+  // Fullscreen & Orientation Rotate (Section 19)
   const toggleFullscreen = () => {
     const container = containerRef.current;
     if (!container) return;
 
     if (!document.fullscreenElement) {
-      container.requestFullscreen().catch(() => {});
+      container.requestFullscreen?.().catch(() => {});
+      setIsFullscreen(true);
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen?.().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
+
+  const handleRotate = async () => {
+    const container = containerRef.current;
+    try {
+      if (!document.fullscreenElement && container) {
+        await container.requestFullscreen?.().catch(() => {});
+        setIsFullscreen(true);
+      }
+
+      const orientationApi = typeof screen !== "undefined" ? (screen.orientation as any) : null;
+      if (orientationApi && typeof orientationApi.lock === "function") {
+        if (isLandscape) {
+          try {
+            await orientationApi.unlock?.();
+          } catch {
+            // Ignore
+          }
+          setIsLandscape(false);
+        } else {
+          await orientationApi.lock("landscape");
+          setIsLandscape(true);
+        }
+      } else {
+        setOrientationHint("Rotate device for landscape cinema mode.");
+        setTimeout(() => setOrientationHint(null), 3500);
+      }
+    } catch {
+      setOrientationHint("Rotate device for landscape cinema mode.");
+      setTimeout(() => setOrientationHint(null), 3500);
     }
   };
 
@@ -263,7 +488,7 @@ export function VideoPlayer({
     }
   };
 
-  // 8. Volume & Mute
+  // Volume & Mute
   const handleVolumeChange = (newVolume: number) => {
     const video = videoRef.current;
     if (!video) return;
@@ -293,7 +518,7 @@ export function VideoPlayer({
     }
   };
 
-  // 9. Speed Changer
+  // Speed Changer
   const handleSpeedChange = (speed: number) => {
     const video = videoRef.current;
     if (video) video.playbackRate = speed;
@@ -301,7 +526,7 @@ export function VideoPlayer({
     setShowSettingsMenu(false);
   };
 
-  // 10. Quality Changer
+  // Quality Changer
   const handleQualityChange = (quality: string) => {
     setSelectedQuality(quality);
     if (hlsRef.current) {
@@ -319,7 +544,7 @@ export function VideoPlayer({
     setShowSettingsMenu(false);
   };
 
-  // 11. Scrubber Progress Handling
+  // Scrubber Progress Handling
   const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const video = videoRef.current;
     if (!video || !duration) return;
@@ -329,6 +554,7 @@ export function VideoPlayer({
     const target = pos * duration;
     video.currentTime = target;
     setCurrentTime(target);
+    resetControlsTimeout();
   };
 
   const handleProgressBarMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -339,16 +565,15 @@ export function VideoPlayer({
   };
 
   const availableSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
-  const availableQualities = [
-    "Auto",
-    ...qualities.map((q) => q.quality),
-  ];
+  const availableQualities = ["Auto", ...qualities.map((q) => q.quality)];
 
   return (
     <div
       ref={containerRef}
       onMouseMove={resetControlsTimeout}
-      onMouseLeave={() => isPlaying && setControlsVisible(false)}
+      onMouseEnter={resetControlsTimeout}
+      onTouchStart={resetControlsTimeout}
+      onMouseLeave={() => isPlaying && !showSettingsMenu && setControlsVisible(false)}
       className={`relative w-full aspect-video rounded-2xl overflow-hidden bg-black select-none group border border-white/[0.08] shadow-2xl ${
         theaterMode ? "max-w-none" : ""
       }`}
@@ -364,10 +589,15 @@ export function VideoPlayer({
         onPlaying={() => {
           setIsBuffering(false);
           setIsPlaying(true);
+          resetControlsTimeout();
         }}
-        onPause={() => setIsPlaying(false)}
+        onPause={() => {
+          setIsPlaying(false);
+          setControlsVisible(true);
+        }}
         onEnded={() => {
           setIsPlaying(false);
+          setControlsVisible(true);
           if (onEnded) onEnded();
         }}
         onClick={togglePlay}
@@ -381,9 +611,61 @@ export function VideoPlayer({
         </div>
       )}
 
+      {/* Resume Confirmation Toast */}
+      {resumeToast && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-[#FF3864]/40 text-[#FF3864] text-xs font-bold shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <span>⏱️</span>
+          <span>{resumeToast}</span>
+        </div>
+      )}
+
+      {/* Audio Track Switch Toast */}
+      {audioToast && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-emerald-500/40 text-emerald-400 text-xs font-bold shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <span>🔊</span>
+          <span>{audioToast}</span>
+        </div>
+      )}
+
+      {/* Orientation Fallback Hint */}
+      {orientationHint && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-xl bg-black/90 border border-white/20 text-white text-xs font-medium shadow-2xl">
+          {orientationHint}
+        </div>
+      )}
+
+      {/* Top Header Badge & Rotate (Auto-Hides in Clean Cinema Mode) */}
+      <div
+        className={`absolute top-3 left-3 right-3 z-30 flex items-center justify-between transition-all duration-300 ${
+          controlsVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <span className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-[11px] font-extrabold text-white">
+            {title}
+          </span>
+          {availableAudioTracks.length > 1 && (
+            <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-extrabold">
+              🌐 Multilingual ({availableAudioTracks.length})
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRotate}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/15 text-zinc-300 hover:text-white transition cursor-pointer text-[11px] font-bold"
+            title="Rotate to Landscape"
+          >
+            <IconRotate className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Rotate</span>
+          </button>
+        </div>
+      </div>
+
       {/* Error State with Retry Button & Multi-Origin Fallback */}
       {hasError && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/90 p-6 text-center">
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/90 p-6 text-center">
           <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
             !
           </div>
@@ -405,7 +687,7 @@ export function VideoPlayer({
         </div>
       )}
 
-      {/* Big Center Play / Pause Indicator (when controls are visible) */}
+      {/* Center Play / Pause Indicator */}
       {controlsVisible && !isBuffering && (
         <div
           onClick={togglePlay}
@@ -421,7 +703,7 @@ export function VideoPlayer({
         </div>
       )}
 
-      {/* Custom Bottom Player Controls Bar */}
+      {/* Bottom Controls Bar (Auto-Hides with Controls Engine) */}
       <div
         className={`absolute bottom-0 left-0 right-0 z-30 p-4 bg-gradient-to-t from-black/95 via-black/70 to-transparent transition-opacity duration-300 ${
           controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -438,7 +720,6 @@ export function VideoPlayer({
           }}
           className="relative w-full h-1.5 hover:h-2.5 bg-white/20 rounded-full cursor-pointer mb-3 transition-all duration-150"
         >
-          {/* Hover Time Tooltip */}
           {hoverTime !== null && (
             <div
               className="absolute -top-7 px-2 py-0.5 rounded bg-black/90 border border-white/20 text-[10px] font-bold text-white pointer-events-none -translate-x-1/2"
@@ -459,7 +740,6 @@ export function VideoPlayer({
             className="absolute top-0 left-0 h-full bg-[#FF3864] rounded-full"
             style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
           >
-            {/* Scrubber Thumb */}
             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md shadow-black/50 transform scale-0 hover:scale-100 transition" />
           </div>
         </div>
@@ -468,7 +748,6 @@ export function VideoPlayer({
         <div className="flex items-center justify-between gap-3 text-white">
           {/* Left Controls */}
           <div className="flex items-center gap-3">
-            {/* Play / Pause */}
             <button
               onClick={togglePlay}
               aria-label={isPlaying ? "Pause" : "Play"}
@@ -481,20 +760,18 @@ export function VideoPlayer({
               )}
             </button>
 
-            {/* 10s Rewind (↶ 10s) */}
             <button
               onClick={() => seekRelative(-10)}
-              title="Rewind 10 seconds (← key)"
+              title="Rewind 10 seconds"
               className="flex items-center gap-0.5 p-1.5 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white transition cursor-pointer"
             >
               <IconRewind10 className="w-5 h-5" />
               <span className="text-[10px] font-bold">10s</span>
             </button>
 
-            {/* 10s Forward (10s ↷) */}
             <button
               onClick={() => seekRelative(10)}
-              title="Forward 10 seconds (→ key)"
+              title="Forward 10 seconds"
               className="flex items-center gap-0.5 p-1.5 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white transition cursor-pointer"
             >
               <IconForward10 className="w-5 h-5" />
@@ -526,7 +803,7 @@ export function VideoPlayer({
               />
             </div>
 
-            {/* Time Stamp Display */}
+            {/* Timestamp */}
             <div className="text-[11px] font-medium text-zinc-300 ml-1">
               <span>{formatDuration(currentTime)}</span>
               <span className="text-zinc-500 mx-1">/</span>
@@ -536,17 +813,40 @@ export function VideoPlayer({
 
           {/* Right Controls */}
           <div className="flex items-center gap-2 relative">
-            {/* Speed Badge Button */}
+            {/* Audio Indicator Badge */}
+            {availableAudioTracks.length > 0 && (
+              <button
+                onClick={() => {
+                  setActiveSettingsTab("audio");
+                  setShowSettingsMenu(true);
+                }}
+                className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[11px] font-bold text-zinc-200 transition cursor-pointer flex items-center gap-1"
+                title="Audio Tracks"
+              >
+                <span>🔊</span>
+                <span>
+                  {availableAudioTracks.find((t) => t.id === activeAudioTrackId)?.label || "Audio"}
+                </span>
+              </button>
+            )}
+
+            {/* Speed Badge */}
             <button
-              onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+              onClick={() => {
+                setActiveSettingsTab("speed");
+                setShowSettingsMenu(true);
+              }}
               className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[11px] font-bold text-zinc-200 transition cursor-pointer"
             >
               {playbackSpeed}x
             </button>
 
-            {/* Quality Badge Button */}
+            {/* Quality Badge */}
             <button
-              onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+              onClick={() => {
+                setActiveSettingsTab("quality");
+                setShowSettingsMenu(true);
+              }}
               className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[11px] font-bold text-[#FF3864] transition cursor-pointer"
             >
               {selectedQuality}
@@ -561,7 +861,7 @@ export function VideoPlayer({
               <IconSettings className="w-4 h-4" />
             </button>
 
-            {/* Picture-in-Picture Button */}
+            {/* PiP */}
             <button
               onClick={togglePiP}
               title="Picture in Picture"
@@ -570,62 +870,128 @@ export function VideoPlayer({
               <IconPip className="w-4 h-4" />
             </button>
 
-            {/* Fullscreen Button */}
+            {/* Fullscreen */}
             <button
               onClick={toggleFullscreen}
-              title="Fullscreen (F key)"
+              title="Fullscreen (F)"
               className="p-1.5 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white transition cursor-pointer"
             >
               <IconFullscreen className="w-4 h-4" />
             </button>
 
-            {/* Settings Popover Menu */}
+            {/* Settings Popover Menu with Real Audio Language Tabs */}
+            {/* Settings Popover Menu with Real Audio Language Tabs */}
             {showSettingsMenu && (
-              <div
-                onMouseLeave={() => setShowSettingsMenu(false)}
-                className="absolute bottom-10 right-0 w-64 rounded-2xl border border-white/10 bg-[#12121c]/95 backdrop-blur-xl p-3 shadow-2xl z-50 text-xs animate-in fade-in zoom-in-95 duration-150"
-              >
-                <div className="px-2 py-1.5 font-bold text-white border-b border-white/[0.08] mb-2 flex justify-between items-center">
-                  <span>Playback Settings</span>
-                  <span className="text-[10px] text-zinc-400 font-mono">
-                    HLS {Hls.isSupported() ? "Active" : "Native"}
-                  </span>
-                </div>
-
-                {/* Speed Selection */}
-                <div className="mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block px-2 mb-1.5">
-                    Speed
-                  </span>
-                  <div className="grid grid-cols-3 gap-1 px-1">
-                    {availableSpeeds.map((s) => (
+              <>
+                <div
+                  className="sm:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-fade-in"
+                  onClick={() => setShowSettingsMenu(false)}
+                />
+                <div
+                  onMouseLeave={() => {
+                    if (typeof window !== "undefined" && window.innerWidth >= 640) {
+                      setShowSettingsMenu(false);
+                    }
+                  }}
+                  className="fixed sm:absolute inset-x-0 bottom-0 sm:bottom-10 sm:right-0 sm:inset-x-auto w-full sm:w-72 rounded-t-3xl sm:rounded-2xl border-t sm:border border-white/10 bg-[#12121c]/98 sm:bg-[#12121c]/95 backdrop-blur-2xl sm:backdrop-blur-xl p-5 sm:p-3 shadow-2xl z-50 text-xs animate-slide-up sm:animate-in sm:fade-in sm:zoom-in-95 duration-150 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="sm:hidden w-12 h-1.5 rounded-full bg-white/20 mx-auto -mt-1 mb-3" />
+                  {/* Header & Tabs */}
+                  <div className="border-b border-white/[0.08] pb-2 mb-2 flex items-center justify-between">
+                    <span className="font-bold text-white text-xs">Settings</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setActiveSettingsTab("audio")}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer touch-manipulation ${
+                            activeSettingsTab === "audio" ? "bg-[#FF3864] text-white" : "text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          Audio
+                        </button>
+                        <button
+                          onClick={() => setActiveSettingsTab("quality")}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer touch-manipulation ${
+                            activeSettingsTab === "quality" ? "bg-[#FF3864] text-white" : "text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          Quality
+                        </button>
+                        <button
+                          onClick={() => setActiveSettingsTab("speed")}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer touch-manipulation ${
+                            activeSettingsTab === "speed" ? "bg-[#FF3864] text-white" : "text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          Speed
+                        </button>
+                      </div>
                       <button
-                        key={s}
-                        onClick={() => handleSpeedChange(s)}
-                        className={`py-1 rounded text-center font-semibold cursor-pointer transition ${
-                          playbackSpeed === s
-                            ? "bg-[#FF3864] text-white"
-                            : "bg-white/5 text-zinc-300 hover:bg-white/10"
-                        }`}
+                        onClick={() => setShowSettingsMenu(false)}
+                        className="sm:hidden text-zinc-400 hover:text-white font-bold p-1 touch-manipulation text-sm"
                       >
-                        {s}x
+                        ✕
                       </button>
-                    ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* Quality Selection */}
-                {availableQualities.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block px-2 mb-1.5">
-                      Quality
+                {/* Tab: Audio Language (Sections 5-10) */}
+                {activeSettingsTab === "audio" && (
+                  <div className="space-y-1.5 py-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                      Audio Tracks
                     </span>
-                    <div className="flex flex-wrap gap-1 px-1">
+                    {availableAudioTracks.length > 0 ? (
+                      <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                        {availableAudioTracks.map((track) => {
+                          const trackStrId = String(track.id);
+                          const isSelected = trackStrId === activeAudioTrackId;
+                          return (
+                            <button
+                              key={trackStrId}
+                              onClick={() => handleAudioTrackChange(trackStrId)}
+                              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-[#FF3864]/20 text-white border border-[#FF3864]/40 font-bold"
+                                  : "text-zinc-300 hover:bg-white/5"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs">{track.label}</span>
+                                {track.isDefault && (
+                                  <span className="text-[9px] px-1 py-0.2 rounded bg-white/10 text-zinc-400">
+                                    Default
+                                  </span>
+                                )}
+                              </div>
+                              {isSelected && (
+                                <span className="text-[#FF3864] text-xs font-black">✓</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 text-zinc-400 text-[11px] leading-relaxed">
+                        Audio tracks managed by source stream or only default audio channel available.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab: Quality Selection */}
+                {activeSettingsTab === "quality" && (
+                  <div className="space-y-1.5 py-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                      Resolution
+                    </span>
+                    <div className="grid grid-cols-2 gap-1">
                       {availableQualities.map((q) => (
                         <button
                           key={q}
                           onClick={() => handleQualityChange(q)}
-                          className={`py-1 px-2.5 rounded font-semibold cursor-pointer transition ${
+                          className={`py-1.5 px-2.5 rounded text-center font-semibold cursor-pointer transition ${
                             selectedQuality === q
                               ? "bg-[#FF3864] text-white"
                               : "bg-white/5 text-zinc-300 hover:bg-white/10"
@@ -637,7 +1003,32 @@ export function VideoPlayer({
                     </div>
                   </div>
                 )}
-              </div>
+
+                {/* Tab: Speed Selection */}
+                {activeSettingsTab === "speed" && (
+                  <div className="space-y-1.5 py-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                      Playback Rate
+                    </span>
+                    <div className="grid grid-cols-3 gap-1">
+                      {availableSpeeds.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => handleSpeedChange(s)}
+                          className={`py-1 rounded text-center font-semibold cursor-pointer transition ${
+                            playbackSpeed === s
+                              ? "bg-[#FF3864] text-white"
+                              : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                          }`}
+                        >
+                          {s}x
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                </div>
+              </>
             )}
           </div>
         </div>

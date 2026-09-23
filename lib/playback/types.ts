@@ -1,3 +1,5 @@
+import { MediaClass } from "./media-classifier";
+
 export type ProviderHealthStatus =
   | "ACTIVE"
   | "CONFIGURED"
@@ -44,34 +46,95 @@ export type ContentPlaybackStatus =
   | "UNAVAILABLE"        // All candidates exhausted
   | "ENDED";
 
+export type PlaybackPool = "GENERAL" | "ANIME";
+
 export interface PlaybackRequest {
-  mediaType: "movie" | "tv" | "anime";
+  mediaType: "movie" | "tv" | "anime" | "video";
+  mediaClass?: MediaClass;
+  targetPool?: PlaybackPool;
   tmdbId?: number | string;
   anilistId?: number | string;
   malId?: number | string;
   imdbId?: string;
+  title?: string;
   season?: number;
   episode?: number;
+  absoluteEpisodeNumber?: number;
   language?: "sub" | "dub";
+  preferredAudio?: string;
   timeoutMs?: number;
+  resumeTime?: number;
   signal?: AbortSignal;
 }
+
+export interface AnimePlaybackRequest {
+  anilistId: number | string;
+  malId?: number | string;
+  tmdbId?: number | string;
+  title?: string;
+  romajiTitle?: string;
+  englishTitle?: string;
+  nativeTitle?: string;
+  synonyms?: string[];
+  season?: number;
+  episode: number;
+  absoluteEpisodeNumber?: number;
+  language?: "sub" | "dub";
+  variant?: AnimePlaybackVariant;
+  preferredAudio?: string;
+  preferredAudioLanguage?: string;
+  preferredSubtitleLanguage?: string;
+  format?: string;
+  mediaType?: "anime" | "movie";
+  timeoutMs?: number;
+  resumeTime?: number;
+  signal?: AbortSignal;
+}
+
+export type AnimePlaybackVariant = "sub" | "dub" | "raw";
+export type PlaybackControlLevel = "FULL_CONTROL" | "PARTIAL_CONTROL" | "EMBED_ONLY";
+export type HotSwitchState =
+  | "IDLE"
+  | "RESOLVING_VARIANT"
+  | "SWITCHING"
+  | "SEEKING"
+  | "RESUMING"
+  | "READY"
+  | "FAILED";
 
 export interface ProviderCapabilities {
   supportsMovie: boolean;
   supportsTV: boolean;
   supportsAnime: boolean;
+  supportsAnimeMovie?: boolean;
+  supportsAnimeEpisode?: boolean;
+  supportsHLS?: boolean;
+  supportsDASH?: boolean;
+  supportsIframe?: boolean;
   supportsSub: boolean;
   supportsDub: boolean;
+  supportsRaw?: boolean;
   supportsEvents: boolean;
   requiresApiKey: boolean;
   hasCaptions: boolean;
+  supportsResume?: boolean;
+  supportsAudioTracks?: boolean;
+  supportsMultipleAudio?: boolean;
+  supportsAudioTrackSwitching?: boolean;
+  supportsAudioTrackSwitch?: boolean;
+  supportsSubtitleTracks?: boolean;
+  supportsQualitySelection?: boolean;
+  supportsNextEpisode?: boolean;
+  supportsOrientation?: boolean;
+  supportsSeekAfterLoad?: boolean;
+  supportsResumeAfterSwitch?: boolean;
+  controlLevel?: PlaybackControlLevel;
 }
 
 export interface PlaybackSource {
   providerId: string;
   providerName: string;
-  type: "embed" | "hls" | "mp4";
+  type: "embed" | "hls" | "mp4" | "dash";
   url: string;
   available: boolean;
   priority: number;
@@ -79,7 +142,9 @@ export interface PlaybackSource {
   quality?: string;
   statusText?: string;
   latencyMs?: number;
-  mediaType?: "movie" | "tv" | "anime";
+  mediaType?: "movie" | "tv" | "anime" | "video";
+  mediaClass?: MediaClass;
+  pool?: PlaybackPool;
   tmdbId?: number | string;
   anilistId?: number | string;
   malId?: number | string;
@@ -87,6 +152,13 @@ export interface PlaybackSource {
   season?: number;
   episode?: number;
   language?: "sub" | "dub";
+  variant?: AnimePlaybackVariant;
+  audioLanguage?: string;
+  subtitleLanguage?: string;
+  availableVariants?: AnimePlaybackVariant[];
+  controlLevel?: PlaybackControlLevel;
+  seekSupported?: boolean;
+  resumeSupported?: boolean;
   serverLabel?: string;
   serverNumber?: number;
   expiresAt?: number;
@@ -94,6 +166,8 @@ export interface PlaybackSource {
   status?: ContentPlaybackStatus;
   error?: string;
   verified?: boolean;
+  subtitles?: { language: string; label: string; url: string }[];
+  audioTracks?: { language: string; label: string; active?: boolean }[];
 }
 
 export type PlaybackCandidate = PlaybackSource;
@@ -112,6 +186,25 @@ export interface ProviderHealth {
   recentStartupMs?: number;
   cooldownUntil?: number;
   score?: number;
+  // Pool-specific health separation
+  generalHealth?: {
+    totalSuccess: number;
+    totalFailures: number;
+    averageStartupMs: number;
+    lastSuccess?: string;
+  };
+  animeHealth?: {
+    totalSuccess: number;
+    totalFailures: number;
+    averageStartupMs: number;
+    lastSuccess?: string;
+  };
+  variantHealth?: {
+    subSuccess: number;
+    subFailures: number;
+    dubSuccess: number;
+    dubFailures: number;
+  };
 }
 
 export interface PlaybackTelemetry {
@@ -134,6 +227,8 @@ export interface PlaybackProvider {
   name: string;
   enabled: boolean;
   priority: number;
+  pools?: PlaybackPool[];
+  circuitState?: "CLOSED" | "HALF_OPEN" | "OPEN";
 
   // Standardized methods
   supports(request: PlaybackRequest): boolean;
@@ -146,6 +241,9 @@ export interface PlaybackProvider {
     message?: string;
   }>;
 
+  // Dedicated anime resolver method where implemented
+  resolveAnime?(request: AnimePlaybackRequest): Promise<PlaybackCandidate | null>;
+
   // Backward compatibility properties & methods
   requiresApiKey?: boolean;
   supportsMovie?: boolean;
@@ -155,3 +253,4 @@ export interface PlaybackProvider {
   getTVPlayback?(tmdbId: number | string, season: number, episode: number): Promise<PlaybackSource | null>;
   getAnimePlayback?(anilistId: number | string, episode: number): Promise<PlaybackSource | null>;
 }
+

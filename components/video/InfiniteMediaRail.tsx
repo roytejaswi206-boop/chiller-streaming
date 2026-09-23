@@ -242,17 +242,17 @@ export function InfiniteMediaRail({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1 -mx-1 px-1"
+        className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1 -mx-1 px-1 snap-x snap-mandatory touch-pan-x"
       >
         {isInitialLoading ? (
           // Initial Skeletons
           Array.from({ length: 7 }).map((_, idx) => (
             <div
               key={`skeleton-${idx}`}
-              className={`shrink-0 rounded-2xl bg-[#0F172A] border border-white/5 animate-pulse ${
+              className={`shrink-0 snap-start rounded-2xl bg-[#0F172A] border border-white/5 animate-pulse ${
                 layout === "backdrop"
-                  ? "w-[260px] sm:w-[320px] aspect-video"
-                  : "w-[150px] sm:w-[180px] lg:w-[200px] aspect-[2/3]"
+                  ? "w-[220px] min-[375px]:w-[260px] sm:w-[320px] aspect-video"
+                  : "w-[130px] min-[375px]:w-[150px] sm:w-[180px] lg:w-[200px] aspect-[2/3]"
               }`}
             />
           ))
@@ -261,10 +261,10 @@ export function InfiniteMediaRail({
             {items.map((item, idx) => (
               <div
                 key={`${item.type}-${item.id}-${idx}`}
-                className={`shrink-0 ${
+                className={`shrink-0 snap-start ${
                   layout === "backdrop"
-                    ? "w-[260px] sm:w-[320px]"
-                    : "w-[150px] sm:w-[180px] lg:w-[200px]"
+                    ? "w-[220px] min-[375px]:w-[260px] sm:w-[320px]"
+                    : "w-[130px] min-[375px]:w-[150px] sm:w-[180px] lg:w-[200px]"
                 }`}
               >
                 <MediaCard

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { IconCheck, IconPlus } from "@/components/icons";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface WatchlistButtonProps {
   tmdbId?: number;
@@ -26,6 +27,7 @@ export function WatchlistButton({
   releaseYear,
 }: WatchlistButtonProps) {
   const { data: session } = useSession();
+  const { showToast } = useToast();
   const [isInList, setIsInList] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -50,6 +52,7 @@ export function WatchlistButton({
     setIsSaving(true);
     const nextState = !isInList;
     setIsInList(nextState);
+    showToast(nextState ? `Added "${title}" to My List` : `Removed "${title}" from My List`, "success");
 
     // 1. Sync localStorage
     try {

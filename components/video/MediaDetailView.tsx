@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { IconPlay, IconStar } from "@/components/icons";
 import { SeasonSelector, SeasonInfo } from "@/components/player/SeasonSelector";
 import { EpisodeList, EpisodeItem } from "@/components/player/EpisodeList";
 import { WatchlistButton } from "@/components/player/WatchlistButton";
 import { MediaRail } from "@/components/video/MediaRail";
 import { TmdbSeasonDetail } from "@/lib/tmdb/client";
+import { formatDuration } from "@/lib/utils";
+import { resolveResumeSourceOfTruth } from "@/lib/playback/resume-service";
 
 interface MediaDetailViewProps {
   id: number;
@@ -53,6 +56,78 @@ export function MediaDetailView({
   const [episodes, setEpisodes] = useState<EpisodeItem[]>(
     initialSeasonDetails?.episodes || []
   );
+
+  const { data: session } = useSession();
+  const [resumeInfo, setResumeInfo] = useState<{
+    position: number;
+    season: number;
+    episode: number;
+    isCompleted: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    async function loadResume() {
+      // 1. Check authenticated database progress
+      if (session?.user) {
+        try {
+          const res = await fetch("/api/user/history");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.items) {
+              const resObj = resolveResumeSourceOfTruth({
+                mediaType,
+                tmdbId: id,
+                authDbItems: data.items,
+              });
+              if (resObj.position > 0) {
+                const m = data.items.find((i: any) => Number(i.tmdbId) === id);
+                setResumeInfo({
+                  position: resObj.position,
+                  season: m?.seasonNumber || 1,
+                  episode: m?.episodeNumber || 1,
+                  isCompleted: resObj.isCompleted,
+                });
+                return;
+              }
+            }
+          }
+        } catch {
+          // Fallback
+        }
+      }
+
+      // 2. Check guest local storage
+      const resObj = resolveResumeSourceOfTruth({
+        mediaType,
+        tmdbId: id,
+      });
+      if (resObj.position > 0) {
+        let s = 1;
+        let e = 1;
+        try {
+          const raw = localStorage.getItem("chiller_history");
+          if (raw) {
+            const list = JSON.parse(raw);
+            const found = list.find((item: any) => Number(item.tmdbId || item.id) === id);
+            if (found) {
+              s = found.seasonNumber || 1;
+              e = found.episodeNumber || 1;
+            }
+          }
+        } catch {}
+        setResumeInfo({
+          position: resObj.position,
+          season: s,
+          episode: e,
+          isCompleted: resObj.isCompleted,
+        });
+      } else if (resObj.isCompleted) {
+        setResumeInfo({ position: 0, season: 1, episode: 1, isCompleted: true });
+      }
+    }
+
+    loadResume();
+  }, [id, mediaType, session]);
 
   const watchUrl =
     mediaType === "movie"
@@ -202,15 +277,54 @@ export function MediaDetailView({
               {overview}
             </p>
 
-            {/* Action Buttons: Watch Now & Add to List */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Link
-                href={watchUrl}
-                className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-sm font-black transition-all duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-105 active:scale-95"
-              >
-                <IconPlay className="w-4 h-4 fill-white" />
-                <span>Watch Now</span>
-              </Link>
+            {/* Action Buttons: Watch Now / Resume & Add to List */}
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 pt-2">
+              {resumeInfo && resumeInfo.position > 0 && !resumeInfo.isCompleted ? (
+                <>
+                  <Link
+                    href={
+                      mediaType === "movie"
+                        ? `/watch/movie/${id}?t=${resumeInfo.position}&resume=1`
+                        : `/watch/${mediaType === "anime" ? "anime" : "tv"}/${id}?s=${resumeInfo.season}&e=${resumeInfo.episode}&t=${resumeInfo.position}&resume=1`
+                    }
+                    className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-xs sm:text-sm font-black transition-all duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-105 active:scale-95"
+                  >
+                    <IconPlay className="w-3.5 sm:w-4 h-3.5 sm:h-4 fill-white" />
+                    <span>
+                      {mediaType === "movie"
+                        ? `Resume (${formatDuration(resumeInfo.position)})`
+                        : `Resume S${resumeInfo.season} E${resumeInfo.episode} (${formatDuration(resumeInfo.position)})`}
+                    </span>
+                  </Link>
+
+                  <Link
+                    href={watchUrl}
+                    className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-bold transition-all border border-white/10"
+                    title="Watch from beginning"
+                  >
+                    ↺ Start Over
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href={watchUrl}
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-xs sm:text-sm font-black transition-all duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-105 active:scale-95"
+                >
+                  <IconPlay className="w-3.5 sm:w-4 h-3.5 sm:h-4 fill-white" />
+                  <span>{resumeInfo?.isCompleted ? "Watch Again" : "Watch Now"}</span>
+                </Link>
+              )}
+
+              {mediaType === "anime" && (
+                <Link
+                  href={`/watch/anime/${id}?s=${resumeInfo?.season || selectedSeason || 1}&e=${resumeInfo?.episode || 1}&audio=en`}
+                  className="flex items-center gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-[#8A5CFF]/20 hover:bg-[#8A5CFF]/30 text-[#A78BFA] hover:text-white text-xs sm:text-sm font-bold transition-all border border-[#8A5CFF]/30 active:scale-95"
+                  title="Watch with English Dub audio"
+                >
+                  <span className="text-sm">🎙️</span>
+                  <span>Watch in English</span>
+                </Link>
+              )}
 
               <WatchlistButton
                 tmdbId={id}
