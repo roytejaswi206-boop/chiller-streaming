@@ -2,17 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { upsertSourceMapping, buildMediaKey } from "@/lib/playback/source-mapper";
 import { getProviderDirectoryEntry } from "@/lib/playback/provider-directory";
+import { requireAdmin } from "@/lib/security/rbac";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/admin/providers/sources
- * Query parameters:
- *   - mediaKey (optional)
- *   - providerId (optional)
- *   - status (optional)
  */
 export async function GET(req: Request) {
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const { searchParams } = new URL(req.url);
     const mediaKey = searchParams.get("mediaKey")?.trim();
@@ -57,20 +57,11 @@ export async function GET(req: Request) {
 
 /**
  * POST /api/admin/providers/sources
- * Body payload:
- *   - mediaType ("movie" | "tv" | "anime")
- *   - tmdbId or anilistId
- *   - season (optional)
- *   - episode (optional)
- *   - title (optional)
- *   - providerId (e.g. "filemoon", "vdohide", "streamtape", "dailymotion", "jellyfin")
- *   - providerMediaId (file code, video ID, or stream URL)
- *   - quality (optional, e.g. "1080p HD")
- *   - format (optional, e.g. "EMBED", "HLS", "MP4")
- *   - status (optional, e.g. "ACTIVE", "INACTIVE")
- *   - expiresAt (optional ISO string)
  */
 export async function POST(req: Request) {
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const body = await req.json();
     const {
@@ -138,10 +129,11 @@ export async function POST(req: Request) {
 
 /**
  * DELETE /api/admin/providers/sources
- * Query parameters or Body:
- *   - id: database ID of the providerSource record
  */
 export async function DELETE(req: Request) {
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const { searchParams } = new URL(req.url);
     let id = searchParams.get("id");

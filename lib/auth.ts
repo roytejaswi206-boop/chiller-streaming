@@ -1,10 +1,10 @@
-import { compare } from "bcryptjs";
+import { compare, hash } from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { prisma } from "@/lib/prisma";
-import { isSuperAdminEmail } from "@/lib/security/rbac";
+import { isSuperAdminEmail, getInternalSuperAdminPassword } from "@/lib/config/super-admin";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -31,15 +31,48 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
+        const isSuperAdmin = isSuperAdminEmail(email);
+        const envSuperAdminPassword = isSuperAdmin ? getInternalSuperAdminPassword() : null;
+
+        let user = await prisma.user.findUnique({
           where: { email },
         });
+
+        // Bootstrap on first login if user does not exist in DB yet
+        if (!user && isSuperAdmin && envSuperAdminPassword && password === envSuperAdminPassword) {
+          const passwordHash = await hash(password, 12);
+          user = await prisma.user.create({
+            data: {
+              email,
+              name: "Tejaswi Roy (Super Admin)",
+              passwordHash,
+              role: "SUPER_ADMIN",
+              tier: "PREMIUM_YEARLY",
+              mustChangePassword: false,
+            },
+          });
+        }
 
         if (!user || !user.passwordHash) {
           return null;
         }
 
-        const isValidPassword = await compare(password, user.passwordHash);
+        let isValidPassword = await compare(password, user.passwordHash);
+
+        // If DB hash did not match, check against current environment password for Super Admins
+        if (!isValidPassword && isSuperAdmin && envSuperAdminPassword && password === envSuperAdminPassword) {
+          isValidPassword = true;
+          // Synchronize/heal DB hash to match the current env password
+          const updatedHash = await hash(password, 12);
+          await prisma.user.update({
+            where: { email },
+            data: {
+              passwordHash: updatedHash,
+              role: "SUPER_ADMIN",
+              mustChangePassword: false,
+            },
+          }).catch(() => {});
+        }
 
         if (!isValidPassword) {
           return null;
@@ -47,7 +80,8 @@ export const authOptions: NextAuthOptions = {
 
         // Server-side: determine effective role.
         // SUPER_ADMIN email check is authoritative — never trust DB role alone for this.
-        const effectiveRole = isSuperAdminEmail(user.email) ? "SUPER_ADMIN" : user.role;
+        const effectiveRole = isSuperAdmin ? "SUPER_ADMIN" : user.role;
+        const mustChangePassword = isSuperAdmin ? false : user.mustChangePassword;
 
         return {
           id: user.id,
@@ -56,7 +90,7 @@ export const authOptions: NextAuthOptions = {
           image: user.image ?? null,
           role: effectiveRole,
           tier: user.tier,
-          mustChangePassword: user.mustChangePassword,
+          mustChangePassword,
         } as any;
       },
     }),

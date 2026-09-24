@@ -108,9 +108,10 @@ export function WatchExperience({
   const [isResolvingNewEpisode, setIsResolvingNewEpisode] = useState(false);
   const [, startTransition] = useTransition();
 
-  // Navigation & Player Reload
+  // Navigation & Fullscreen State
   const [playerReloadKey, setPlayerReloadKey] = useState(0);
-  const [isReloading, setIsReloading] = useState(false);
+  const [isPlayerFullscreen, setIsPlayerFullscreen] = useState(false);
+  const [recommendationSections, setRecommendationSections] = useState<any[]>([]);
 
   // Controlled Source Dropdown
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
@@ -149,17 +150,38 @@ export function WatchExperience({
     }
   }, [router, mediaType]);
 
-  // Player Reload / Refresh Stream Handler
-  const handleReloadStream = useCallback(() => {
-    setIsReloading(true);
-    setPlayerReloadKey((k) => k + 1);
-    setTimeout(() => setIsReloading(false), 500);
-  }, []);
-
   // Resume Source of Truth (Section 1: Auth DB > Guest Storage > Explicit URL Override)
   const { data: session } = useSession();
   const [authHistory, setAuthHistory] = useState<any[]>([]);
   const [resolvedResumeTime, setResolvedResumeTime] = useState<number>(0);
+
+  // Asynchronous Non-Blocking Smart Recommendations (Sections 25-46)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSmartRecs = async () => {
+      try {
+        const id = tmdbId || anilistId || slug;
+        const genresParam = genres.length > 0 ? `&genres=${encodeURIComponent(genres.join(","))}` : "";
+        const titleParam = title ? `&title=${encodeURIComponent(title)}` : "";
+        const res = await fetch(
+          `/api/content/recommendations?type=${mediaType}&id=${id}${genresParam}${titleParam}&limit=18`
+        );
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data.sections && data.sections.length > 0) {
+            setRecommendationSections(data.sections);
+          }
+        }
+      } catch {
+        // Fallback to props recommendations non-blockingly
+      }
+    };
+
+    fetchSmartRecs();
+    return () => {
+      isMounted = false;
+    };
+  }, [mediaType, tmdbId, anilistId, slug, title, genres]);
 
   // Fetch authenticated user history from database
   useEffect(() => {
@@ -503,60 +525,63 @@ export function WatchExperience({
         episode={currentEpisode}
       />
 
-      {/* ── Top Navigation & Utility Bar (Back, Breadcrumbs, Reload) ── */}
-      <div className="flex items-center justify-between gap-3 py-1 px-1">
-        <div className="flex items-center gap-3">
+      {/* ── Top Navigation & Utility Bar (Back, Breadcrumbs, Website Refresh) ── */}
+      {!isPlayerFullscreen && (
+        <div className="flex items-center justify-between gap-3 py-1 px-1">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleGoBack}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 active:scale-95 text-zinc-200 hover:text-white text-xs font-bold transition-all touch-manipulation cursor-pointer border border-white/10 shadow-sm"
+              title="Go back to previous page"
+              aria-label="Go back"
+            >
+              <IconChevronLeft className="w-4 h-4" />
+              <span>Back</span>
+            </button>
+
+            {/* Breadcrumbs */}
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
+              <Link href="/" className="hover:text-white transition touch-manipulation">Home</Link>
+              <span>/</span>
+              <Link
+                href={mediaType === "anime" ? "/anime" : mediaType === "tv" ? "/tv" : "/movies"}
+                className="capitalize hover:text-white transition touch-manipulation"
+              >
+                {mediaType}
+              </Link>
+              <span>/</span>
+              <span className="text-zinc-200 font-semibold truncate max-w-[180px] md:max-w-xs">{title}</span>
+              {mediaType !== "movie" && (
+                <span className="text-[#FF3B6B] font-mono text-[11px] font-bold">
+                  S{currentSeason}:E{currentEpisode}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Website Page Refresh Button (Distinct from player recovery) */}
           <button
             type="button"
-            onClick={handleGoBack}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 active:scale-95 text-zinc-200 hover:text-white text-xs font-bold transition-all touch-manipulation cursor-pointer border border-white/10 shadow-sm"
-            title="Go back to previous page"
-            aria-label="Go back"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.location.reload();
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all touch-manipulation cursor-pointer bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border-white/10 active:scale-95 shadow-sm"
+            title="Refresh website page"
+            aria-label="Refresh Page"
           >
-            <IconChevronLeft className="w-4 h-4" />
-            <span>Back</span>
+            <svg className="w-3.5 h-3.5 text-[#FF3B6B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span className="hidden xs:inline">Refresh Page</span>
           </button>
-
-          {/* Breadcrumbs */}
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
-            <Link href="/" className="hover:text-white transition touch-manipulation">Home</Link>
-            <span>/</span>
-            <Link
-              href={mediaType === "anime" ? "/anime" : mediaType === "tv" ? "/tv" : "/movies"}
-              className="capitalize hover:text-white transition touch-manipulation"
-            >
-              {mediaType}
-            </Link>
-            <span>/</span>
-            <span className="text-zinc-200 font-semibold truncate max-w-[180px] md:max-w-xs">{title}</span>
-            {mediaType !== "movie" && (
-              <span className="text-[#FF3B6B] font-mono text-[11px] font-bold">
-                S{currentSeason}:E{currentEpisode}
-              </span>
-            )}
-          </div>
         </div>
-
-        {/* Quick Reload Stream Button */}
-        <button
-          type="button"
-          onClick={handleReloadStream}
-          disabled={isReloading}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all touch-manipulation cursor-pointer ${
-            isReloading
-              ? "bg-[#FF3B6B]/20 text-[#FF3B6B] border-[#FF3B6B]/40 animate-pulse"
-              : "bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border-white/10 active:scale-95 shadow-sm"
-          }`}
-          title="Reload player stream"
-          aria-label="Reload stream"
-        >
-          <span className={`text-sm ${isReloading ? "animate-spin" : ""}`}>🔄</span>
-          <span className="hidden xs:inline">Reload Stream</span>
-        </button>
-      </div>
+      )}
 
       {/* ── Auto Next Episode Countdown Prompt Banner (Sections 23, 24, 35) ── */}
-      {nextEpisodePrompt?.active && (
+      {!isPlayerFullscreen && nextEpisodePrompt?.active && (
         <div className="relative z-30 p-4 rounded-2xl bg-gradient-to-r from-[#1E1B4B]/95 via-[#0F172A]/95 to-[#1E1B4B]/95 border border-[#8A5CFF]/40 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#8A5CFF]/20 border border-[#8A5CFF]/30 flex items-center justify-center text-xl shrink-0">
@@ -620,6 +645,7 @@ export function WatchExperience({
               capturedPositionRef.current = cur;
               capturedIsPlayingRef.current = playing;
             }}
+            onFullscreenChange={setIsPlayerFullscreen}
           />
         ) : sourceType === "OWNED" && streamUrl ? (
           <VideoPlayer
@@ -633,6 +659,7 @@ export function WatchExperience({
             autoPlay={autoPlay}
             initialTime={resolvedResumeTime}
             onEnded={handleTriggerNextEpisode}
+            onFullscreenChange={setIsPlayerFullscreen}
           />
         ) : (
           <div className="aspect-video w-full rounded-2xl bg-[#0F172A] border border-white/10 flex flex-col items-center justify-center p-8 text-center shadow-2xl">
@@ -658,8 +685,11 @@ export function WatchExperience({
         )}
       </div>
 
-      {/* ── 2. Episode Info & Quick Action Header ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2 border-b border-white/[0.08]">
+      {/* ── Surrounding Watch Experience (Hidden in Fullscreen - Sections 6-12) ── */}
+      {!isPlayerFullscreen && (
+        <>
+          {/* ── 2. Episode Info & Quick Action Header ── */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2 border-b border-white/[0.08]">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span
@@ -1005,8 +1035,30 @@ export function WatchExperience({
         )}
       </div>
 
-      {/* ── 8. Recommended Content Rail ── */}
-      {recommendations.length > 0 && (
+      {/* ── 8. Smart Multi-Rail Content Recommendations (Sections 25-46) ── */}
+      {recommendationSections.length > 0 ? (
+        <div className="mt-8 space-y-6">
+          {recommendationSections.map((section: any) => (
+            <MediaRail
+              key={section.id}
+              title={section.title}
+              items={section.items.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                posterPath: item.posterPath,
+                backdropPath: item.backdropPath,
+                mediaType: item.mediaType,
+                rating: item.rating,
+                releaseYear: item.releaseYear,
+                genres: item.genres,
+                badges: item.badges,
+              }))}
+              layout={section.layout || "poster"}
+              seeAllHref={section.seeAllHref}
+            />
+          ))}
+        </div>
+      ) : recommendations.length > 0 ? (
         <div className="mt-8">
           <MediaRail
             title="More Stories Like This"
@@ -1023,6 +1075,8 @@ export function WatchExperience({
             layout="poster"
           />
         </div>
+      ) : null}
+        </>
       )}
     </div>
   );

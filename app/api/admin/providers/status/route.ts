@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import { playbackRegistry } from "@/lib/playback/registry";
 import { getProviderDirectoryEntry } from "@/lib/playback/provider-directory";
 import { getProviderEmbedPolicy } from "@/lib/playback/embed-policy";
+import { requireAdmin } from "@/lib/security/rbac";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const healthStats = playbackRegistry.getHealthStats();
 

@@ -18,6 +18,7 @@ interface IntelligenceData {
   animeMetrics: any[];
   recommendations: { type: "info" | "warning" | "success"; message: string }[];
   crosswalkStats: { totalEntries: number; sampleTitles: string[] };
+  recommendationDebug?: any;
 }
 
 export default function IntelligenceDashboardPage() {
@@ -25,18 +26,45 @@ export default function IntelligenceDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [testTitle, setTestTitle] = useState("Attack on Titan");
+  const [testType, setTestType] = useState<"anime" | "movie" | "tv">("anime");
+  const [inspectingRecs, setInspectingRecs] = useState(false);
+  const [recResult, setRecResult] = useState<any>(null);
+
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/intelligence");
+      const res = await fetch(`/api/admin/intelligence?testTitle=${encodeURIComponent(testTitle)}&testType=${testType}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
+      if (json.recommendationDebug) {
+        setRecResult(json.recommendationDebug);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load intelligence telemetry");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runTestInspection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testTitle.trim()) return;
+    setInspectingRecs(true);
+    try {
+      const res = await fetch(
+        `/api/content/recommendations?type=${testType}&title=${encodeURIComponent(testTitle.trim())}&limit=8&debug=true`
+      );
+      if (res.ok) {
+        const json = await res.json();
+        setRecResult(json);
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setInspectingRecs(false);
     }
   };
 
@@ -308,6 +336,142 @@ export default function IntelligenceDashboardPage() {
             </div>
           </div>
         )}
+
+        {/* ── Section: Smart Recommendation & Discovery Engine Debugger (Section 60) ── */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800 pb-4">
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <span className="text-[#FF3B6B]">🎯</span>
+                <span>Recommendation & Smart Discovery Diagnostic Engine</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Inspect cross-source signals, deduplication matrices, ranking factors, and multi-rail output.
+              </p>
+            </div>
+          </div>
+
+          {/* Interactive Inspection Input */}
+          <form onSubmit={runTestInspection} className="p-4 rounded-xl bg-gray-900/60 border border-gray-800 flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">
+                Title to Inspect
+              </label>
+              <input
+                type="text"
+                value={testTitle}
+                onChange={(e) => setTestTitle(e.target.value)}
+                placeholder="e.g. Attack on Titan, Inception, Breaking Bad"
+                className="w-full px-3 py-2 rounded-lg bg-gray-950 border border-gray-700 text-sm text-white focus:outline-none focus:border-[#FF3B6B]"
+              />
+            </div>
+            <div className="w-36">
+              <label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">
+                Media Type
+              </label>
+              <select
+                value={testType}
+                onChange={(e) => setTestType(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-lg bg-gray-950 border border-gray-700 text-sm text-white focus:outline-none focus:border-[#FF3B6B]"
+              >
+                <option value="anime">Anime</option>
+                <option value="movie">Movie</option>
+                <option value="tv">TV Series</option>
+              </select>
+            </div>
+            <div className="self-end">
+              <button
+                type="submit"
+                disabled={inspectingRecs}
+                className="px-5 py-2 rounded-lg bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 active:scale-95 text-white text-xs font-bold transition shadow-lg shadow-[#FF3B6B]/20 cursor-pointer"
+              >
+                {inspectingRecs ? "Evaluating Signals…" : "Inspect Recommendations"}
+              </button>
+            </div>
+          </form>
+
+          {/* Inspection Results HUD */}
+          {recResult && (
+            <div className="space-y-4">
+              {/* Telemetry Diagnostic Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="p-3.5 rounded-xl bg-gray-950/70 border border-gray-800">
+                  <p className="text-[10px] uppercase font-mono text-gray-400">Total Recommended</p>
+                  <p className="text-xl font-bold text-white mt-1">{recResult.totalCount || 0}</p>
+                  <p className="text-[10px] text-emerald-400 mt-0.5">Across {recResult.sections?.length || 0} rails</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-950/70 border border-gray-800">
+                  <p className="text-[10px] uppercase font-mono text-gray-400">Deduplicated Items</p>
+                  <p className="text-xl font-bold text-[#8A5CFF] mt-1">{recResult.dedupedCount || 0}</p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">Removed duplicates</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-950/70 border border-gray-800">
+                  <p className="text-[10px] uppercase font-mono text-gray-400">Sources Consulted</p>
+                  <p className="text-sm font-bold text-sky-400 mt-1 truncate">
+                    {recResult.diagnostics?.sources?.join(", ") || "AniList, TMDB"}
+                  </p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">Cross-provider fabric</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-950/70 border border-gray-800">
+                  <p className="text-[10px] uppercase font-mono text-gray-400">Cache Status</p>
+                  <p className="text-sm font-bold text-amber-400 mt-1">
+                    {recResult.cached ? "HIT (Cached)" : "FRESH (Generated)"}
+                  </p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">TTL: 30 minutes</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-gray-950/70 border border-gray-800">
+                  <p className="text-[10px] uppercase font-mono text-gray-400">Personalization</p>
+                  <p className="text-sm font-bold text-purple-400 mt-1">
+                    {recResult.diagnostics?.personalizationApplied ? "ACTIVE" : "STANDBY (Guest)"}
+                  </p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">History blending</p>
+                </div>
+              </div>
+
+              {/* Sample Ranked Rails */}
+              <div className="space-y-4">
+                {recResult.sections?.map((sec: any) => (
+                  <div key={sec.id} className="p-4 rounded-xl bg-gray-900/60 border border-gray-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-white">{sec.title}</h3>
+                        {sec.subtitle && <p className="text-xs text-gray-400">{sec.subtitle}</p>}
+                      </div>
+                      <span className="text-[11px] font-mono text-gray-400 bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                        {sec.items?.length} titles
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {sec.items?.slice(0, 4).map((item: any) => (
+                        <div key={item.id} className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex gap-3 text-xs">
+                          {item.posterPath ? (
+                            <img src={item.posterPath} alt="" className="w-12 h-16 object-cover rounded bg-gray-800 shrink-0" />
+                          ) : (
+                            <div className="w-12 h-16 rounded bg-gray-800 flex items-center justify-center shrink-0">🎬</div>
+                          )}
+                          <div className="min-w-0 flex-1 flex flex-col justify-between">
+                            <div>
+                              <p className="font-bold text-white truncate">{item.title}</p>
+                              <p className="text-[10px] text-gray-400">
+                                {item.releaseYear} • ★ {item.rating}
+                              </p>
+                            </div>
+                            {item.rankingReasons && item.rankingReasons.length > 0 && (
+                              <p className="text-[9px] text-[#FF3B6B] truncate font-medium">
+                                ↳ {item.rankingReasons[0]}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

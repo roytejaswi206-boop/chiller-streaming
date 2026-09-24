@@ -34,6 +34,7 @@ interface ExternalPlayerProps {
   onToggleAutoNext?: () => void;
   onSelectSourceIndex?: (index: number) => void;
   onPlaybackProgress?: (currentTime: number, duration: number, isPlaying: boolean) => void;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
 }
 
 // Fallback retry delay (ms)
@@ -66,6 +67,7 @@ export function ExternalPlayer({
   onToggleAutoNext,
   onSelectSourceIndex,
   onPlaybackProgress,
+  onFullscreenChange,
 }: ExternalPlayerProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [failedIndices, setFailedIndices] = useState<Set<number>>(new Set());
@@ -101,6 +103,10 @@ export function ExternalPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [orientationHint, setOrientationHint] = useState<string | null>(null);
+
+  // Safe Intro Range Detection
+  const [detectedIntroRange, setDetectedIntroRange] = useState<{ start: number; end: number } | null>(null);
+  const [currentPlaybackSec, setCurrentPlaybackSec] = useState<number>(0);
 
   // ── True Resume System State (Sections 17-23, 27-30) ──
   const [resumeTime, setResumeTime] = useState<number | null>(initialResumeTime || null);
@@ -208,6 +214,7 @@ export function ExternalPlayer({
     const handleFullscreenChange = () => {
       const isFull = Boolean(document.fullscreenElement);
       setIsFullscreen(isFull);
+      onFullscreenChange?.(isFull);
 
       // When leaving fullscreen, unlock orientation if supported
       if (!isFull) {
@@ -244,7 +251,19 @@ export function ExternalPlayer({
         screen.orientation.removeEventListener("change", handleOrientationChange);
       }
     };
-  }, []);
+  }, [onFullscreenChange]);
+
+  // Lock body scroll when fullscreen is active
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isFullscreen]);
 
   const handleFullscreen = async () => {
     const container = playerContainerRef.current;
@@ -255,12 +274,18 @@ export function ExternalPlayer({
         if (container.requestFullscreen) {
           await container.requestFullscreen();
           setIsFullscreen(true);
+          onFullscreenChange?.(true);
         } else if ((container as any).webkitRequestFullscreen) {
           await (container as any).webkitRequestFullscreen();
           setIsFullscreen(true);
+          onFullscreenChange?.(true);
         } else {
           // Fallback for mobile browsers where container fullscreen is restricted
-          setIsFullscreen((prev) => !prev);
+          setIsFullscreen((prev) => {
+            const next = !prev;
+            onFullscreenChange?.(next);
+            return next;
+          });
         }
       } else {
         if (document.exitFullscreen) {
@@ -269,12 +294,24 @@ export function ExternalPlayer({
           await (document as any).webkitExitFullscreen();
         }
         setIsFullscreen(false);
+        onFullscreenChange?.(false);
       }
     } catch {
       // Non-blocking fallback for browsers rejecting div fullscreen
-      setIsFullscreen((prev) => !prev);
+      setIsFullscreen((prev) => {
+        const next = !prev;
+        onFullscreenChange?.(next);
+        return next;
+      });
     }
   };
+
+  const handlePlayerSurfaceClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // If clicking an interactive button or control, allow normal bubbling
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, input, select, [role='button']")) return;
+    resetControlsTimeout();
+  }, [resetControlsTimeout]);
 
   const handleQuickReload = useCallback(() => {
     setIsLoading(true);
@@ -649,7 +686,13 @@ export function ExternalPlayer({
             break;
           case "cinesrc:timeupdate":
             if (data?.currentTime && data?.duration) {
+              setCurrentPlaybackSec(data.currentTime);
               saveProgress(data.currentTime, data.duration);
+            }
+            if (data?.intro && typeof data.intro.start === "number" && typeof data.intro.end === "number") {
+              setDetectedIntroRange({ start: data.intro.start, end: data.intro.end });
+            } else if (typeof data?.introStart === "number" && typeof data?.introEnd === "number") {
+              setDetectedIntroRange({ start: data.introStart, end: data.introEnd });
             }
             break;
           case "cinesrc:ended":
@@ -770,21 +813,22 @@ export function ExternalPlayer({
 
   return (
     <div
-      className={`w-full space-y-3 font-sans select-none transition-all duration-200 ${
+      className={`w-full font-sans select-none transition-all duration-200 ${
         isFullscreen
-          ? "fixed inset-0 z-50 bg-black p-0 m-0 overflow-hidden flex flex-col justify-center"
-          : ""
+          ? "fixed inset-0 w-screen h-screen z-[9999] bg-black p-0 m-0 overflow-hidden flex flex-col justify-center"
+          : "space-y-0"
       }`}
       ref={playerContainerRef}
       onMouseMove={resetControlsTimeout}
       onMouseEnter={resetControlsTimeout}
       onPointerDown={resetControlsTimeout}
+      onClick={handlePlayerSurfaceClick}
     >
       {/* ── Player Shell Container (Aspect Ratio 16:9, Max Cinematic Height) ── */}
       <div
         className={`relative w-full overflow-hidden bg-[#09090C] transition-all group ${
           isFullscreen
-            ? "h-full w-full rounded-none border-0"
+            ? "h-screen w-screen rounded-none border-0"
             : "rounded-2xl border border-white/10 shadow-2xl"
         }`}
         style={{
@@ -828,23 +872,6 @@ export function ExternalPlayer({
             </>
           )}
         </div>
-
-        {/* Floating Quick-Reveal Button when controls auto-hide */}
-        {!controlsVisible && !allFailed && (
-          <button
-            type="button"
-            onClick={resetControlsTimeout}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-              resetControlsTimeout();
-            }}
-            className="absolute top-3 right-3 z-30 px-3 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xl pointer-events-auto transition active:scale-95 cursor-pointer touch-manipulation animate-fade-in"
-            title="Show Controls"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B6B] animate-pulse" />
-            <span>Controls</span>
-          </button>
-        )}
 
         {/* ── Top-Right Controls: Shield + Reload + Rotate + Settings + Fullscreen + DIAG (Auto-Hides) ── */}
         <div
@@ -1117,6 +1144,52 @@ export function ExternalPlayer({
                 </div>
               </div>
 
+              {/* PLAYBACK AUTOMATION (Auto Play & Auto Next) */}
+              <div className="space-y-2 border-t border-white/10 pt-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                  Playback Automation
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onToggleAutoPlay?.();
+                      try {
+                        localStorage.setItem("chiller_autoplay", !autoPlay ? "1" : "0");
+                      } catch {}
+                    }}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer touch-manipulation flex items-center justify-between border ${
+                      autoPlay
+                        ? "bg-[#FF3B6B]/20 text-[#FF3B6B] border-[#FF3B6B]/40 shadow-sm"
+                        : "bg-white/5 text-zinc-400 border-white/10 hover:text-white"
+                    }`}
+                  >
+                    <span>Auto Play</span>
+                    <span>{autoPlay ? "ON" : "OFF"}</span>
+                  </button>
+
+                  {(mediaType === "tv" || mediaType === "anime") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onToggleAutoNext?.();
+                        try {
+                          localStorage.setItem("chiller_autonext", !autoNext ? "1" : "0");
+                        } catch {}
+                      }}
+                      className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer touch-manipulation flex items-center justify-between border ${
+                        autoNext
+                          ? "bg-[#8A5CFF]/20 text-[#8A5CFF] border-[#8A5CFF]/40 shadow-sm"
+                          : "bg-white/5 text-zinc-400 border-white/10 hover:text-white"
+                      }`}
+                    >
+                      <span>Auto Next</span>
+                      <span>{autoNext ? "ON" : "OFF"}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* SOURCE INFORMATION (Section 17: Safe Diagnostics without Secrets) */}
               <div className="space-y-1.5 border-t border-white/10 pt-3 text-[10px] text-zinc-400">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
@@ -1384,73 +1457,23 @@ export function ExternalPlayer({
           />
           <span className="text-[10px] font-black tracking-widest text-white/50 uppercase">CHILLER</span>
         </div>
-      </div>
 
-      {/* ── Sub-Player Action Bar: Quick Toggles (AutoPlay, AutoNext, SkipIntro) ── */}
-      <div
-        className={`flex flex-wrap items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#0F172A] border border-white/[0.08] transition-all duration-300 ${
-          controlsVisible ? "opacity-100" : "opacity-80"
-        }`}
-      >
-        {/* Playback Convenience Toggles */}
-        <div className="flex items-center gap-2">
-          {onToggleAutoPlay && (
+        {/* Real Contextual Skip Intro Button (Only shown when intro range is detected) */}
+        {detectedIntroRange &&
+          currentPlaybackSec >= detectedIntroRange.start &&
+          currentPlaybackSec < detectedIntroRange.end && (
             <button
-              onClick={onToggleAutoPlay}
-              className={`px-3 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                autoPlay
-                  ? "bg-[#FF3B6B]/20 border-[#FF3B6B]/40 text-[#FF3B6B]"
-                  : "bg-white/5 border-white/10 text-zinc-400 hover:text-white"
-              }`}
+              type="button"
+              onClick={() => {
+                sendCineSrcCommand("seek", { time: detectedIntroRange.end });
+                setDetectedIntroRange(null);
+              }}
+              className="absolute bottom-8 right-6 z-30 px-4 py-2 rounded-xl bg-black/85 hover:bg-black text-white text-xs font-black border border-white/20 shadow-2xl backdrop-blur-md active:scale-95 transition cursor-pointer flex items-center gap-2 animate-fade-in touch-manipulation"
             >
-              Auto Play: {autoPlay ? "ON" : "OFF"}
+              <span>⏩</span>
+              <span>Skip Intro</span>
             </button>
           )}
-
-          {onToggleAutoNext && (mediaType === "tv" || mediaType === "anime") && (
-            <button
-              onClick={onToggleAutoNext}
-              className={`px-3 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                autoNext
-                  ? "bg-[#8A5CFF]/20 border-[#8A5CFF]/40 text-[#8A5CFF]"
-                  : "bg-white/5 border-white/10 text-zinc-400 hover:text-white"
-              }`}
-            >
-              Auto Next: {autoNext ? "ON" : "OFF"}
-            </button>
-          )}
-
-          {activeSource?.providerId === "cinesrc" && (
-            <button
-              onClick={() => sendCineSrcCommand("skipintro")}
-              className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition cursor-pointer"
-            >
-              Skip Intro
-            </button>
-          )}
-        </div>
-
-        {/* Episode Quick Steps */}
-        {(mediaType === "tv" || mediaType === "anime") && (
-          <div className="flex items-center gap-2">
-            {hasPrevEpisode && onPrevEpisode && (
-              <button
-                onClick={onPrevEpisode}
-                className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition cursor-pointer"
-              >
-                ← Prev Ep
-              </button>
-            )}
-            {hasNextEpisode && onNextEpisode && (
-              <button
-                onClick={() => onNextEpisode((season || 1), (episode || 1) + 1)}
-                className="px-3 py-1 rounded-lg bg-[#FF3B6B]/15 hover:bg-[#FF3B6B]/25 border border-[#FF3B6B]/30 text-xs font-bold text-[#FF3B6B] transition cursor-pointer"
-              >
-                Next Ep →
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── Diagnostic HUD (Dev Mode) ── */}

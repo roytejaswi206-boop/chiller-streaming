@@ -11,6 +11,7 @@ import {
   requireAdmin,
   requireSuperAdmin,
   canSetRole,
+  canModifyUser,
   writeAuditLog,
   getClientIp,
 } from "@/lib/security/rbac";
@@ -77,6 +78,18 @@ export async function PATCH(request: NextRequest) {
 
   // Role update — requires SUPER_ADMIN to set SUPER_ADMIN role
   if (role !== undefined) {
+    const modCheck = canModifyUser(actorCtx, targetUser.email, role);
+    if (!modCheck.allowed) {
+      await writeAuditLog({
+        adminEmail: actorCtx.email,
+        action: "ROOT_ACCOUNT_MODIFICATION_BLOCKED",
+        target: targetUser.email,
+        details: { attemptedRole: role, reason: modCheck.reason },
+        ipAddress: ip,
+      });
+      return NextResponse.json({ error: modCheck.reason }, { status: 403 });
+    }
+
     // Require SUPER_ADMIN for any role change to SUPER_ADMIN
     const { allowed, reason } = canSetRole(actorCtx, role);
     if (!allowed) {
@@ -127,4 +140,58 @@ export async function PATCH(request: NextRequest) {
   });
 
   return NextResponse.json({ success: true, user: updated });
+}
+
+// DELETE /api/admin/users — delete user (SUPER_ADMIN only, root protected)
+export async function DELETE(request: NextRequest) {
+  const authResult = await requireSuperAdmin();
+  if (authResult instanceof NextResponse) return authResult;
+  const actorCtx = authResult;
+
+  const ip = getClientIp(request);
+  const url = new URL(request.url);
+  const userId = url.searchParams.get("userId");
+
+  if (!userId) {
+    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, role: true },
+  });
+
+  if (!targetUser) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Block deletion of root owner identities
+  const modCheck = canModifyUser(actorCtx, targetUser.email);
+  if (!modCheck.allowed || targetUser.role === "SUPER_ADMIN") {
+    await writeAuditLog({
+      adminEmail: actorCtx.email,
+      action: "SUPER_ADMIN_DELETION_BLOCKED",
+      target: targetUser.email,
+      details: { reason: "Cannot delete a SUPER_ADMIN account" },
+      ipAddress: ip,
+    });
+    return NextResponse.json(
+      { error: "Root SUPER_ADMIN accounts cannot be deleted." },
+      { status: 403 }
+    );
+  }
+
+  await prisma.user.delete({
+    where: { id: userId },
+  });
+
+  await writeAuditLog({
+    adminEmail: actorCtx.email,
+    action: "USER_DELETED",
+    target: targetUser.email,
+    details: { deletedUserId: userId },
+    ipAddress: ip,
+  });
+
+  return NextResponse.json({ success: true, message: `User ${targetUser.email} deleted` });
 }

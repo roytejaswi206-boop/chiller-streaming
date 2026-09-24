@@ -38,6 +38,7 @@ export interface VideoPlayerProps {
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
   onViewRegistered?: () => void;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
 }
 
 export function VideoPlayer({
@@ -52,6 +53,7 @@ export function VideoPlayer({
   onTimeUpdate,
   onEnded,
   onViewRegistered,
+  onFullscreenChange,
 }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -88,6 +90,29 @@ export function VideoPlayer({
 
   // Resume State
   const resumeAppliedRef = useRef(false);
+
+  // Synchronize True Device Fullscreen State
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFull = Boolean(document.fullscreenElement);
+      setIsFullscreen(isFull);
+      onFullscreenChange?.(isFull);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [onFullscreenChange]);
+
+  // Lock body scroll during fullscreen
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isFullscreen]);
   const [resumeToast, setResumeToast] = useState<string | null>(null);
 
   // Scrubbing & Hover Tooltip
@@ -431,14 +456,30 @@ export function VideoPlayer({
   // Fullscreen & Orientation Rotate (Section 19)
   const toggleFullscreen = () => {
     const container = containerRef.current;
+    const video = videoRef.current;
     if (!container) return;
 
     if (!document.fullscreenElement) {
-      container.requestFullscreen?.().catch(() => {});
-      setIsFullscreen(true);
+      if (container.requestFullscreen) {
+        container.requestFullscreen().catch(() => {
+          if (video && (video as any).webkitEnterFullscreen) {
+            (video as any).webkitEnterFullscreen();
+          }
+        });
+        setIsFullscreen(true);
+        onFullscreenChange?.(true);
+      } else if ((video as any)?.webkitEnterFullscreen) {
+        (video as any).webkitEnterFullscreen();
+        setIsFullscreen(true);
+        onFullscreenChange?.(true);
+      } else {
+        setIsFullscreen(true);
+        onFullscreenChange?.(true);
+      }
     } else {
       document.exitFullscreen?.().catch(() => {});
       setIsFullscreen(false);
+      onFullscreenChange?.(false);
     }
   };
 
@@ -574,9 +615,11 @@ export function VideoPlayer({
       onMouseEnter={resetControlsTimeout}
       onTouchStart={resetControlsTimeout}
       onMouseLeave={() => isPlaying && !showSettingsMenu && setControlsVisible(false)}
-      className={`relative w-full aspect-video rounded-2xl overflow-hidden bg-black select-none group border border-white/[0.08] shadow-2xl ${
-        theaterMode ? "max-w-none" : ""
-      }`}
+      className={`relative w-full overflow-hidden bg-black select-none group transition-all duration-200 ${
+        isFullscreen
+          ? "fixed inset-0 w-screen h-screen z-[9999] rounded-none border-0 m-0 p-0"
+          : "aspect-video rounded-2xl border border-white/[0.08] shadow-2xl"
+      } ${theaterMode ? "max-w-none" : ""}`}
     >
       {/* HTML5 Video Element */}
       <video

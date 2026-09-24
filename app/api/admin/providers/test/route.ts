@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { playbackRegistry } from "@/lib/playback/registry";
+import { requireAdmin } from "@/lib/security/rbac";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const body = await req.json();
     const { providerId, type = "health", tmdbId, season = 1, episode = 1 } = body;

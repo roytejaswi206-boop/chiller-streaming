@@ -46,7 +46,11 @@ export default function LoginPage() {
           // Non-blocking
         }
 
-        router.push("/");
+        const callbackUrl =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("callbackUrl") || "/"
+            : "/";
+        router.push(callbackUrl);
         router.refresh();
       }
     } catch {

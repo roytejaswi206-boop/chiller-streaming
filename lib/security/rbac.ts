@@ -18,31 +18,19 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// ============================================================================
-// SUPER_ADMIN Identity Registry
-// Loaded once from environment. Never from client.
-// ============================================================================
+import {
+  isSuperAdminEmail,
+  getSuperAdminEmailSet,
+  DESIGNATED_SUPER_ADMIN_EMAILS,
+  normalizeAdminEmail,
+} from "@/lib/config/super-admin";
 
-function getSuperAdminEmails(): ReadonlySet<string> {
-  const raw = process.env.SUPER_ADMIN_EMAILS ?? "";
-  const emails = raw
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0 && e.includes("@"));
-  return new Set(emails);
-}
-
-/**
- * Determines if an email belongs to a SUPER_ADMIN.
- * Uses ONLY exact normalized comparison. No wildcards. No prefix/suffix matching.
- */
-export function isSuperAdminEmail(email: string): boolean {
-  if (!email) return false;
-  const normalized = email.trim().toLowerCase();
-  const allowedEmails = getSuperAdminEmails();
-  // Strict set lookup — no contains/startsWith/endsWith
-  return allowedEmails.has(normalized);
-}
+export {
+  isSuperAdminEmail,
+  getSuperAdminEmailSet,
+  DESIGNATED_SUPER_ADMIN_EMAILS,
+  normalizeAdminEmail,
+};
 
 // ============================================================================
 // Session-based guards
@@ -208,5 +196,40 @@ export function canSetRole(
   if (!validRoles.has(normalized)) {
     return { allowed: false, reason: `Invalid role: ${targetRole}` };
   }
+  return { allowed: true };
+}
+
+/**
+ * Root account and role escalation guard.
+ * Prevents demotion, deletion, or tampering with the two designated owner identities.
+ */
+export function canModifyUser(
+  actorCtx: AuthContext,
+  targetEmail: string,
+  proposedRole?: string
+): { allowed: boolean; reason?: string } {
+  const normalizedTarget = normalizeAdminEmail(targetEmail);
+  const isTargetDesignatedOwner = DESIGNATED_SUPER_ADMIN_EMAILS.map((e) =>
+    e.toLowerCase()
+  ).includes(normalizedTarget);
+
+  if (
+    isTargetDesignatedOwner &&
+    proposedRole &&
+    proposedRole.trim().toUpperCase() !== "SUPER_ADMIN"
+  ) {
+    return {
+      allowed: false,
+      reason: "Root owner Super Admin accounts cannot be demoted.",
+    };
+  }
+
+  if (isTargetDesignatedOwner && !actorCtx.isSuperAdmin) {
+    return {
+      allowed: false,
+      reason: "Non-super-admins cannot modify root owner accounts.",
+    };
+  }
+
   return { allowed: true };
 }

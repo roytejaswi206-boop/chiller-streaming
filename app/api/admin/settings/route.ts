@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/security/rbac";
+import { requireAdmin, requireSuperAdmin } from "@/lib/security/rbac";
+import { prisma } from "@/lib/prisma";
 import { getCodeSpecterApiKey, getPlaybackAggregatorUrl, getTmdbApiKey, setSystemSetting } from "@/lib/settings";
 import { testTmdbConnection } from "@/lib/tmdb/client";
 import { testCodeSpecterConnection } from "@/lib/codespecters/client";
@@ -54,24 +55,39 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const authResult = await requireAdmin();
+  const authResult = await requireSuperAdmin();
   if (authResult instanceof NextResponse) return authResult;
+  const actorCtx = authResult;
 
   try {
     const body = await request.json();
     const { tmdbApiKey, codeSpecterApiKey, playbackAggregatorUrl } = body;
 
+    const modifiedSettings: string[] = [];
+
     if (tmdbApiKey !== undefined && tmdbApiKey.trim()) {
       await setSystemSetting("tmdb_api_key", tmdbApiKey.trim(), true);
+      modifiedSettings.push("tmdb_api_key");
     }
 
     if (codeSpecterApiKey !== undefined && codeSpecterApiKey.trim()) {
       await setSystemSetting("codespecter_api_key", codeSpecterApiKey.trim(), true);
+      modifiedSettings.push("codespecter_api_key");
     }
 
     if (playbackAggregatorUrl !== undefined) {
       await setSystemSetting("playback_aggregator_url", playbackAggregatorUrl.trim(), false);
+      modifiedSettings.push("playback_aggregator_url");
     }
+
+    await prisma.auditLog.create({
+      data: {
+        adminEmail: actorCtx.email,
+        action: "SYSTEM_SETTING_CHANGED",
+        target: "CORE_SETTINGS",
+        details: JSON.stringify({ modifiedSettings }),
+      },
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, message: "Settings saved successfully." });
   } catch (err: any) {

@@ -77,6 +77,12 @@ export async function proxy(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const role = (token as any).role as string | undefined;
+    const adminRoles = new Set(["ADMIN", "SUPER_ADMIN"]);
+    if (!role || !adminRoles.has(role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   return NextResponse.next();

@@ -1,12 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { playbackRegistry } from "@/lib/playback/registry";
 import { providerHealthCache } from "@/lib/playback/health-cache";
 import { getCrosswalkStats } from "@/lib/media/identity/id-mapper";
+import { getRecommendations } from "@/lib/content/recommendations";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const testTitle = searchParams.get("testTitle") || "Attack on Titan";
+    const testType = (searchParams.get("testType") || "anime") as "movie" | "tv" | "anime";
+
+    // Run live recommendation diagnostic evaluation
+    let recommendationDebug = null;
+    try {
+      recommendationDebug = await getRecommendations({
+        title: testTitle,
+        mediaType: testType,
+        genres: testType === "anime" ? ["Action", "Fantasy", "Drama"] : ["Action", "Thriller"],
+        limit: 8,
+        debug: true,
+      });
+    } catch (e: any) {
+      recommendationDebug = { error: e.message };
+    }
+
     const generalProviders = playbackRegistry.getGeneralProviders();
     const animeProviders = playbackRegistry.getAnimeProviders();
 
@@ -110,6 +129,7 @@ export async function GET() {
       animeMetrics,
       recommendations,
       crosswalkStats,
+      recommendationDebug,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
