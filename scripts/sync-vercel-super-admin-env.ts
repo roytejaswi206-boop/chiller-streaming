@@ -69,7 +69,14 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("SUPER ADMIN CREDENTIAL CONFIGURED LOCALLY. Syncing to Vercel production...");
+  const nextAuthSecret = env["NEXTAUTH_SECRET"];
+  if (nextAuthSecret) {
+    await addVercelEnv("NEXTAUTH_SECRET", nextAuthSecret, "production");
+    await addVercelEnv("NEXTAUTH_SECRET", nextAuthSecret, "preview");
+  }
+
+  await addVercelEnv("NEXTAUTH_URL", "https://streaming-chi-red.vercel.app", "production");
+  await addVercelEnv("NEXT_PUBLIC_APP_URL", "https://streaming-chi-red.vercel.app", "production");
 
   // Sync to production and preview
   await addVercelEnv("SUPER_ADMIN_EMAILS", emails, "production");

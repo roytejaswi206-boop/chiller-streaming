@@ -34,30 +34,53 @@ export const authOptions: NextAuthOptions = {
         const isSuperAdmin = isSuperAdminEmail(email);
         const envSuperAdminPassword = isSuperAdmin ? getInternalSuperAdminPassword() : null;
 
-        let user = await prisma.user.findUnique({
-          where: { email },
-        });
+        let user: any = null;
+        try {
+          user = await prisma.user.findUnique({
+            where: { email },
+          });
+        } catch {
+          user = null;
+        }
 
         // Bootstrap on first login if user does not exist in DB yet
         if (!user && isSuperAdmin && envSuperAdminPassword && password === envSuperAdminPassword) {
-          const passwordHash = await hash(password, 12);
-          user = await prisma.user.create({
-            data: {
+          try {
+            const passwordHash = await hash(password, 12);
+            user = await prisma.user.create({
+              data: {
+                email,
+                name: "Tejaswi Roy (Super Admin)",
+                passwordHash,
+                role: "SUPER_ADMIN",
+                tier: "PREMIUM_YEARLY",
+                mustChangePassword: false,
+              },
+            });
+          } catch {
+            // Read-only serverless disk fallback (Vercel)
+            user = {
+              id: `sa_${Buffer.from(email).toString("hex").slice(0, 12)}`,
               email,
               name: "Tejaswi Roy (Super Admin)",
-              passwordHash,
+              passwordHash: "serverless_bootstrap",
               role: "SUPER_ADMIN",
               tier: "PREMIUM_YEARLY",
               mustChangePassword: false,
-            },
-          });
+            };
+          }
         }
 
-        if (!user || !user.passwordHash) {
+        if (!user) {
           return null;
         }
 
-        let isValidPassword = await compare(password, user.passwordHash);
+        let isValidPassword = false;
+        if (isSuperAdmin && envSuperAdminPassword && password === envSuperAdminPassword) {
+          isValidPassword = true;
+        } else if (user.passwordHash) {
+          isValidPassword = await compare(password, user.passwordHash).catch(() => false);
+        }
 
         // If DB hash did not match, check against current environment password for Super Admins
         if (!isValidPassword && isSuperAdmin && envSuperAdminPassword && password === envSuperAdminPassword) {
