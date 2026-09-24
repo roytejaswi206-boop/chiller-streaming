@@ -51,8 +51,14 @@ async function handleResolve(payload: ResolvePayload) {
   const start = Date.now();
 
   // 2. POOL B: Anime Playback Pool (Strict Isolation)
-  if (classification.targetPool === "ANIME" && rawAnilistId) {
-    const anilistId = parseInt(String(rawAnilistId), 10) || rawAnilistId;
+  if (classification.targetPool === "ANIME" && (rawAnilistId || rawId)) {
+    const { resolveAnimeAnilistId } = await import("@/lib/media/identity/id-mapper");
+    const canonicalAnilistId = await resolveAnimeAnilistId({
+      anilistId: rawAnilistId,
+      tmdbId: rawId,
+      malId: payload.malId,
+    });
+    const anilistId = canonicalAnilistId || parseInt(String(rawAnilistId || rawId), 10);
     const animeRes = await resolveDedicatedAnimePlayback({
       anilistId,
       tmdbId: rawId,

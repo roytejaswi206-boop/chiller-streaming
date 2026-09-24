@@ -118,8 +118,22 @@ export async function resolveAnimePlayback(
   request: AnimePlaybackRequest
 ): Promise<AnimeResolutionResult> {
   const start = Date.now();
-  const anilistId = request.anilistId;
-  const episode = Math.max(1, request.episode || 1);
+
+  // Canonical AniList ID crosswalk translation
+  const { resolveAnimeAnilistId } = await import("@/lib/media/identity/id-mapper");
+  const resolvedAnilistId = await resolveAnimeAnilistId({
+    anilistId: request.anilistId,
+    tmdbId: request.tmdbId,
+    malId: request.malId,
+    title: request.title,
+  });
+  const anilistId = resolvedAnilistId || request.anilistId;
+  const normalizedRequest: AnimePlaybackRequest = {
+    ...request,
+    anilistId,
+  };
+
+  const episode = Math.max(1, normalizedRequest.episode || 1);
 
   // 1. Get all providers in the system to calculate considered vs skipped
   const allProviders = playbackRegistry.getAllProviders();
@@ -139,7 +153,7 @@ export async function resolveAnimePlayback(
   }
 
   // 3. Rank eligible anime providers
-  const rankedAnimeProviders = playbackRegistry.rankAnimeProviders(request);
+  const rankedAnimeProviders = playbackRegistry.rankAnimeProviders(normalizedRequest);
   const providersConsidered = rankedAnimeProviders.map((p) => ({
     id: p.id,
     name: p.name,
@@ -147,7 +161,7 @@ export async function resolveAnimePlayback(
   }));
 
   const variantRequested: AnimePlaybackVariant =
-    request.variant || (request.language === "dub" ? "dub" : "sub");
+    normalizedRequest.variant || (normalizedRequest.language === "dub" ? "dub" : "sub");
 
   const availableVariants = {
     sub: animePoolProviders.some((p) => p.enabled && p.getCapabilities().supportsSub),
@@ -169,14 +183,17 @@ export async function resolveAnimePlayback(
     };
   }
 
-  // 4. Launch all eligible anime providers concurrently with bounded timeout
+  // 4. Launch eligible anime providers concurrently with Fast-First resolution
+  const candidates: PlaybackCandidate[] = [];
+  const GRACE_WINDOW_MS = 350;
+
   const resolutionPromises = rankedAnimeProviders.map(async (p, idx) => {
     const candidate = await resolveSingleAnimeProvider(p.id, {
-      ...request,
+      ...normalizedRequest,
       variant: variantRequested,
       language: variantRequested === "dub" ? "dub" : "sub",
     });
-    if (!candidate) return null;
+    if (!candidate || !candidate.url) return null;
 
     const score = providerHealthCache.calculateScore(p.id, {
       mediaType: "anime",
@@ -185,7 +202,7 @@ export async function resolveAnimePlayback(
       hasLanguageSupport: variantRequested === "dub" ? p.getCapabilities().supportsDub : p.getCapabilities().supportsSub,
     });
 
-    return {
+    const enrichedCandidate: PlaybackCandidate = {
       ...candidate,
       priority: p.priority,
       score,
@@ -194,17 +211,33 @@ export async function resolveAnimePlayback(
       mediaType: "anime",
       pool: "ANIME",
       variant: variantRequested,
-    } as PlaybackCandidate;
+    };
+
+    candidates.push(enrichedCandidate);
+    return enrichedCandidate;
   });
 
-  const settled = await Promise.allSettled(resolutionPromises);
-  const candidates: PlaybackCandidate[] = [];
+  // Fast-first race: as soon as top candidate resolves, allow short grace window for others
+  await new Promise<void>((resolve) => {
+    let settledCount = 0;
+    const total = resolutionPromises.length;
+    let graceTimer: NodeJS.Timeout | null = null;
 
-  for (const res of settled) {
-    if (res.status === "fulfilled" && res.value && res.value.url) {
-      candidates.push(res.value);
-    }
-  }
+    if (total === 0) return resolve();
+
+    const onSettled = () => {
+      settledCount++;
+      if (candidates.length > 0 && !graceTimer) {
+        graceTimer = setTimeout(() => resolve(), GRACE_WINDOW_MS);
+      }
+      if (settledCount >= total) {
+        if (graceTimer) clearTimeout(graceTimer);
+        resolve();
+      }
+    };
+
+    resolutionPromises.forEach((p) => p.then(onSettled, onSettled));
+  });
 
   // 5. Also retrieve direct mapped anime sources from database if present
   try {

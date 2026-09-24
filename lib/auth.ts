@@ -103,14 +103,19 @@ export const authOptions: NextAuthOptions = {
         token.tier = (user as any).tier;
         token.mustChangePassword = (user as any).mustChangePassword;
       }
+      if (token?.email && isSuperAdminEmail(token.email)) {
+        token.role = "SUPER_ADMIN";
+        token.mustChangePassword = false;
+      }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token) {
+        const isSA = token.email ? isSuperAdminEmail(token.email) : false;
         (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
+        (session.user as any).role = isSA ? "SUPER_ADMIN" : token.role;
         (session.user as any).tier = token.tier;
-        (session.user as any).mustChangePassword = token.mustChangePassword;
+        (session.user as any).mustChangePassword = isSA ? false : token.mustChangePassword;
       }
       return session;
     },

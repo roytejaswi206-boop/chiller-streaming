@@ -46,12 +46,20 @@ export default function LoginPage() {
           // Non-blocking
         }
 
-        const callbackUrl =
-          typeof window !== "undefined"
-            ? new URLSearchParams(window.location.search).get("callbackUrl") || "/"
-            : "/";
-        router.push(callbackUrl);
-        router.refresh();
+        const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        let callbackUrl = searchParams?.get("callbackUrl");
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const isSuperAdmin =
+          normalizedEmail === "roytejaswi40@gmail.com" ||
+          normalizedEmail === "roytejaswi206@gmail.com";
+
+        if (!callbackUrl || callbackUrl === "/") {
+          callbackUrl = isSuperAdmin ? "/admin" : "/";
+        }
+
+        // Full window navigation ensures cookies are committed and server components render authenticated state
+        window.location.href = callbackUrl;
       }
     } catch {
       setError("An unexpected error occurred. Please try again.");

@@ -35,9 +35,35 @@ export function Header() {
         const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=1`);
         if (res.ok) {
           const data = await res.json();
-          const items = (data.results || []).slice(0, 6);
-          setSuggestions(items);
-          setShowSuggestions(items.length > 0);
+          const rawItems = (data.results || []).slice(0, 6);
+          const normalized = rawItems
+            .filter((item: any) => item.media_type !== "person")
+            .map((item: any) => {
+              const isTV = item.media_type === "tv";
+              const isAnime =
+                (isTV || item.media_type === "anime") &&
+                (item.original_language === "ja" || item.origin_country?.includes("JP")) &&
+                (item.genre_ids?.includes(16) || item.genres?.some((g: any) => g.id === 16 || g.name === "Animation"));
+              const mediaType = isAnime ? "anime" : isTV ? "tv" : "movie";
+              const title = item.title || item.name || "Untitled";
+              const releaseDate = item.release_date || item.first_air_date || "";
+              const releaseYear = releaseDate ? releaseDate.split("-")[0] : "";
+              const posterUrl = item.poster_path
+                ? `https://image.tmdb.org/t/p/w185${item.poster_path}`
+                : item.posterUrl || null;
+              const rating = typeof item.vote_average === "number" ? item.vote_average : item.rating || 0;
+
+              return {
+                id: item.id,
+                title,
+                mediaType,
+                releaseYear,
+                posterUrl,
+                rating,
+              };
+            });
+          setSuggestions(normalized);
+          setShowSuggestions(normalized.length > 0);
           setSelectedIndex(-1);
         }
       } catch {
@@ -85,7 +111,7 @@ export function Header() {
         setShowSuggestions(false);
         const targetUrl =
           selected.mediaType === "movie"
-            ? `/movie/${selected.id}`
+            ? `/movies/${selected.id}`
             : selected.mediaType === "anime"
             ? `/anime/${selected.id}`
             : `/series/${selected.id}`;
@@ -233,7 +259,7 @@ export function Header() {
               const isSelected = selectedIndex === idx;
               const targetUrl =
                 item.mediaType === "movie"
-                  ? `/movie/${item.id}`
+                  ? `/movies/${item.id}`
                   : item.mediaType === "anime"
                   ? `/anime/${item.id}`
                   : `/series/${item.id}`;

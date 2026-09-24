@@ -98,6 +98,8 @@ export function WatchExperience({
   const capturedIsPlayingRef = React.useRef<boolean>(true);
   const requestGenerationRef = React.useRef<number>(0);
   const abortControllerRef = React.useRef<AbortController | null>(null);
+  const episodeRequestGenRef = React.useRef<number>(0);
+  const episodeAbortCtrlRef = React.useRef<AbortController | null>(null);
 
   const [autoPlay, setAutoPlay] = useState(true);
   const [autoNext, setAutoNext] = useState(true);
@@ -359,6 +361,16 @@ export function WatchExperience({
     async (episodeNum: number, seasonNum = currentSeason) => {
       if (episodeNum === currentEpisode && seasonNum === currentSeason) return;
 
+      // 1. Abort previous in-flight episode resolution
+      if (episodeAbortCtrlRef.current) {
+        episodeAbortCtrlRef.current.abort();
+      }
+      const controller = new AbortController();
+      episodeAbortCtrlRef.current = controller;
+
+      // 2. Increment request generation to protect against race conditions
+      const generation = ++episodeRequestGenRef.current;
+
       setIsResolvingNewEpisode(true);
       setCurrentEpisode(episodeNum);
       setCurrentSeason(seasonNum);
@@ -374,10 +386,16 @@ export function WatchExperience({
         const id = tmdbId || anilistId;
         const audioParam = searchParams.get("audio") ? `&audio=${encodeURIComponent(searchParams.get("audio")!)}` : "";
         const res = await fetch(
-          `/api/playback/resolve?type=${mediaType}&id=${id}&s=${seasonNum}&e=${episodeNum}&variant=${targetVariant}&lang=${targetVariant}${audioParam}`
+          `/api/playback/resolve?type=${mediaType}&id=${id}&s=${seasonNum}&e=${episodeNum}&variant=${targetVariant}&lang=${targetVariant}${audioParam}`,
+          { signal: controller.signal }
         );
+
+        if (generation !== episodeRequestGenRef.current) return; // Stale response discarded
+
         if (res.ok) {
           const data = await res.json();
+          if (generation !== episodeRequestGenRef.current) return;
+
           if (data.candidates && data.candidates.length > 0) {
             setSources(data.candidates);
             setActiveSourceIndex(0);
@@ -387,22 +405,34 @@ export function WatchExperience({
             setVariant("sub");
             setLanguage("sub");
             const subRes = await fetch(
-              `/api/playback/resolve?type=${mediaType}&id=${id}&s=${seasonNum}&e=${episodeNum}&variant=sub&lang=sub${audioParam}`
+              `/api/playback/resolve?type=${mediaType}&id=${id}&s=${seasonNum}&e=${episodeNum}&variant=sub&lang=sub${audioParam}`,
+              { signal: controller.signal }
             );
+            if (generation !== episodeRequestGenRef.current) return;
+
             if (subRes.ok) {
               const subData = await subRes.json();
+              if (generation !== episodeRequestGenRef.current) return;
               if (subData.candidates && subData.candidates.length > 0) {
                 setSources(subData.candidates);
                 setActiveSourceIndex(0);
               }
             }
-            setTimeout(() => setHotSwitchFeedback(null), 3500);
+            setTimeout(() => {
+              if (generation === episodeRequestGenRef.current) {
+                setHotSwitchFeedback(null);
+              }
+            }, 3500);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === "AbortError") return;
+        if (generation !== episodeRequestGenRef.current) return;
         console.error("Episode resolution error:", err);
       } finally {
-        setIsResolvingNewEpisode(false);
+        if (generation === episodeRequestGenRef.current) {
+          setIsResolvingNewEpisode(false);
+        }
       }
     },
     [currentEpisode, currentSeason, buildWatchUrl, tmdbId, anilistId, mediaType, variant, searchParams]

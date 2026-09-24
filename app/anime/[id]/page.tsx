@@ -23,11 +23,18 @@ export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) 
   }
 
   try {
+    const { resolveAnimeAnilistId } = await import("@/lib/media/identity/id-mapper");
+    const canonicalAnilistId = await resolveAnimeAnilistId({
+      anilistId: animeId,
+      tmdbId: animeId,
+    });
+    const effectiveAnilistId = canonicalAnilistId || animeId;
+
     // Attempt AniList fetch first if available
     try {
       const { AniListContentProvider } = await import("@/lib/content/providers/anilist");
       const anilistProvider = new AniListContentProvider();
-      const anime = await anilistProvider.getAnime(animeId);
+      const anime = await anilistProvider.getAnime(effectiveAnilistId);
 
       if (anime) {
         let recommendations: any[] = [];
@@ -61,7 +68,7 @@ export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) 
             <Sidebar />
             <main className="flex-1 p-4 lg:p-8 max-w-[1680px] overflow-hidden">
               <MediaDetailView
-                id={animeId}
+                id={effectiveAnilistId}
                 title={anime.title}
                 originalTitle={(anime as any).nativeTitle}
                 overview={anime.overview || "No description provided."}

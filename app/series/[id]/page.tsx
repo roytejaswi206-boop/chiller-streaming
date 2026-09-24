@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MediaDetailView } from "@/components/video/MediaDetailView";
 import { getTVDetails, getSeasonDetails } from "@/lib/tmdb/client";
@@ -30,6 +30,14 @@ export default async function SeriesDetailPage({ params }: SeriesDetailPageProps
 
     const tvData = tv.status === "fulfilled" ? tv.value : null;
     if (!tvData) notFound();
+
+    const isAnime =
+      (tvData.original_language === "ja" || tvData.origin_country?.includes("JP")) &&
+      tvData.genres?.some((g: any) => g.id === 16 || g.name === "Animation");
+
+    if (isAnime) {
+      redirect(`/anime/${tmdbId}`);
+    }
 
     const season1Data = season1.status === "fulfilled" ? season1.value : undefined;
 

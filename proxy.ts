@@ -15,10 +15,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "velora_default_secret_key_change_in_prod";
+const DESIGNATED_SUPER_ADMIN_EMAILS = new Set([
+  "roytejaswi40@gmail.com",
+  "roytejaswi206@gmail.com",
+]);
+
 export async function proxy(request: NextRequest) {
   const token = await getToken({
     req: request,
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: NEXTAUTH_SECRET,
   });
 
   const { pathname } = request.nextUrl;
@@ -61,7 +67,9 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const role = (token as any).role as string | undefined;
+    const tokenEmail = (token?.email as string)?.trim().toLowerCase();
+    const isSuperAdmin = tokenEmail && DESIGNATED_SUPER_ADMIN_EMAILS.has(tokenEmail);
+    const role = isSuperAdmin ? "SUPER_ADMIN" : ((token as any).role as string | undefined);
     const adminRoles = new Set(["ADMIN", "SUPER_ADMIN"]);
 
     if (!role || !adminRoles.has(role)) {
@@ -78,7 +86,9 @@ export async function proxy(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = (token as any).role as string | undefined;
+    const tokenEmail = (token?.email as string)?.trim().toLowerCase();
+    const isSuperAdmin = tokenEmail && DESIGNATED_SUPER_ADMIN_EMAILS.has(tokenEmail);
+    const role = isSuperAdmin ? "SUPER_ADMIN" : ((token as any).role as string | undefined);
     const adminRoles = new Set(["ADMIN", "SUPER_ADMIN"]);
     if (!role || !adminRoles.has(role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

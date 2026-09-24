@@ -89,10 +89,13 @@ export async function resolveCandidatesConcurrently(
 
   const start = Date.now();
 
-  // Launch all eligible providers concurrently
+  const candidates: PlaybackCandidate[] = [];
+  const GRACE_WINDOW_MS = 350;
+
+  // Launch all eligible providers concurrently with Fast-First progressive resolution
   const resolutionPromises = rankedProviders.map(async (p, idx) => {
     const candidate = await resolveSingleProvider(p.id, request);
-    if (!candidate) return null;
+    if (!candidate || !candidate.url) return null;
 
     const score = providerHealthCache.calculateScore(p.id, {
       mediaType: request.mediaType,
@@ -100,24 +103,39 @@ export async function resolveCandidatesConcurrently(
       hasLanguageSupport: request.language === "dub" ? p.getCapabilities().supportsDub : true,
     });
 
-    return {
+    const enrichedCandidate: PlaybackCandidate = {
       ...candidate,
       priority: p.priority,
       score,
       serverNumber: idx + 1,
       serverLabel: `HD-${idx + 1} (${p.name.split(" ")[0]})`,
-    } as PlaybackCandidate;
+    };
+
+    candidates.push(enrichedCandidate);
+    return enrichedCandidate;
   });
 
-  // Await all concurrently settled (capped by per-provider timeout ~3.5s)
-  const settled = await Promise.allSettled(resolutionPromises);
-  const candidates: PlaybackCandidate[] = [];
+  // Fast-first race: return as soon as fast providers succeed + brief grace window
+  await new Promise<void>((resolve) => {
+    let settledCount = 0;
+    const total = resolutionPromises.length;
+    let graceTimer: NodeJS.Timeout | null = null;
 
-  for (const res of settled) {
-    if (res.status === "fulfilled" && res.value && res.value.url) {
-      candidates.push(res.value);
-    }
-  }
+    if (total === 0) return resolve();
+
+    const onSettled = () => {
+      settledCount++;
+      if (candidates.length > 0 && !graceTimer) {
+        graceTimer = setTimeout(() => resolve(), GRACE_WINDOW_MS);
+      }
+      if (settledCount >= total) {
+        if (graceTimer) clearTimeout(graceTimer);
+        resolve();
+      }
+    };
+
+    resolutionPromises.forEach((p) => p.then(onSettled, onSettled));
+  });
 
   // Also retrieve any direct authorized mapped sources from database
   try {

@@ -140,14 +140,22 @@ export async function resolveContent(
 
     try {
       if (mediaType === "anime") {
-        const { animeMetadataFabric } = await import("@/lib/media/anime/metadata-fabric");
-        const anime = await animeMetadataFabric.getAnime({
+        const { resolveAnimeAnilistId } = await import("@/lib/media/identity/id-mapper");
+        const resolvedAnilistId = await resolveAnimeAnilistId({
           anilistId: parsed.anilistId,
+          tmdbId: parsed.tmdbId,
           malId: parsed.malId,
           title: parsed.title,
         });
 
-        const anilistIdToUse = parsed.anilistId || anime?.identity.ids.anilistId || parsed.tmdbId;
+        const anilistIdToUse = resolvedAnilistId || parsed.anilistId || parsed.tmdbId;
+
+        const { animeMetadataFabric } = await import("@/lib/media/anime/metadata-fabric");
+        const anime = await animeMetadataFabric.getAnime({
+          anilistId: anilistIdToUse,
+          malId: parsed.malId,
+          title: parsed.title,
+        });
 
         const { sources, primarySource, latencyMs } = await resolveAnimePlayback(
           anilistIdToUse || "0",
@@ -213,32 +221,34 @@ export async function resolveContent(
       }
 
       if (mediaType === "movie") {
-        // Parallel metadata and candidate resolution
-        const [movie, playbackRes] = await Promise.all([
+        // Parallel metadata and candidate resolution (fault-tolerant)
+        const [movieRes, playbackRes] = await Promise.allSettled([
           getMovieDetails(tmdbId),
           resolveMoviePlayback(tmdbId),
         ]);
 
-        const { sources, primarySource, latencyMs } = playbackRes;
+        const movie = movieRes.status === "fulfilled" ? movieRes.value : null;
+        const playbackData = playbackRes.status === "fulfilled" ? playbackRes.value : { sources: [], primarySource: null, latencyMs: 0 };
+        const { sources, primarySource, latencyMs } = playbackData;
 
         return {
           sourceType: sources.length > 0 ? "EXTERNAL" : "UNAVAILABLE",
           provider: primarySource ? primarySource.providerId : "none",
           sources,
-          title: movie.title || movie.name || "Untitled Movie",
-          originalTitle: movie.original_title,
-          overview: movie.overview || "No description provided.",
-          posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w780${movie.poster_path}` : "/placeholder-poster.png",
-          backdropUrl: movie.backdrop_path ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}` : "",
-          releaseYear: movie.release_date ? movie.release_date.split("-")[0] : "",
-          genres: movie.genres?.map((g) => g.name) || [],
-          rating: Number(movie.vote_average.toFixed(1)),
-          runtime: movie.runtime,
+          title: movie?.title || movie?.name || "Untitled Movie",
+          originalTitle: movie?.original_title,
+          overview: movie?.overview || "No description provided.",
+          posterUrl: movie?.poster_path ? `https://image.tmdb.org/t/p/w780${movie.poster_path}` : "/placeholder-poster.png",
+          backdropUrl: movie?.backdrop_path ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}` : "",
+          releaseYear: movie?.release_date ? movie.release_date.split("-")[0] : "",
+          genres: movie?.genres?.map((g) => g.name) || [],
+          rating: movie?.vote_average ? Number(movie.vote_average.toFixed(1)) : 0,
+          runtime: movie?.runtime,
           mediaType: "movie",
           tmdbId,
           embedUrl: primarySource?.url,
-          cast: movie.credits?.cast?.slice(0, 10),
-          recommendations: (movie.recommendations?.results || movie.similar?.results || []).slice(0, 10),
+          cast: movie?.credits?.cast?.slice(0, 10),
+          recommendations: (movie?.recommendations?.results || movie?.similar?.results || []).slice(0, 10),
           startupLatencyMs: latencyMs,
           errorMessage: sources.length === 0 ? "Playback is currently unavailable." : undefined,
         };
@@ -251,17 +261,19 @@ export async function resolveContent(
         ]);
 
         const tvData = tv.status === "fulfilled" ? tv.value : null;
-        if (!tvData) return null;
-
         const playbackData = playbackRes.status === "fulfilled" ? playbackRes.value : { sources: [], primarySource: null, latencyMs: 0 };
         const currentSeasonDetails = seasonRes.status === "fulfilled" ? seasonRes.value : undefined;
 
         let { sources, primarySource, latencyMs } = playbackData;
 
+        // If no sources and no tvData, only then return null
+        if (!tvData && sources.length === 0) return null;
+
         // If Japanese animation, also fetch anime candidates concurrently
         const isAnime = Boolean(
+          tvData &&
           (tvData as any).original_language === "ja" &&
-            tvData.genres?.some((g) => g.id === 16 || g.name === "Animation")
+          tvData.genres?.some((g) => g.id === 16 || g.name === "Animation")
         );
 
         if (isAnime && parsed.anilistId) {
@@ -276,7 +288,7 @@ export async function resolveContent(
           }
         }
 
-        const filteredSeasons = (tvData.seasons || [])
+        const filteredSeasons = (tvData?.seasons || [])
           .filter((s) => s.season_number > 0)
           .map((s) => ({
             season_number: s.season_number,
@@ -288,25 +300,25 @@ export async function resolveContent(
           sourceType: sources.length > 0 ? "EXTERNAL" : "UNAVAILABLE",
           provider: primarySource ? primarySource.providerId : "none",
           sources,
-          title: tvData.name || tvData.title || "Untitled Series",
-          originalTitle: tvData.original_name,
-          overview: tvData.overview || "No description provided.",
-          posterUrl: tvData.poster_path ? `https://image.tmdb.org/t/p/w780${tvData.poster_path}` : "/placeholder-poster.png",
-          backdropUrl: tvData.backdrop_path ? `https://image.tmdb.org/t/p/original${tvData.backdrop_path}` : "",
-          releaseYear: tvData.first_air_date ? tvData.first_air_date.split("-")[0] : "",
-          genres: tvData.genres?.map((g) => g.name) || [],
-          rating: Number(tvData.vote_average.toFixed(1)),
+          title: tvData?.name || tvData?.title || `Series #${tmdbId}`,
+          originalTitle: tvData?.original_name,
+          overview: tvData?.overview || "No description provided.",
+          posterUrl: tvData?.poster_path ? `https://image.tmdb.org/t/p/w780${tvData.poster_path}` : "/placeholder-poster.png",
+          backdropUrl: tvData?.backdrop_path ? `https://image.tmdb.org/t/p/original${tvData.backdrop_path}` : "",
+          releaseYear: tvData?.first_air_date ? tvData.first_air_date.split("-")[0] : "",
+          genres: tvData?.genres?.map((g) => g.name) || [],
+          rating: tvData?.vote_average ? Number(tvData.vote_average.toFixed(1)) : 0,
           mediaType: isAnime ? "anime" : "tv",
           tmdbId,
           anilistId: parsed.anilistId,
           season,
           episode,
-          totalSeasons: tvData.number_of_seasons || filteredSeasons.length || 1,
+          totalSeasons: tvData?.number_of_seasons || filteredSeasons.length || 1,
           seasons: filteredSeasons,
           currentSeasonDetails,
           embedUrl: primarySource?.url,
-          cast: tvData.credits?.cast?.slice(0, 10),
-          recommendations: (tvData.recommendations?.results || tvData.similar?.results || []).slice(0, 10),
+          cast: tvData?.credits?.cast?.slice(0, 10),
+          recommendations: (tvData?.recommendations?.results || tvData?.similar?.results || []).slice(0, 10),
           startupLatencyMs: latencyMs,
           errorMessage: sources.length === 0 ? "Playback is currently unavailable." : undefined,
         };

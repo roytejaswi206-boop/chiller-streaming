@@ -16,7 +16,7 @@ export class NHDProvider implements PlaybackProvider {
   requiresApiKey = false;
   supportsMovie = true;
   supportsTV = true;
-  supportsAnime = true;
+  supportsAnime = false;
   priority = 1;
 
   private getBaseUrl(): string {
@@ -36,9 +36,11 @@ export class NHDProvider implements PlaybackProvider {
 
   supports(request: PlaybackRequest): boolean {
     if (!this.enabled) return false;
+    if (request.mediaType === "anime" || request.mediaClass === "ANIME" || request.targetPool === "ANIME") {
+      return false;
+    }
     if (request.mediaType === "movie" && request.tmdbId) return true;
     if (request.mediaType === "tv" && request.tmdbId) return true;
-    if (request.mediaType === "anime" && (request.anilistId || request.tmdbId)) return true;
     return false;
   }
 

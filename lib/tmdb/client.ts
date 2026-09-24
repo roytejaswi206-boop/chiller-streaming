@@ -62,7 +62,7 @@ function requestTmdb(urlStr: string, headers: Record<string, string> = {}): Prom
             ...headers,
           },
           lookup: customDnsLookup,
-          timeout: 15000,
+          timeout: 6000,
         },
         (res) => {
           let body = "";
@@ -110,6 +110,8 @@ export interface TmdbMediaItem {
   name?: string;
   original_title?: string;
   original_name?: string;
+  original_language?: string;
+  origin_country?: string[];
   overview: string;
   poster_path: string | null;
   backdrop_path: string | null;

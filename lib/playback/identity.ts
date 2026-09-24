@@ -1,3 +1,5 @@
+import { lookupCrosswalk } from "@/lib/media/identity/id-mapper";
+
 export interface MediaIdentity {
   tmdbId?: number;
   anilistId?: number;
@@ -48,7 +50,12 @@ export function parseMediaSlug(slug: string | string[]): MediaIdentity | null {
     if (!isNaN(parsedId) && parsedId > 0) {
       if (type === "movie" || type === "movies") return { mediaType: "movie", tmdbId: parsedId };
       if (type === "tv" || type === "series") return { mediaType: "tv", tmdbId: parsedId, season, episode };
-      if (type === "anime") return { mediaType: "anime", anilistId: parsedId, season: 1, episode: season || episode };
+      if (type === "anime") {
+        const cw = lookupCrosswalk("tmdb", parsedId);
+        const anilistId = cw?.anilistId ? Number(cw.anilistId) : parsedId;
+        const tmdbId = cw?.tmdbId ? Number(cw.tmdbId) : (anilistId !== parsedId ? parsedId : undefined);
+        return { mediaType: "anime", anilistId, tmdbId, season: 1, episode: season || episode || 1 };
+      }
     }
   }
 
@@ -57,7 +64,11 @@ export function parseMediaSlug(slug: string | string[]): MediaIdentity | null {
     const parts = normalized.replace("anime-", "").split("-");
     const id = parseInt(parts[0], 10);
     const episode = parts.length >= 2 ? parseInt(parts[1], 10) : undefined;
-    return isNaN(id) ? null : { mediaType: "anime", anilistId: id, episode };
+    if (isNaN(id)) return null;
+    const cw = lookupCrosswalk("tmdb", id);
+    const anilistId = cw?.anilistId ? Number(cw.anilistId) : id;
+    const tmdbId = cw?.tmdbId ? Number(cw.tmdbId) : undefined;
+    return { mediaType: "anime", anilistId, tmdbId, episode: episode || 1 };
   }
 
   // Pattern: movie-550
