@@ -27,6 +27,10 @@ import { MyCloudProvider } from "./providers/mycloud";
 import { MegaCloudProvider } from "./providers/megacloud";
 import { MegaUpProvider } from "./providers/megaup";
 import { TubiProvider, RokuProvider, PlutoProvider } from "./providers/platforms";
+import { UpStreamProvider } from "./providers/upstream";
+import { MixDropProvider } from "./providers/mixdrop";
+import { DoodStreamProvider } from "./providers/doodstream";
+import { VidozaProvider } from "./providers/vidoza";
 
 // ── Anime Playback Pool Providers ──
 import {
@@ -78,6 +82,10 @@ class ProviderRegistry {
       new TubiProvider(),
       new RokuProvider(),
       new PlutoProvider(),
+      new UpStreamProvider(),
+      new MixDropProvider(),
+      new DoodStreamProvider(),
+      new VidozaProvider(),
     ];
 
     for (const p of generalList) {
@@ -280,6 +288,24 @@ class ProviderRegistry {
     );
 
     return results;
+  }
+
+  setProviderEnabled(providerId: string, enabled: boolean): boolean {
+    const provider = this.allProvidersMap.get(providerId);
+    if (!provider) return false;
+    provider.enabled = enabled;
+    return true;
+  }
+
+  setProviderPriority(providerId: string, priority: number): boolean {
+    const provider = this.allProvidersMap.get(providerId);
+    if (!provider) return false;
+    provider.priority = priority;
+    return true;
+  }
+
+  resetProviderHealth(providerId?: string): void {
+    providerHealthCache.resetHealth(providerId);
   }
 }
 

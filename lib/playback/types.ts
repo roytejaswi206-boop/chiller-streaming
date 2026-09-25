@@ -110,7 +110,10 @@ export interface ProviderCapabilities {
   supportsAnimeEpisode?: boolean;
   supportsHLS?: boolean;
   supportsDASH?: boolean;
+  supportsMP4?: boolean;
   supportsIframe?: boolean;
+  supportsEpisode?: boolean;
+  supportsSubtitles?: boolean;
   supportsSub: boolean;
   supportsDub: boolean;
   supportsRaw?: boolean;

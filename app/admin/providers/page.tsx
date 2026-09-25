@@ -35,6 +35,7 @@ interface ProviderData {
     lastFailure?: string;
     lastError?: string;
     score?: number;
+    averageStartupMs?: number;
   };
   embedPolicy?: {
     safetyTier: "STRICT" | "COMPATIBLE" | "RELAXED";
@@ -54,6 +55,7 @@ export default function AdminProvidersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { status: string; latencyMs: number; message?: string }>>({});
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   const loadProviders = async () => {
     setLoading(true);
@@ -74,6 +76,11 @@ export default function AdminProvidersPage() {
     loadProviders();
   }, []);
 
+  const showFeedback = (msg: string) => {
+    setActionFeedback(msg);
+    setTimeout(() => setActionFeedback(null), 3500);
+  };
+
   const handleTestConnection = async (id: string) => {
     setTestingId(id);
     try {
@@ -87,7 +94,7 @@ export default function AdminProvidersPage() {
           message: json.message || "Ping completed",
         },
       }));
-    } catch (err: any) {
+    } catch {
       setTestResults((prev) => ({
         ...prev,
         [id]: {
@@ -98,6 +105,64 @@ export default function AdminProvidersPage() {
       }));
     } finally {
       setTestingId(null);
+    }
+  };
+
+  const handleToggleEnabled = async (id: string, currentEnabled: boolean) => {
+    try {
+      const res = await fetch("/api/admin/providers/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "toggleEnabled", providerId: id, enabled: !currentEnabled }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProviders((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, enabled: !currentEnabled } : p))
+        );
+        showFeedback(data.message);
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
+  const handleUpdatePriority = async (id: string, delta: number) => {
+    const current = providers.find((p) => p.id === id);
+    if (!current) return;
+    const newPriority = Math.max(1, current.priority + delta);
+    try {
+      const res = await fetch("/api/admin/providers/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setPriority", providerId: id, priority: newPriority }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProviders((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, priority: newPriority } : p))
+        );
+        showFeedback(data.message);
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
+  const handleResetHealth = async (id?: string) => {
+    try {
+      const res = await fetch("/api/admin/providers/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "resetHealth", providerId: id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadProviders();
+        showFeedback(data.message);
+      }
+    } catch {
+      // Ignore
     }
   };
 
@@ -183,23 +248,24 @@ export default function AdminProvidersPage() {
               Provider Source Directory
             </span>
             <span className="text-zinc-600">/</span>
-            <span className="text-xs text-zinc-400 font-mono">21 Managed Services</span>
+            <span className="text-xs text-zinc-400 font-mono">{providers.length} Managed Providers</span>
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight mt-1">
             Playback Infrastructure & Health
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Monitor, prioritize, and verify external video hosts, self-hosted media servers, and stream resolvers.
+            Monitor, prioritize, test, and failover across external video hosts, resolvers, and streaming backends.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <Link
-            href="/admin/providers/sources"
-            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition"
+          <button
+            onClick={() => handleResetHealth()}
+            className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-300 transition cursor-pointer"
+            title="Reset health metrics for all providers"
           >
-            🗺️ Source Mapping
-          </Link>
+            ↺ Reset All Health
+          </button>
           <Link
             href="/admin/playback-lab"
             className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition"
@@ -222,44 +288,138 @@ export default function AdminProvidersPage() {
         </div>
       </div>
 
-      {/* Dual Playback Pools Selector (Section 30) */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-[#09090C] border border-white/10 w-fit">
-        <button
-          onClick={() => setSelectedPool("ALL")}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-            selectedPool === "ALL"
-              ? "bg-white text-black shadow-md"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          All Providers ({providers.length})
-        </button>
-        <button
-          onClick={() => setSelectedPool("GENERAL")}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-            selectedPool === "GENERAL"
-              ? "bg-[#FF3B6B] text-white shadow-lg shadow-[#FF3B6B]/25"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          <span>🎬 POOL A: GENERAL</span>
-          <span className="text-[10px] opacity-75 font-mono">
-            ({providers.filter((p) => p.pools?.includes("GENERAL") || p.capabilities?.supportsMovie).length})
-          </span>
-        </button>
-        <button
-          onClick={() => setSelectedPool("ANIME")}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-            selectedPool === "ANIME"
-              ? "bg-[#8A5CFF] text-white shadow-lg shadow-[#8A5CFF]/25"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          <span>⛩️ POOL B: ANIME</span>
-          <span className="text-[10px] opacity-75 font-mono">
-            ({providers.filter((p) => p.pools?.includes("ANIME") || p.capabilities?.supportsAnime).length})
-          </span>
-        </button>
+      {/* Action Feedback Banner */}
+      {actionFeedback && (
+        <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold animate-in fade-in duration-200 flex items-center justify-between">
+          <span>✓ {actionFeedback}</span>
+          <button onClick={() => setActionFeedback(null)} className="text-emerald-400 hover:text-white">✕</button>
+        </div>
+      )}
+
+      {/* ── Section 33: Provider Performance Dashboard Table ── */}
+      <div className="rounded-2xl border border-white/10 bg-[#0F172A] p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div>
+            <h2 className="text-sm font-extrabold uppercase tracking-wider text-white flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FF3B6B] animate-pulse" />
+              Runtime Routing Performance Dashboard
+            </h2>
+            <p className="text-[11px] text-zinc-400">
+              Live scoring and telemetry used by CHILLER&apos;s smart source selection and circuit breaker engine.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] font-mono">
+            <span className="text-zinc-400">Pool Filter:</span>
+            <button
+              onClick={() => setSelectedPool("ALL")}
+              className={`px-2 py-1 rounded-lg text-xs font-bold ${selectedPool === "ALL" ? "bg-white text-black" : "text-zinc-400 hover:text-white"}`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setSelectedPool("GENERAL")}
+              className={`px-2 py-1 rounded-lg text-xs font-bold ${selectedPool === "GENERAL" ? "bg-[#FF3B6B] text-white" : "text-zinc-400 hover:text-white"}`}
+            >
+              General ({providers.filter((p) => p.pools?.includes("GENERAL") || p.capabilities?.supportsMovie).length})
+            </button>
+            <button
+              onClick={() => setSelectedPool("ANIME")}
+              className={`px-2 py-1 rounded-lg text-xs font-bold ${selectedPool === "ANIME" ? "bg-[#8A5CFF] text-white" : "text-zinc-400 hover:text-white"}`}
+            >
+              Anime ({providers.filter((p) => p.pools?.includes("ANIME") || p.capabilities?.supportsAnime).length})
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-white/10 text-zinc-400 text-[11px] uppercase font-mono tracking-wider">
+                <th className="py-2.5 px-3">Provider</th>
+                <th className="py-2.5 px-3">Pool</th>
+                <th className="py-2.5 px-3">State</th>
+                <th className="py-2.5 px-3">Attempts</th>
+                <th className="py-2.5 px-3">Success</th>
+                <th className="py-2.5 px-3">Failure Rate</th>
+                <th className="py-2.5 px-3">Avg Latency</th>
+                <th className="py-2.5 px-3">Priority</th>
+                <th className="py-2.5 px-3">Health Status</th>
+                <th className="py-2.5 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 font-mono">
+              {filteredProviders.map((p) => {
+                const totalAttempts = p.health.totalSuccess + p.health.totalFailures;
+                const failureRate = totalAttempts > 0 ? ((p.health.totalFailures / totalAttempts) * 100).toFixed(1) + "%" : "0.0%";
+                const isAnime = p.pools?.includes("ANIME") || p.capabilities?.supportsAnime;
+                return (
+                  <tr key={p.id} className="hover:bg-white/[0.02] transition">
+                    <td className="py-2.5 px-3 font-sans font-bold text-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-zinc-600" />
+                      {p.name}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${isAnime ? "bg-[#8A5CFF]/20 text-[#A78BFA]" : "bg-[#FF3B6B]/20 text-[#FF5A85]"}`}>
+                        {isAnime ? "ANIME" : "GENERAL"}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <button
+                        onClick={() => handleToggleEnabled(p.id, p.enabled)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-black cursor-pointer uppercase ${p.enabled ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
+                        title="Click to toggle enabled/disabled"
+                      >
+                        {p.enabled ? "ENABLED" : "DISABLED"}
+                      </button>
+                    </td>
+                    <td className="py-2.5 px-3 text-zinc-300">{totalAttempts}</td>
+                    <td className="py-2.5 px-3 text-emerald-400">{p.health.totalSuccess}</td>
+                    <td className="py-2.5 px-3 text-zinc-400">{failureRate}</td>
+                    <td className="py-2.5 px-3 text-zinc-300">{p.health.latencyMs || p.health.averageStartupMs || 0}ms</td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleUpdatePriority(p.id, -1)}
+                          className="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs font-bold cursor-pointer"
+                          title="Increase Priority (lower number)"
+                        >
+                          -
+                        </button>
+                        <span className="font-bold text-white min-w-[20px] text-center">{p.priority}</span>
+                        <button
+                          onClick={() => handleUpdatePriority(p.id, 1)}
+                          className="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs font-bold cursor-pointer"
+                          title="Decrease Priority (higher number)"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3">{getStatusBadge(p)}</td>
+                    <td className="py-2.5 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5 font-sans">
+                        <button
+                          onClick={() => handleTestConnection(p.id)}
+                          disabled={testingId === p.id}
+                          className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[11px] font-bold transition cursor-pointer disabled:opacity-50"
+                        >
+                          {testingId === p.id ? "Probing..." : "Test"}
+                        </button>
+                        <button
+                          onClick={() => handleResetHealth(p.id)}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 text-[11px] font-bold transition cursor-pointer"
+                          title="Reset health metrics"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Filter Tabs & Search */}
@@ -278,7 +438,7 @@ export default function AdminProvidersPage() {
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                 filterCategory === tab.id
                   ? "bg-white text-black shadow-md"
-                  : "bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10"
+                  : "bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white"
               }`}
             >
               {tab.label}
@@ -286,59 +446,69 @@ export default function AdminProvidersPage() {
           ))}
         </div>
 
-        <input
-          type="text"
-          placeholder="Search by provider name, type..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-64 px-3.5 py-1.5 rounded-xl bg-[#12121a] border border-white/10 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#FF3B6B]"
-        />
+        <div className="w-full sm:w-64">
+          <input
+            type="text"
+            placeholder="Search providers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] transition"
+          />
+        </div>
       </div>
 
       {/* Providers Grid */}
       {loading ? (
-        <div className="p-16 text-center text-zinc-500 font-medium text-xs">
-          Loading provider status and telemetry...
+        <div className="p-12 text-center text-zinc-500 font-mono text-sm">
+          Loading provider status & telemetry...
+        </div>
+      ) : filteredProviders.length === 0 ? (
+        <div className="p-12 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-2">
+          <p className="text-zinc-400 font-bold text-sm">No providers match your criteria</p>
+          <p className="text-zinc-500 text-xs">Try selecting a different pool or search term.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProviders.map((p) => {
             const test = testResults[p.id];
+            const isAnime = p.pools?.includes("ANIME") || p.capabilities?.supportsAnime;
 
             return (
               <div
                 key={p.id}
-                className="rounded-2xl border border-white/10 bg-[#12121a] p-5 space-y-4 shadow-xl flex flex-col justify-between hover:border-white/20 transition group"
+                className="p-5 rounded-2xl bg-[#0F172A] border border-white/10 hover:border-white/20 transition-all space-y-4 flex flex-col justify-between"
               >
                 <div className="space-y-3">
-                  {/* Top line */}
-                  <div className="flex items-start justify-between gap-3">
+                  {/* Top card bar */}
+                  <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-white tracking-tight group-hover:text-[#FF3B6B] transition">
-                          {p.name}
-                        </h3>
-                        <span className="text-[10px] font-mono text-zinc-500">#{p.priority}</span>
+                        <h3 className="font-black text-white text-base tracking-tight">{p.name}</h3>
+                        <span className="text-[10px] font-mono text-zinc-500">#{p.id}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[10px] font-mono text-zinc-400">
-                          {p.category.replace("_", " ")}
-                        </span>
-                        <span className="text-zinc-600">•</span>
-                        <span className="text-[10px] font-mono text-zinc-500">{p.integrationType}</span>
-                      </div>
+                      <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                        {p.category.replace("_", " ")}
+                      </span>
                     </div>
-
                     <div className="flex flex-col items-end gap-1">
                       {getStatusBadge(p)}
+                      <span
+                        className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-black uppercase ${
+                          isAnime
+                            ? "bg-[#8A5CFF]/20 text-[#A78BFA] border border-[#8A5CFF]/30"
+                            : "bg-[#FF3B6B]/20 text-[#FF5A85] border border-[#FF3B6B]/30"
+                        }`}
+                      >
+                        {isAnime ? "ANIME POOL" : "GENERAL POOL"}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Capabilities Tags */}
-                  <div className="flex flex-wrap gap-1 pt-1">
+                  {/* Capabilities badges */}
+                  <div className="flex flex-wrap gap-1">
                     {p.capabilities.supportsMovie && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-white/5 text-zinc-300 border border-white/5">
-                        Movie
+                        Movies
                       </span>
                     )}
                     {p.capabilities.supportsTV && (
@@ -351,73 +521,21 @@ export default function AdminProvidersPage() {
                         Anime
                       </span>
                     )}
+                    {p.capabilities.supportsSub && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-white/5 text-zinc-300 border border-white/5">
+                        SUB
+                      </span>
+                    )}
+                    {p.capabilities.supportsDub && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-white/5 text-zinc-300 border border-white/5">
+                        DUB
+                      </span>
+                    )}
                     {p.capabilities.supportsEvents && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                        postMessage
+                        Events
                       </span>
                     )}
-                    {p.capabilities.hasCaptions && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                        CC
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Safety & Sandboxing 2.0 Dashboard */}
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-black/60 to-black/30 border border-white/5 space-y-2">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-zinc-400 font-semibold flex items-center gap-1.5">
-                        <span className="text-emerald-400">🛡️</span> Safety Tier
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                          (p.embedPolicy?.safetyTier || "STRICT") === "STRICT"
-                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                            : (p.embedPolicy?.safetyTier || "STRICT") === "COMPATIBLE"
-                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                            : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                        }`}
-                      >
-                        {p.embedPolicy?.safetyTier || "STRICT"}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-white/5 text-[10px] font-mono">
-                      <div className="flex items-center justify-between px-2 py-1 rounded bg-white/[0.02]">
-                        <span className="text-zinc-400">Sandbox:</span>
-                        <span className="text-emerald-400 font-bold">{p.embedPolicy?.sandbox || "ENABLED"}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-2 py-1 rounded bg-white/[0.02]">
-                        <span className="text-zinc-400">Popups:</span>
-                        <span
-                          className={
-                            (p.embedPolicy?.popups || "BLOCKED") === "BLOCKED"
-                              ? "text-emerald-400 font-bold"
-                              : "text-amber-400 font-bold"
-                          }
-                        >
-                          {p.embedPolicy?.popups || "BLOCKED"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-2 py-1 rounded bg-white/[0.02]">
-                        <span className="text-zinc-400">Top Nav:</span>
-                        <span
-                          className={
-                            (p.embedPolicy?.topNavigation || "BLOCKED") === "BLOCKED"
-                              ? "text-emerald-400 font-bold"
-                              : "text-amber-400 font-bold"
-                          }
-                        >
-                          {p.embedPolicy?.topNavigation || "BLOCKED"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-2 py-1 rounded bg-white/[0.02]">
-                        <span className="text-zinc-400">Rotate/FS:</span>
-                        <span className="text-blue-400 font-bold">
-                          {p.embedPolicy?.orientation === "SUPPORTED" ? "SUPPORTED" : "UNSUPPORTED"}
-                        </span>
-                      </div>
-                    </div>
                   </div>
 
                   {/* Telemetry Block */}
@@ -435,6 +553,24 @@ export default function AdminProvidersPage() {
                       <span className="text-zinc-200">
                         {p.health.totalSuccess + p.health.totalFailures} ({p.health.totalSuccess} succ)
                       </span>
+                    </div>
+                    <div className="flex justify-between text-zinc-400">
+                      <span>Priority:</span>
+                      <div className="flex items-center gap-1 font-bold text-white">
+                        <button
+                          onClick={() => handleUpdatePriority(p.id, -1)}
+                          className="px-1 bg-white/10 rounded hover:bg-white/20"
+                        >
+                          -
+                        </button>
+                        <span>{p.priority}</span>
+                        <button
+                          onClick={() => handleUpdatePriority(p.id, 1)}
+                          className="px-1 bg-white/10 rounded hover:bg-white/20"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
 
                     {test && (
@@ -461,21 +597,29 @@ export default function AdminProvidersPage() {
 
                 {/* Card Footer Actions */}
                 <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">
-                  {p.docsUrl && (
-                    <a
-                      href={p.docsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[10px] font-mono text-zinc-500 hover:text-white transition underline underline-offset-2"
-                    >
-                      Docs ↗
-                    </a>
-                  )}
+                  <button
+                    onClick={() => handleToggleEnabled(p.id, p.enabled)}
+                    className={`py-1.5 px-3 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                      p.enabled
+                        ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                        : "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                    }`}
+                  >
+                    {p.enabled ? "Disable" : "Enable"}
+                  </button>
+
+                  <button
+                    onClick={() => handleResetHealth(p.id)}
+                    className="py-1.5 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-[11px] font-bold transition cursor-pointer"
+                    title="Reset health metrics"
+                  >
+                    Reset
+                  </button>
 
                   <button
                     onClick={() => handleTestConnection(p.id)}
                     disabled={testingId === p.id}
-                    className="ml-auto py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[11px] font-bold transition disabled:opacity-50 cursor-pointer"
+                    className="ml-auto py-1.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-[11px] font-bold transition disabled:opacity-50 cursor-pointer"
                   >
                     {testingId === p.id ? "Probing..." : "Test Connection"}
                   </button>

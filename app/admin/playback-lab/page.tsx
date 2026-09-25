@@ -63,14 +63,17 @@ export default function PlaybackLabPage() {
   const [autoCandidate, setAutoCandidate] = useState<any>(null);
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
 
-  const runTest = async (mode: "auto" | "all" | "single", isSafetyMode = false) => {
+  const runTest = async (
+    mode: "auto" | "all" | "single" | "mirrors" | "failover" | "latency",
+    isSafetyMode = false
+  ) => {
     setIsRunning(true);
     setTestMode(isSafetyMode ? "safety" : "standard");
     setResults([]);
     setAutoCandidate(null);
 
     const providerParam = mode === "single" ? `&provider=${selectedProvider}` : "";
-    const modeParam = mode === "auto" ? "&mode=auto" : "&mode=all";
+    const modeParam = `&mode=${mode}`;
 
     try {
       const res = await fetch(
@@ -80,20 +83,22 @@ export default function PlaybackLabPage() {
         const data = await res.json();
         if (mode === "auto") {
           setAutoCandidate(data.primaryCandidate);
-          setResults(data.candidates?.map((c: any) => ({
-            providerId: c.providerId,
-            providerName: c.providerName,
-            priority: c.priority,
-            enabled: true,
-            configuration: "OK",
-            match: "RESOLVED",
-            resolution: "FOUND",
-            latencyMs: c.latencyMs || 0,
-            playerMode: c.type?.toUpperCase() || "EMBED",
-            candidateUrl: c.url,
-            player: "READY",
-            playback: "READY_TO_TEST",
-          })) || []);
+          setResults(
+            data.candidates?.map((c: any) => ({
+              providerId: c.providerId,
+              providerName: c.providerName,
+              priority: c.priority,
+              enabled: true,
+              configuration: "OK",
+              match: "RESOLVED",
+              resolution: "FOUND",
+              latencyMs: c.latencyMs || 0,
+              playerMode: c.type?.toUpperCase() || "EMBED",
+              candidateUrl: c.url,
+              player: "READY",
+              playback: "READY_TO_TEST",
+            })) || []
+          );
         } else {
           setResults(data.results || []);
         }
@@ -207,56 +212,81 @@ export default function PlaybackLabPage() {
               className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-[#FF3B6B]"
             >
               <option value="all">All Providers (Concurrent)</option>
-              <option value="filemoon">FileMoon</option>
-              <option value="vdohide">VdoHide</option>
-              <option value="streamtape">StreamTape</option>
-              <option value="dailymotion">Dailymotion</option>
-              <option value="jellyfin">Jellyfin</option>
-              <option value="plex">Plex</option>
               <option value="cinesrc">CineSrc</option>
+              <option value="upstream">UpStream</option>
+              <option value="mixdrop">MixDrop</option>
+              <option value="filemoon">FileMoon</option>
+              <option value="doodstream">DoodStream</option>
+              <option value="vidoza">Vidoza</option>
               <option value="vidsrc">VidSrc</option>
               <option value="vidking">Vidking</option>
               <option value="codespecter">CodeSpecter</option>
               <option value="nhd">NHD Embed</option>
+              <option value="nhd-anime">NHD Anime</option>
+              <option value="anime-provider-a">Anime Provider A</option>
+              <option value="anime-provider-b">Anime Provider B</option>
+              <option value="anime-provider-c">Anime Provider C</option>
+              <option value="megacloud-anime">MegaCloud Anime</option>
             </select>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          <button
-            onClick={() => runTest("auto")}
-            disabled={isRunning}
-            className="px-5 py-2.5 rounded-xl bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 text-xs font-bold text-white shadow-lg shadow-[#FF3B6B]/25 transition disabled:opacity-50 cursor-pointer"
-          >
-            ⚡ TEST AUTO
-          </button>
+        <div className="flex flex-wrap items-center gap-2.5 pt-2">
           <button
             onClick={() => runTest("all")}
             disabled={isRunning}
-            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white transition disabled:opacity-50 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white transition disabled:opacity-50 cursor-pointer"
           >
             🌐 TEST ALL PROVIDERS
-          </button>
-          <button
-            onClick={() => runTest("all", true)}
-            disabled={isRunning}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-bold text-white shadow-lg shadow-emerald-900/30 transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-          >
-            🛡️ TEST EMBED SAFETY
           </button>
           {selectedProvider !== "all" && (
             <button
               onClick={() => runTest("single")}
               disabled={isRunning}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition disabled:opacity-50 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition disabled:opacity-50 cursor-pointer"
             >
-              🎯 TEST {selectedProvider.toUpperCase()}
+              🎯 TEST PROVIDER
             </button>
           )}
+          <button
+            onClick={() => runTest("mirrors")}
+            disabled={isRunning}
+            className="px-4 py-2.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-xs font-bold text-purple-200 transition disabled:opacity-50 cursor-pointer"
+          >
+            🪞 TEST MIRRORS
+          </button>
+          <button
+            onClick={() => runTest("failover")}
+            disabled={isRunning}
+            className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-xs font-bold text-amber-300 transition disabled:opacity-50 cursor-pointer"
+          >
+            🔀 TEST FAILOVER
+          </button>
+          <button
+            onClick={() => runTest("latency")}
+            disabled={isRunning}
+            className="px-4 py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 text-xs font-bold text-sky-300 transition disabled:opacity-50 cursor-pointer"
+          >
+            ⏱️ TEST LATENCY
+          </button>
+          <button
+            onClick={() => runTest("auto")}
+            disabled={isRunning}
+            className="px-4 py-2.5 rounded-xl bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 text-xs font-bold text-white shadow-lg shadow-[#FF3B6B]/25 transition disabled:opacity-50 cursor-pointer"
+          >
+            ▶️ TEST PLAYBACK
+          </button>
+          <button
+            onClick={() => runTest("all", true)}
+            disabled={isRunning}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-bold text-white shadow-lg shadow-emerald-900/30 transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+          >
+            🛡️ TEST EMBED SAFETY
+          </button>
           {isRunning && (
             <span className="text-xs text-zinc-400 font-mono animate-pulse">
-              Resolving playback candidates in parallel...
+              Running playback diagnostic across providers...
             </span>
           )}
         </div>
@@ -313,6 +343,12 @@ export default function PlaybackLabPage() {
                   </div>
 
                   <div className="space-y-1.5 pt-2 text-zinc-400 text-[11px]">
+                    {(res as any).mirrorLabel && (
+                      <div className="flex justify-between font-bold text-purple-300">
+                        <span>Mirror:</span>
+                        <span>{(res as any).mirrorLabel}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span>Configuration:</span>
                       <span className={res.configuration === "OK" ? "text-emerald-400" : "text-amber-400"}>

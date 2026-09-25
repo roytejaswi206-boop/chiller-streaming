@@ -30,6 +30,7 @@ interface ExternalPlayerProps {
   hasNextEpisode?: boolean;
   autoPlay?: boolean;
   autoNext?: boolean;
+  activeSourceIndex?: number;
   onToggleAutoPlay?: () => void;
   onToggleAutoNext?: () => void;
   onSelectSourceIndex?: (index: number) => void;
@@ -63,6 +64,7 @@ export function ExternalPlayer({
   hasNextEpisode,
   autoPlay = true,
   autoNext = true,
+  activeSourceIndex,
   onToggleAutoPlay,
   onToggleAutoNext,
   onSelectSourceIndex,
@@ -552,6 +554,25 @@ export function ExternalPlayer({
     });
   }, [sources, season, episode]);
 
+  // Synchronize externally selected source index (manual selection)
+  useEffect(() => {
+    if (
+      activeSourceIndex !== undefined &&
+      activeSourceIndex !== activeIndex &&
+      activeSourceIndex >= 0 &&
+      activeSourceIndex < sources.length
+    ) {
+      if (lastRecordedPositionRef.current > 0) {
+        setResumeTime(lastRecordedPositionRef.current);
+        resumeAppliedRef.current = false;
+      }
+      setActiveIndex(activeSourceIndex);
+      setIsLoading(true);
+      setIframeKey((k) => k + 1);
+      setPlaybackState("CONNECTING");
+    }
+  }, [activeSourceIndex, activeIndex, sources.length]);
+
   // ─────────────────────────────────────────────────────────────────
   // AUTOMATIC FALLBACK ENGINE (Sections 23, 26)
   // ─────────────────────────────────────────────────────────────────
@@ -576,6 +597,10 @@ export function ExternalPlayer({
           // Clear previous audio state on fallback (Section 12, 23)
           setAvailableAudioTracks([]);
           setAudioSwitchStatus("UNKNOWN");
+          // Preserve playback position across failover (Mid-playback failover preservation)
+          if (lastRecordedPositionRef.current > 0) {
+            setResumeTime(lastRecordedPositionRef.current);
+          }
           resumeAppliedRef.current = false;
 
           setTimeout(() => {
@@ -1396,23 +1421,23 @@ export function ExternalPlayer({
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-2xl mb-4">
               🎬
             </div>
-            <h3 className="text-base font-bold text-white mb-1.5">Playback isn&apos;t available right now.</h3>
+            <h3 className="text-base font-bold text-white mb-1.5">Playback source temporarily unavailable.</h3>
             <p className="text-xs text-zinc-400 max-w-sm mb-6 leading-relaxed">
-              We attempted all available streaming sources for this title. Please try again in a few moments or choose another title.
+              We attempted all available streaming sources for this title. Please try again or choose another server.
             </p>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleRetryAll}
-                className="px-5 py-2.5 rounded-xl bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 text-white text-xs font-bold transition shadow-lg shadow-[#FF3B6B]/25 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#FF3B6B] hover:bg-[#FF3B6B]/90 text-white text-xs font-bold transition shadow-lg shadow-[#FF3B6B]/25 cursor-pointer uppercase tracking-wider"
               >
-                Retry
+                TRY AGAIN
               </button>
               {onSelectSourceIndex && sources.length > 1 && (
                 <button
                   onClick={() => onSelectSourceIndex(0)}
-                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition cursor-pointer uppercase tracking-wider"
                 >
-                  More Sources
+                  CHANGE SERVER
                 </button>
               )}
               <button

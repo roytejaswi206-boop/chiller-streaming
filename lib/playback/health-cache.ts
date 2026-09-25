@@ -195,6 +195,14 @@ class ProviderHealthCache {
     }
     return result;
   }
+
+  resetHealth(providerId?: string): void {
+    if (providerId) {
+      this.healthMap.delete(providerId);
+    } else {
+      this.healthMap.clear();
+    }
+  }
 }
 
 export const providerHealthCache = new ProviderHealthCache();

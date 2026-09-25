@@ -667,6 +667,7 @@ export function WatchExperience({
             episode={currentEpisode}
             autoPlay={autoPlay}
             autoNext={autoNext}
+            activeSourceIndex={activeSourceIndex}
             initialResumeTime={resolvedResumeTime}
             onEnded={handleTriggerNextEpisode}
             onToggleAutoPlay={() => setAutoPlay((v) => !v)}
@@ -910,7 +911,7 @@ export function WatchExperience({
                 >
                   <span>
                     {activeSourceIndex > 0
-                      ? sources[activeSourceIndex]?.providerName || "Selected Source"
+                      ? `Server ${activeSourceIndex + 1} (${sources[activeSourceIndex]?.providerName})`
                       : "More Sources"}
                   </span>
                   <span className={`text-[10px] text-zinc-400 transition-transform duration-200 ${sourceDropdownOpen ? "rotate-180" : ""}`}>
@@ -943,7 +944,9 @@ export function WatchExperience({
                             }`}
                           >
                             <div className="flex flex-col">
-                              <span className="font-semibold">{source.providerName}</span>
+                              <span className="font-semibold">
+                                Server {idx + 1}: {source.providerName}
+                              </span>
                               <span className="text-[10px] text-zinc-400">
                                 {source.quality || "1080p HD"} • {source.type?.toUpperCase()}
                               </span>

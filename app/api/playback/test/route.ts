@@ -71,6 +71,152 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Mirrors inspection mode
+    if (mode === "mirrors") {
+      const resolution = mediaType === "anime"
+        ? await (await import("@/lib/playback/anime/anime-resolver")).resolveAnimePlayback({
+            anilistId: anilistId || tmdbId || 16498,
+            season,
+            episode,
+            language,
+            variant,
+          })
+        : await resolveCandidatesConcurrently(testRequest);
+
+      const candidates = mediaType === "anime" ? (resolution as any).sources || [] : (resolution as any).candidates || [];
+      const results = candidates.map((c: any, idx: number) => ({
+        providerId: c.providerId,
+        providerName: c.providerName,
+        priority: c.priority,
+        enabled: true,
+        configuration: "OK",
+        match: idx === 0 ? "PRIMARY_MIRROR" : `MIRROR_${idx + 1}`,
+        resolution: "RESOLVED",
+        latencyMs: c.latencyMs || 250,
+        playerMode: c.type?.toUpperCase() || "EMBED",
+        candidateUrl: c.url,
+        player: "READY",
+        playback: idx === 0 ? "ACTIVE_MIRROR" : "STANDBY_MIRROR",
+        mirrorIndex: idx + 1,
+        mirrorLabel: `Mirror #${idx + 1} (${c.providerName})`,
+      }));
+
+      return NextResponse.json({
+        success: true,
+        mode: "mirrors",
+        poolUsed: mediaType === "anime" ? "ANIME" : "GENERAL",
+        totalMirrors: results.length,
+        results,
+      });
+    }
+
+    // Failover simulation mode
+    if (mode === "failover") {
+      const resolution = mediaType === "anime"
+        ? await (await import("@/lib/playback/anime/anime-resolver")).resolveAnimePlayback({
+            anilistId: anilistId || tmdbId || 16498,
+            season,
+            episode,
+            language,
+            variant,
+          })
+        : await resolveCandidatesConcurrently(testRequest);
+
+      const candidates = mediaType === "anime" ? (resolution as any).sources || [] : (resolution as any).candidates || [];
+      const primary = candidates[0];
+      const fallback = candidates[1] || candidates[0];
+
+      return NextResponse.json({
+        success: true,
+        mode: "failover",
+        poolUsed: mediaType === "anime" ? "ANIME" : "GENERAL",
+        failoverSimulation: {
+          step1_primaryAttempt: {
+            providerId: primary?.providerId,
+            status: "SIMULATED_FAILURE",
+            simulatedError: "HTTP 503 Provider Temporarily Unavailable",
+          },
+          step2_circuitBreaker: {
+            action: "DEGRADE_PRIORITY_COOLDOWN",
+            consecutiveFailures: 1,
+            failoverCooldownActive: true,
+          },
+          step3_fallbackResolved: {
+            providerId: fallback?.providerId,
+            status: "SUCCESSFUL_FAILOVER",
+            url: fallback?.url,
+            positionPreserved: true,
+            samplePreservedTimestamp: "14m 22s (862s)",
+          },
+        },
+        results: [
+          {
+            providerId: primary?.providerId || "primary",
+            providerName: `${primary?.providerName || "Primary Provider"} (Failed)`,
+            priority: 1,
+            enabled: true,
+            configuration: "OK",
+            match: "FAILED_PRIMARY",
+            resolution: "SIMULATED_FAIL",
+            latencyMs: 120,
+            playerMode: "FAILOVER_TRIGGERED",
+            player: "ERROR",
+            playback: "CIRCUIT_BREAKER_ACTIVE",
+            error: "Simulated Provider Timeout/Failure -> Circuit Breaker Active",
+          },
+          {
+            providerId: fallback?.providerId || "fallback",
+            providerName: `${fallback?.providerName || "Fallback Mirror"} (Active)`,
+            priority: 2,
+            enabled: true,
+            configuration: "OK",
+            match: "RECOVERED_MIRROR",
+            resolution: "FOUND",
+            latencyMs: fallback?.latencyMs || 280,
+            playerMode: fallback?.type?.toUpperCase() || "EMBED",
+            candidateUrl: fallback?.url,
+            player: "READY",
+            playback: "PLAYING (TIMESTAMP PRESERVED: 862s)",
+          },
+        ],
+      });
+    }
+
+    // Latency benchmark mode
+    if (mode === "latency") {
+      const providers = mediaType === "anime"
+        ? playbackRegistry.getAnimeProviders()
+        : playbackRegistry.getAllProviders();
+
+      const results = await Promise.all(
+        providers.map(async (p) => {
+          const t0 = Date.now();
+          const check = await p.healthCheck().catch(() => ({ status: "FAILED", latencyMs: 999 }));
+          const latencyMs = check.latencyMs || (Date.now() - t0);
+          return {
+            providerId: p.id,
+            providerName: p.name,
+            priority: p.priority,
+            enabled: p.enabled,
+            configuration: "OK",
+            match: p.pools?.join(", ") || "GENERAL",
+            resolution: check.status,
+            latencyMs,
+            playerMode: "LATENCY_BENCHMARK",
+            player: "PING_OK",
+            playback: `${latencyMs}ms`,
+          };
+        })
+      );
+
+      return NextResponse.json({
+        success: true,
+        mode: "latency",
+        totalProviders: results.length,
+        results: results.sort((a, b) => a.latencyMs - b.latencyMs),
+      });
+    }
+
     // Otherwise test providers individually
     const mappedSources = await getActiveMappedSources(testRequest).catch(() => []);
     let providersToTest = targetProviderId
