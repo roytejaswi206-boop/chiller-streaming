@@ -100,7 +100,8 @@ async function runProductionSmoke() {
     // 4. Movie Regression (Fight Club TMDB 550)
     console.log("\n4. Testing Movie Playback Regression on Production (Fight Club)...");
     const movieWatchUrl = `${PROD_URL}/watch/movie/550`;
-    await page.goto(movieWatchUrl, { waitUntil: "networkidle2", timeout: 30000 });
+    await page.goto(movieWatchUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.waitForSelector("#chiller-active-player", { timeout: 15000 }).catch(() => {});
     await new Promise((r) => setTimeout(r, 2000));
     const movieIframeSrc = await page.evaluate(() => {
       const iframe = document.querySelector("#chiller-active-player") as HTMLIFrameElement;
@@ -112,7 +113,8 @@ async function runProductionSmoke() {
     // 5. TV Playback Regression (The Last of Us TMDB 100088)
     console.log("\n5. Testing TV Playback Regression on Production (The Last of Us)...");
     const tvWatchUrl = `${PROD_URL}/watch/tv/100088?s=1&e=1`;
-    await page.goto(tvWatchUrl, { waitUntil: "networkidle2", timeout: 30000 });
+    await page.goto(tvWatchUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.waitForSelector("#chiller-active-player", { timeout: 15000 }).catch(() => {});
     await new Promise((r) => setTimeout(r, 2000));
     const tvIframeSrc = await page.evaluate(() => {
       const iframe = document.querySelector("#chiller-active-player") as HTMLIFrameElement;
