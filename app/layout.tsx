@@ -3,7 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
 import { Providers } from "@/components/providers";
-import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
+import { PwaUpdateManager } from "@/components/pwa/PwaUpdateManager";
 import { PwaInstallBanner } from "@/components/layout/PwaInstallBanner";
 import "./globals.css";
 
@@ -71,12 +71,13 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="min-h-screen min-h-[100dvh] bg-[#09090C] text-[#F8FAFC] antialiased selection:bg-[#FF3B6B] selection:text-white pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden">
         <Providers>
-          <ServiceWorkerRegister />
-          <Header />
-          {children}
-          <Footer />
-          <MobileNav />
-          <PwaInstallBanner />
+          <PwaUpdateManager>
+            <Header />
+            {children}
+            <Footer />
+            <MobileNav />
+            <PwaInstallBanner />
+          </PwaUpdateManager>
         </Providers>
       </body>
     </html>

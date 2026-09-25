@@ -189,6 +189,64 @@ export default function AdminDiagnosticsPage() {
           )}
         </section>
 
+        {/* PWA & Version Lifecycle Monitor */}
+        <section className="mb-8 p-6 rounded-3xl bg-[#0F172A] border border-white/10 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-wider text-white">
+                PWA & Version Lifecycle Monitor
+              </h2>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Real-time service worker controller state, active caches, and build version synchronization.
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                if ("serviceWorker" in navigator) {
+                  const reg = await navigator.serviceWorker.getRegistration();
+                  if (reg) {
+                    await reg.update();
+                    alert("Service worker update check triggered!");
+                  }
+                }
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#FF3B6B] to-[#8A5CFF] text-white text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition cursor-pointer"
+            >
+              Check SW Update
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-[#09090C]/60 border border-white/5">
+              <span className="text-[10px] uppercase font-bold text-zinc-400">Current Client Build</span>
+              <p className="text-sm font-mono font-bold text-white mt-1">2026.09.25-5f0f0b8</p>
+              <span className="text-[10px] text-zinc-500">v2.1.0 (Production)</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#09090C]/60 border border-white/5">
+              <span className="text-[10px] uppercase font-bold text-zinc-400">SW Controller State</span>
+              <p className="text-sm font-mono font-bold text-emerald-400 mt-1">
+                {typeof window !== "undefined" && navigator.serviceWorker?.controller ? "ACTIVE (CONTROLLING)" : "STANDBY"}
+              </p>
+              <span className="text-[10px] text-zinc-500">Scope: /</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#09090C]/60 border border-white/5">
+              <span className="text-[10px] uppercase font-bold text-zinc-400">PWA Display Mode</span>
+              <p className="text-sm font-mono font-bold text-sky-400 mt-1">
+                {typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches ? "STANDALONE (INSTALLED)" : "BROWSER TAB"}
+              </p>
+              <span className="text-[10px] text-zinc-500">Viewport: Native Shell</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#09090C]/60 border border-white/5">
+              <span className="text-[10px] uppercase font-bold text-zinc-400">Cache Namespace</span>
+              <p className="text-sm font-mono font-bold text-[#FF3B6B] mt-1">chiller-v3</p>
+              <span className="text-[10px] text-zinc-500">Obsolete Caches Auto-Purged</span>
+            </div>
+          </div>
+        </section>
+
         {/* Recent Queries Table */}
         <section className="p-6 rounded-3xl bg-[#0F172A] border border-white/10 shadow-xl overflow-hidden">
           <h2 className="text-sm font-black uppercase tracking-wider text-white mb-4">

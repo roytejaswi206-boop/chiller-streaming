@@ -1,20 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
-
+/**
+ * ServiceWorkerRegister (Legacy stub)
+ * Service worker registration, update checks, and lifecycle are now centrally
+ * managed by @/components/pwa/PwaUpdateManager.
+ */
 export function ServiceWorkerRegister() {
-  useEffect(() => {
-    if (typeof window !== "undefined" && "serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => {
-          console.log("[PWA] Service Worker registered with scope:", reg.scope);
-        })
-        .catch((err) => {
-          console.warn("[PWA] Service Worker registration failed:", err);
-        });
-    }
-  }, []);
-
   return null;
 }
