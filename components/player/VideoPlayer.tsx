@@ -585,24 +585,51 @@ export function VideoPlayer({
     setShowSettingsMenu(false);
   };
 
-  // Scrubber Progress Handling
-  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // Scrubber Progress & Touch Scrubbing Handling
+  const isDraggingScrubberRef = useRef(false);
+
+  const seekToPosition = (clientX: number, rect: DOMRect) => {
     const video = videoRef.current;
     if (!video || !duration) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     const target = pos * duration;
     video.currentTime = target;
     setCurrentTime(target);
+  };
+
+  const handleScrubberPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingScrubberRef.current = true;
+    setIsScrubbing(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    seekToPosition(e.clientX, e.currentTarget.getBoundingClientRect());
     resetControlsTimeout();
   };
 
-  const handleProgressBarMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleScrubberPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     setHoverPos(e.clientX - rect.left);
     setHoverTime(pos * duration);
+    if (isDraggingScrubberRef.current) {
+      seekToPosition(e.clientX, rect);
+    }
+  };
+
+  const handleScrubberPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingScrubberRef.current) {
+      isDraggingScrubberRef.current = false;
+      setIsScrubbing(false);
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+      resetControlsTimeout();
+    }
+  };
+
+  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    seekToPosition(e.clientX, rect);
+    resetControlsTimeout();
   };
 
   const availableSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
@@ -752,38 +779,44 @@ export function VideoPlayer({
           controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       >
-        {/* Scrubber Progress Bar */}
+        {/* Scrubber Progress Bar Container with Touch Hitbox */}
         <div
-          onClick={handleProgressBarClick}
-          onMouseMove={handleProgressBarMouseMove}
+          onPointerDown={handleScrubberPointerDown}
+          onPointerMove={handleScrubberPointerMove}
+          onPointerUp={handleScrubberPointerUp}
+          onPointerCancel={handleScrubberPointerUp}
           onMouseEnter={() => setIsScrubbing(true)}
           onMouseLeave={() => {
-            setIsScrubbing(false);
-            setHoverTime(null);
+            if (!isDraggingScrubberRef.current) {
+              setIsScrubbing(false);
+              setHoverTime(null);
+            }
           }}
-          className="relative w-full h-1.5 hover:h-2.5 bg-white/20 rounded-full cursor-pointer mb-3 transition-all duration-150"
+          className="relative w-full py-2.5 -my-2.5 cursor-pointer touch-none select-none group/scrub mb-2"
         >
-          {hoverTime !== null && (
+          <div className="relative w-full h-1.5 group-hover/scrub:h-2.5 bg-white/20 rounded-full transition-all duration-150">
+            {hoverTime !== null && (
+              <div
+                className="absolute -top-7 px-2 py-0.5 rounded bg-black/90 border border-white/20 text-[10px] font-bold text-white pointer-events-none -translate-x-1/2"
+                style={{ left: `${hoverPos}px` }}
+              >
+                {formatDuration(hoverTime)}
+              </div>
+            )}
+
+            {/* Buffered Progress */}
             <div
-              className="absolute -top-7 px-2 py-0.5 rounded bg-black/90 border border-white/20 text-[10px] font-bold text-white pointer-events-none -translate-x-1/2"
-              style={{ left: `${hoverPos}px` }}
+              className="absolute top-0 left-0 h-full bg-white/40 rounded-full transition-all duration-200"
+              style={{ width: `${bufferedPercent}%` }}
+            />
+
+            {/* Played Progress */}
+            <div
+              className="absolute top-0 left-0 h-full bg-[#FF3864] rounded-full"
+              style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
             >
-              {formatDuration(hoverTime)}
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-md shadow-black/50 transform scale-90 group-hover/scrub:scale-110 transition" />
             </div>
-          )}
-
-          {/* Buffered Progress */}
-          <div
-            className="absolute top-0 left-0 h-full bg-white/40 rounded-full transition-all duration-200"
-            style={{ width: `${bufferedPercent}%` }}
-          />
-
-          {/* Played Progress */}
-          <div
-            className="absolute top-0 left-0 h-full bg-[#FF3864] rounded-full"
-            style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
-          >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md shadow-black/50 transform scale-0 hover:scale-100 transition" />
           </div>
         </div>
 

@@ -112,62 +112,77 @@ export function InfiniteMediaRail({
     return () => observer.disconnect();
   }, [fetchPage, initialItems.length, hasInteracted]);
 
-  // Prefetch page + 1 when user scrolls near 70-80% horizontal scroll
+  const scrollRafRef = useRef<number | null>(null);
+
+  // Prefetch page + 1 when user scrolls near 70-80% horizontal scroll (rAF-throttled to avoid layout thrashing)
   const handleScroll = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el || !hasNextPage || isLoadingMore) return;
+    if (scrollRafRef.current !== null) return;
 
-    const scrollLeft = el.scrollLeft;
-    const maxScroll = el.scrollWidth - el.clientWidth;
-    if (maxScroll <= 0) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const el = scrollContainerRef.current;
+      if (!el || !hasNextPage || isLoadingMore) return;
 
-    const scrollRatio = scrollLeft / maxScroll;
+      const scrollLeft = el.scrollLeft;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (maxScroll <= 0) return;
 
-    // Trigger prefetch around 70%
-    if (scrollRatio >= 0.7) {
-      const nextPage = currentPage + 1;
-      if (!loadedPagesRef.current.has(nextPage) && !loadingPagesRef.current.has(nextPage)) {
-        fetchPage(nextPage).then((res) => {
-          if (res) {
-            prefetchedPageRef.current = {
-              page: nextPage,
-              items: res.items,
-              hasNextPage: res.hasNextPage,
-            };
-          }
-        });
+      const scrollRatio = scrollLeft / maxScroll;
+
+      // Trigger prefetch around 70%
+      if (scrollRatio >= 0.7) {
+        const nextPage = currentPage + 1;
+        if (!loadedPagesRef.current.has(nextPage) && !loadingPagesRef.current.has(nextPage)) {
+          fetchPage(nextPage).then((res) => {
+            if (res) {
+              prefetchedPageRef.current = {
+                page: nextPage,
+                items: res.items,
+                hasNextPage: res.hasNextPage,
+              };
+            }
+          });
+        }
       }
-    }
 
-    // If near the end (85%+), append prefetched items or trigger immediate load
-    if (scrollRatio >= 0.85) {
-      if (prefetchedPageRef.current && prefetchedPageRef.current.page === currentPage + 1) {
-        const buffered = prefetchedPageRef.current;
-        prefetchedPageRef.current = null;
-        setItems((prev) => {
-          const existingIds = new Set(prev.map((i) => `${i.type}-${i.id}`));
-          const uniqueNew = buffered.items.filter((i) => !existingIds.has(`${i.type}-${i.id}`));
-          return [...prev, ...uniqueNew];
-        });
-        setCurrentPage(buffered.page);
-        setHasNextPage(buffered.hasNextPage);
-      } else if (!loadingPagesRef.current.has(currentPage + 1)) {
-        setIsLoadingMore(true);
-        fetchPage(currentPage + 1).then((res) => {
-          if (res) {
-            setItems((prev) => {
-              const existingIds = new Set(prev.map((i) => `${i.type}-${i.id}`));
-              const uniqueNew = res.items.filter((i) => !existingIds.has(`${i.type}-${i.id}`));
-              return [...prev, ...uniqueNew];
-            });
-            setCurrentPage(currentPage + 1);
-            setHasNextPage(res.hasNextPage);
-          }
-          setIsLoadingMore(false);
-        });
+      // If near the end (85%+), append prefetched items or trigger immediate load
+      if (scrollRatio >= 0.85) {
+        if (prefetchedPageRef.current && prefetchedPageRef.current.page === currentPage + 1) {
+          const buffered = prefetchedPageRef.current;
+          prefetchedPageRef.current = null;
+          setItems((prev) => {
+            const existingIds = new Set(prev.map((i) => `${i.type}-${i.id}`));
+            const uniqueNew = buffered.items.filter((i) => !existingIds.has(`${i.type}-${i.id}`));
+            return [...prev, ...uniqueNew];
+          });
+          setCurrentPage(buffered.page);
+          setHasNextPage(buffered.hasNextPage);
+        } else if (!loadingPagesRef.current.has(currentPage + 1)) {
+          setIsLoadingMore(true);
+          fetchPage(currentPage + 1).then((res) => {
+            if (res) {
+              setItems((prev) => {
+                const existingIds = new Set(prev.map((i) => `${i.type}-${i.id}`));
+                const uniqueNew = res.items.filter((i) => !existingIds.has(`${i.type}-${i.id}`));
+                return [...prev, ...uniqueNew];
+              });
+              setCurrentPage(currentPage + 1);
+              setHasNextPage(res.hasNextPage);
+            }
+            setIsLoadingMore(false);
+          });
+        }
       }
-    }
+    });
   }, [currentPage, hasNextPage, isLoadingMore, fetchPage]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current !== null) {
+        cancelAnimationFrame(scrollRafRef.current);
+      }
+    };
+  }, []);
 
   // Arrow navigation
   const scrollDirection = (direction: "left" | "right") => {
@@ -194,7 +209,7 @@ export function InfiniteMediaRail({
   }
 
   return (
-    <section ref={railRef} className={`mb-10 select-none ${className}`}>
+    <section ref={railRef} className={`mb-10 select-none content-visibility-auto ${className}`}>
       {/* Rail Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
@@ -243,6 +258,7 @@ export function InfiniteMediaRail({
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1 -mx-1 px-1 snap-x snap-mandatory touch-pan-x"
+        style={{ WebkitOverflowScrolling: "touch" }}
       >
         {isInitialLoading ? (
           // Initial Skeletons

@@ -135,11 +135,11 @@ export function MediaDetailView({
       : `/watch/${mediaType === "anime" ? "anime" : "tv"}/${id}?s=${selectedSeason}&e=1`;
 
   const posterUrl = posterPath
-    ? `https://image.tmdb.org/t/p/w780${posterPath}`
+    ? `https://image.tmdb.org/t/p/w500${posterPath}`
     : "/placeholder-poster.png";
 
   const backdropUrl = backdropPath
-    ? `https://image.tmdb.org/t/p/original${backdropPath}`
+    ? `https://image.tmdb.org/t/p/w1280${backdropPath}`
     : "";
 
   const handleSelectSeason = useCallback(
@@ -163,9 +163,9 @@ export function MediaDetailView({
   const [activeTab, setActiveTab] = useState<"overview" | "episodes" | "cast" | "similar">("overview");
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-8">
+    <div className="w-full max-w-7xl mx-auto space-y-6 sm:space-y-8">
       {/* ── 1. Hero Section ── */}
-      <div className="relative rounded-3xl overflow-hidden border border-white/[0.08] bg-[#0F172A] shadow-2xl min-h-[480px] flex flex-col justify-end p-6 sm:p-10">
+      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.08] bg-[#0F172A] shadow-2xl min-h-[360px] sm:min-h-[480px] flex flex-col justify-end p-4 sm:p-10">
         {/* Backdrop Image with gradient overlays */}
         {backdropUrl && (
           <div className="absolute inset-0 z-0">
@@ -287,7 +287,7 @@ export function MediaDetailView({
                         ? `/watch/movie/${id}?t=${resumeInfo.position}&resume=1`
                         : `/watch/${mediaType === "anime" ? "anime" : "tv"}/${id}?s=${resumeInfo.season}&e=${resumeInfo.episode}&t=${resumeInfo.position}&resume=1`
                     }
-                    className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-xs sm:text-sm font-black transition-all duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-105 active:scale-95"
+                    className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-xs sm:text-sm font-black transition-all duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-105 active:scale-95 touch-manipulation cursor-pointer"
                   >
                     <IconPlay className="w-3.5 sm:w-4 h-3.5 sm:h-4 fill-white" />
                     <span>
@@ -299,7 +299,7 @@ export function MediaDetailView({
 
                   <Link
                     href={watchUrl}
-                    className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-bold transition-all border border-white/10"
+                    className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-zinc-300 hover:text-white text-xs font-bold transition-all border border-white/10 touch-manipulation cursor-pointer"
                     title="Watch from beginning"
                   >
                     ↺ Start Over
@@ -308,7 +308,7 @@ export function MediaDetailView({
               ) : (
                 <Link
                   href={watchUrl}
-                  className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-xs sm:text-sm font-black transition-all duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-105 active:scale-95"
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-[#FF3B6B] to-[#FF5A85] hover:brightness-110 text-white text-xs sm:text-sm font-black transition-all duration-200 shadow-xl shadow-[#FF3B6B]/30 hover:scale-105 active:scale-95 touch-manipulation cursor-pointer"
                 >
                   <IconPlay className="w-3.5 sm:w-4 h-3.5 sm:h-4 fill-white" />
                   <span>{resumeInfo?.isCompleted ? "Watch Again" : "Watch Now"}</span>
@@ -318,7 +318,7 @@ export function MediaDetailView({
               {mediaType === "anime" && (
                 <Link
                   href={`/watch/anime/${id}?s=${resumeInfo?.season || selectedSeason || 1}&e=${resumeInfo?.episode || 1}&audio=en`}
-                  className="flex items-center gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-[#8A5CFF]/20 hover:bg-[#8A5CFF]/30 text-[#A78BFA] hover:text-white text-xs sm:text-sm font-bold transition-all border border-[#8A5CFF]/30 active:scale-95"
+                  className="flex items-center gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-[#8A5CFF]/20 hover:bg-[#8A5CFF]/30 text-[#A78BFA] hover:text-white text-xs sm:text-sm font-bold transition-all border border-[#8A5CFF]/30 active:scale-95 touch-manipulation cursor-pointer"
                   title="Watch with English Dub audio"
                 >
                   <span className="text-sm">🎙️</span>

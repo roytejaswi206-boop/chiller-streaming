@@ -18,21 +18,32 @@ export function Header() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const searchAbortCtrlRef = useRef<AbortController | null>(null);
 
-  // Debounced search autocomplete
+  // Debounced search autocomplete with request cancellation
   useEffect(() => {
     const q = searchQuery.trim();
     if (q.length < 2) {
+      if (searchAbortCtrlRef.current) searchAbortCtrlRef.current.abort();
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
 
     const timer = setTimeout(async () => {
+      if (searchAbortCtrlRef.current) {
+        searchAbortCtrlRef.current.abort();
+      }
+      const controller = new AbortController();
+      searchAbortCtrlRef.current = controller;
+
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=1`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=1`, {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
           const rawItems = (data.results || []).slice(0, 6);
@@ -66,25 +77,37 @@ export function Header() {
           setShowSuggestions(normalized.length > 0);
           setSelectedIndex(-1);
         }
-      } catch {
-        // Non-blocking
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          // Non-blocking
+        }
       } finally {
         setIsSearching(false);
       }
     }, 220);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (searchAbortCtrlRef.current) searchAbortCtrlRef.current.abort();
+    };
   }, [searchQuery]);
 
-  // Click outside listener to close suggestions
+  // Click & Touch outside listener to close suggestions and dropdowns
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setShowSuggestions(false);
       }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
+        setUserDropdownOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -376,7 +399,7 @@ export function Header() {
 
         {/* Authentication Buttons or User Profile */}
         {session?.user ? (
-          <div className="relative">
+          <div ref={userDropdownRef} className="relative">
             <button
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
               className="flex items-center gap-2 py-1 px-2 rounded-full hover:bg-white/5 border border-white/10 transition cursor-pointer"

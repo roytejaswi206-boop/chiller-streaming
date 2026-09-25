@@ -56,16 +56,16 @@ function MediaCardComponent({
       ? backdropPath
         ? backdropPath.startsWith("http")
           ? backdropPath
-          : `https://image.tmdb.org/t/p/w1280${backdropPath}`
+          : `https://image.tmdb.org/t/p/w780${backdropPath}`
         : posterPath
         ? posterPath.startsWith("http")
           ? posterPath
-          : `https://image.tmdb.org/t/p/w780${posterPath}`
+          : `https://image.tmdb.org/t/p/w342${posterPath}`
         : "/placeholder-backdrop.png"
       : posterPath
       ? posterPath.startsWith("http")
         ? posterPath
-        : `https://image.tmdb.org/t/p/w500${posterPath}`
+        : `https://image.tmdb.org/t/p/w342${posterPath}`
       : backdropPath
       ? backdropPath.startsWith("http")
         ? backdropPath
@@ -93,9 +93,10 @@ function MediaCardComponent({
           src={imageSrc}
           alt={title}
           fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          sizes="(max-width: 640px) 150px, (max-width: 1024px) 200px, 220px"
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
+          decoding="async"
           unoptimized={imageSrc.startsWith("http")}
         />
 
@@ -110,30 +111,30 @@ function MediaCardComponent({
           </div>
         )}
 
-        {/* Top Badges */}
+        {/* Top Badges (High-Performance GPU-friendly styling) */}
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-none">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span
-              className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider backdrop-blur-md shadow-md ${
+              className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shadow-md ${
                 mediaType === "anime"
-                  ? "bg-[#8A5CFF]/80 text-white border border-[#8A5CFF]/40"
+                  ? "bg-[#8A5CFF] text-white border border-[#8A5CFF]/40"
                   : mediaType === "tv"
-                  ? "bg-sky-500/80 text-white border border-sky-400/40"
-                  : "bg-black/60 text-zinc-200 border border-white/15"
+                  ? "bg-sky-600 text-white border border-sky-400/40"
+                  : "bg-black/85 text-zinc-200 border border-white/15"
               }`}
             >
               {typeLabel}
             </span>
 
             {resumeLabel ? (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#FF3B6B] text-white backdrop-blur-md shadow-md">
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#FF3B6B] text-white shadow-md">
                 {resumeLabel}
               </span>
             ) : (
               badges.slice(0, 1).map((b) => (
                 <span
                   key={b}
-                  className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-[#FF3B6B]/80 text-white backdrop-blur-md border border-[#FF3B6B]/40 shadow-sm"
+                  className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-[#FF3B6B] text-white border border-[#FF3B6B]/40 shadow-sm"
                 >
                   {b}
                 </span>
@@ -142,7 +143,7 @@ function MediaCardComponent({
           </div>
 
           {rating !== undefined && rating > 0 && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/70 backdrop-blur-md text-amber-400 border border-amber-500/30">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/85 text-amber-400 border border-amber-500/30">
               <IconStar className="w-3 h-3 fill-amber-400" />
               <span>{rating.toFixed(1)}</span>
             </span>

@@ -38,27 +38,6 @@ export function EpisodeList({
   const [activeChunkIndex, setActiveChunkIndex] = useState(0);
   const [watchedEpisodes, setWatchedEpisodes] = useState<Set<number>>(new Set());
 
-  // Load watched state from localStorage
-  useEffect(() => {
-    if (!tmdbId) return;
-    try {
-      const watched = new Set<number>();
-      for (const ep of episodes) {
-        const key = `chiller_progress_tv_${tmdbId}_s${seasonNumber}_e${ep.episode_number}`;
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed.currentTime && parsed.duration && parsed.currentTime / parsed.duration > 0.85) {
-            watched.add(ep.episode_number);
-          }
-        }
-      }
-      setWatchedEpisodes(watched);
-    } catch {
-      // Ignore
-    }
-  }, [tmdbId, seasonNumber, episodes]);
-
   // Keep active chunk aligned with currently playing episode if list is large
   useEffect(() => {
     if (episodes.length > CHUNK_SIZE && currentEpisode) {
@@ -91,6 +70,31 @@ export function EpisodeList({
     const start = activeChunkIndex * CHUNK_SIZE;
     return filteredEpisodes.slice(start, start + CHUNK_SIZE);
   }, [filteredEpisodes, isChunked, activeChunkIndex]);
+
+  // Load watched state for displayed episodes asynchronously to avoid freezing main thread
+  useEffect(() => {
+    if (!tmdbId || displayedEpisodes.length === 0) return;
+    try {
+      const watched = new Set<number>();
+      for (const ep of displayedEpisodes) {
+        const key = `chiller_progress_tv_${tmdbId}_s${seasonNumber}_e${ep.episode_number}`;
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.currentTime && parsed.duration && parsed.currentTime / parsed.duration > 0.85) {
+            watched.add(ep.episode_number);
+          }
+        }
+      }
+      setWatchedEpisodes((prev) => {
+        const merged = new Set(prev);
+        watched.forEach((n) => merged.add(n));
+        return merged;
+      });
+    } catch {
+      // Ignore
+    }
+  }, [tmdbId, seasonNumber, displayedEpisodes]);
 
   return (
     <div className={`w-full rounded-2xl bg-[#0F172A] border border-white/[0.08] p-4 sm:p-5 ${className}`}>
@@ -161,7 +165,7 @@ export function EpisodeList({
             const isPlaying = ep.episode_number === currentEpisode;
             const isWatched = watchedEpisodes.has(ep.episode_number);
             const thumbnail = ep.still_path
-              ? `https://image.tmdb.org/t/p/w500${ep.still_path}`
+              ? `https://image.tmdb.org/t/p/w300${ep.still_path}`
               : "/placeholder-backdrop.jpg";
 
             return (
@@ -185,17 +189,19 @@ export function EpisodeList({
                     fill
                     sizes="(max-width: 640px) 100vw, 300px"
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                    decoding="async"
                     unoptimized={thumbnail.startsWith("http")}
                   />
                   <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
 
                   {/* Top Badges */}
                   <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-black/80 backdrop-blur-md text-white border border-white/10">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-black/85 text-white border border-white/10 shadow-sm">
                       EP {ep.episode_number}
                     </span>
                     {ep.isFiller && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/80 text-white">
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/90 text-white">
                         Filler
                       </span>
                     )}
@@ -203,7 +209,7 @@ export function EpisodeList({
 
                   {/* Watched Badge */}
                   {isWatched && !isPlaying && (
-                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/80 text-white flex items-center gap-1 backdrop-blur-md">
+                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-600/90 text-white flex items-center gap-1 border border-emerald-400/30 shadow-sm">
                       <IconCheck className="w-3 h-3" />
                       <span>Watched</span>
                     </div>

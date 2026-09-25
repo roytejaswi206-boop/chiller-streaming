@@ -31,7 +31,7 @@ export function MediaRail({
   };
 
   return (
-    <section className="mb-10 select-none">
+    <section className="mb-10 select-none content-visibility-auto">
       {/* Rail Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -71,6 +71,7 @@ export function MediaRail({
       <div
         ref={scrollContainerRef}
         className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1 -mx-1 px-1 snap-x snap-mandatory touch-pan-x"
+        style={{ WebkitOverflowScrolling: "touch" }}
       >
         {items.map((item) => (
           <div

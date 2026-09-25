@@ -28,11 +28,13 @@ function SearchContent() {
   const loadingPagesRef = useRef<Set<number>>(new Set());
   const loadedPagesRef = useRef<Set<number>>(new Set());
   const observerTargetRef = useRef<HTMLDivElement>(null);
+  const searchAbortCtrlRef = useRef<AbortController | null>(null);
 
-  // Debounced search effect for page 1
+  // Debounced search effect for page 1 with AbortController
   useEffect(() => {
     const trimmed = query.trim();
     if (!trimmed) {
+      if (searchAbortCtrlRef.current) searchAbortCtrlRef.current.abort();
       setResults([]);
       setHasSearched(false);
       setCurrentPage(1);
@@ -44,6 +46,12 @@ function SearchContent() {
     }
 
     const timer = setTimeout(async () => {
+      if (searchAbortCtrlRef.current) {
+        searchAbortCtrlRef.current.abort();
+      }
+      const controller = new AbortController();
+      searchAbortCtrlRef.current = controller;
+
       setIsLoading(true);
       setErrorMessage("");
       setHasSearched(true);
@@ -52,7 +60,9 @@ function SearchContent() {
 
       try {
         loadingPagesRef.current.add(1);
-        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}&page=1`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}&page=1`, {
+          signal: controller.signal,
+        });
         if (!res.ok) {
           const errData = await res.json();
           throw new Error(errData.error || "Search error");
@@ -65,15 +75,20 @@ function SearchContent() {
         setTotalResults(data.total_results || 0);
         loadedPagesRef.current.add(1);
       } catch (err: any) {
-        setErrorMessage(err.message || "Failed to search stories.");
-        setResults([]);
+        if (err.name !== "AbortError") {
+          setErrorMessage(err.message || "Failed to search stories.");
+          setResults([]);
+        }
       } finally {
         loadingPagesRef.current.delete(1);
         setIsLoading(false);
       }
-    }, 350);
+    }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (searchAbortCtrlRef.current) searchAbortCtrlRef.current.abort();
+    };
   }, [query]);
 
   // Sync input when URL query changes

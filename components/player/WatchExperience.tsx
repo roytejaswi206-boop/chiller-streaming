@@ -240,6 +240,11 @@ export function WatchExperience({
     capturedPositionRef.current = result.position;
   }, [mediaType, tmdbId, anilistId, currentSeason, currentEpisode, searchParams, authHistory]);
 
+  const handlePlaybackProgress = useCallback((cur: number, dur: number, playing: boolean) => {
+    capturedPositionRef.current = cur;
+    capturedIsPlayingRef.current = playing;
+  }, []);
+
   // Helper to construct shareable clean URL
   const buildWatchUrl = useCallback(
     (s: number, e: number, varType = variant) => {
@@ -671,10 +676,7 @@ export function WatchExperience({
             hasNextEpisode={hasNext}
             hasPrevEpisode={hasPrev}
             onSelectSourceIndex={(idx) => setActiveSourceIndex(idx)}
-            onPlaybackProgress={(cur, dur, playing) => {
-              capturedPositionRef.current = cur;
-              capturedIsPlayingRef.current = playing;
-            }}
+            onPlaybackProgress={handlePlaybackProgress}
             onFullscreenChange={setIsPlayerFullscreen}
           />
         ) : sourceType === "OWNED" && streamUrl ? (

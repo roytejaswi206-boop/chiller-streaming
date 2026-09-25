@@ -116,6 +116,7 @@ export function ExternalPlayer({
   const resumeAppliedRef = useRef(false);
   const lastRecordedPositionRef = useRef<number>(0);
   const lastDurationRef = useRef<number>(0);
+  const lastTimeupdateTickRef = useRef<number>(0);
 
   // Startup telemetry
   const [telemetry, setTelemetry] = useState<PlaybackTelemetry>({
@@ -686,7 +687,13 @@ export function ExternalPlayer({
             break;
           case "cinesrc:timeupdate":
             if (data?.currentTime && data?.duration) {
-              setCurrentPlaybackSec(data.currentTime);
+              lastRecordedPositionRef.current = data.currentTime;
+              lastDurationRef.current = data.duration;
+              const now = Date.now();
+              if (now - lastTimeupdateTickRef.current >= 1000) {
+                lastTimeupdateTickRef.current = now;
+                setCurrentPlaybackSec(data.currentTime);
+              }
               saveProgress(data.currentTime, data.duration);
             }
             if (data?.intro && typeof data.intro.start === "number" && typeof data.intro.end === "number") {

@@ -1,7 +1,6 @@
 // CHILLER Official Service Worker — PWA App Shell & Offline Experience
-const CACHE_NAME = 'chiller-v1';
+const CACHE_NAME = 'chiller-v2';
 const CORE_ASSETS = [
-  '/',
   '/manifest.webmanifest',
   '/favicon.ico',
   '/favicon.svg',

@@ -64,11 +64,11 @@ export function ChillerHero({ items }: ChillerHeroProps) {
   const backdropUrl = activeItem.backdropPath
     ? activeItem.backdropPath.startsWith("http")
       ? activeItem.backdropPath
-      : `https://image.tmdb.org/t/p/original${activeItem.backdropPath.startsWith("/") ? "" : "/"}${activeItem.backdropPath}`
+      : `https://image.tmdb.org/t/p/w1280${activeItem.backdropPath.startsWith("/") ? "" : "/"}${activeItem.backdropPath}`
     : activeItem.posterPath
     ? activeItem.posterPath.startsWith("http")
       ? activeItem.posterPath
-      : `https://image.tmdb.org/t/p/original${activeItem.posterPath.startsWith("/") ? "" : "/"}${activeItem.posterPath}`
+      : `https://image.tmdb.org/t/p/w1280${activeItem.posterPath.startsWith("/") ? "" : "/"}${activeItem.posterPath}`
     : "/placeholder-backdrop.jpg";
 
   const handleToggleWatchlist = (e: React.MouseEvent) => {
