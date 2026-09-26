@@ -22,6 +22,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: "Search Analytics", href: "/admin/search-analytics", icon: "🔍" },
     { label: "Error Center", href: "/admin/errors", icon: "🚨" },
     { label: "Origin Servers", href: "/admin/servers", icon: "🖥️" },
+    { label: "CDN Delivery & Edge", href: "/admin/cdn", icon: "🚀" },
     { label: "Storage & Transcoding", href: "/admin/storage", icon: "💾" },
   ];
 

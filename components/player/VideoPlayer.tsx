@@ -88,8 +88,9 @@ export function VideoPlayer({
   const [audioSwitchStatus, setAudioSwitchStatus] = useState<"IDLE" | "SWITCHING" | "CONFIRMED" | "FAILED" | "UNSUPPORTED">("IDLE");
   const [audioToast, setAudioToast] = useState<string | null>(null);
 
-  // Resume State
+  // Resume & Failover Position State
   const resumeAppliedRef = useRef(false);
+  const failoverPositionRef = useRef<number>(0);
 
   // Synchronize True Device Fullscreen State
   useEffect(() => {
@@ -204,7 +205,11 @@ export function VideoPlayer({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        backBufferLength: 90,
+        backBufferLength: 60,
+        maxBufferLength: 30, // Intelligent prebuffering (Part 16)
+        maxMaxBufferLength: 60,
+        maxBufferSize: 60 * 1000 * 1000,
+        startLevel: -1, // Bandwidth-aware startup (Part 17)
       });
 
       hlsRef.current = hls;
@@ -241,9 +246,10 @@ export function VideoPlayer({
           }
         }
 
-        // Apply resume on manifest parsed
-        if (initialTime && initialTime > 0) {
-          applyResumeSeek(initialTime);
+        // Apply failover restore position or initial resume seek (Part 20, 21)
+        const targetResume = failoverPositionRef.current > 0 ? failoverPositionRef.current : initialTime;
+        if (targetResume && targetResume > 0) {
+          applyResumeSeek(targetResume);
         }
 
         if (autoPlay) {
@@ -278,19 +284,23 @@ export function VideoPlayer({
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) {
-          console.warn("HLS fatal error occurred, attempting failover:", data.type);
+          const savedPos = video.currentTime || failoverPositionRef.current;
+          failoverPositionRef.current = savedPos;
+          console.warn("HLS fatal error occurred, attempting CDN failover at:", savedPos, data.type);
+
           if (currentOriginIdx + 1 < allUrls.length) {
+            setResumeToast(`CDN failover in progress... Restoring ${formatDuration(savedPos)}`);
             setCurrentOriginIdx((prev) => prev + 1);
           } else {
             setHasError(true);
-            setErrorMessage("Playback temporarily unavailable on current origin.");
+            setErrorMessage("Playback temporarily unavailable on current origin. Retrying...");
           }
         }
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl") || activeUrl.endsWith(".mp4")) {
       // Native Safari / iOS HLS or MP4
       video.src = activeUrl;
-      video.addEventListener("loadedmetadata", () => {
+      const handleLoadedMetadata = () => {
         setIsBuffering(false);
 
         // Feature detection for native audioTracks (Section 10)
@@ -307,12 +317,29 @@ export function VideoPlayer({
           setAudioSwitchStatus("UNSUPPORTED");
         }
 
-        if (initialTime && initialTime > 0) {
-          applyResumeSeek(initialTime);
+        const targetResume = failoverPositionRef.current > 0 ? failoverPositionRef.current : initialTime;
+        if (targetResume && targetResume > 0) {
+          applyResumeSeek(targetResume);
         }
 
         if (autoPlay) video.play().catch(() => {});
-      });
+      };
+
+      const handleNativeError = () => {
+        const savedPos = video.currentTime || failoverPositionRef.current;
+        failoverPositionRef.current = savedPos;
+        console.warn("Native video error, triggering CDN failover at:", savedPos);
+        if (currentOriginIdx + 1 < allUrls.length) {
+          setResumeToast(`CDN failover in progress... Restoring ${formatDuration(savedPos)}`);
+          setCurrentOriginIdx((prev) => prev + 1);
+        } else {
+          setHasError(true);
+          setErrorMessage("Playback temporarily unavailable on current origin.");
+        }
+      };
+
+      video.addEventListener("loadedmetadata", handleLoadedMetadata);
+      video.addEventListener("error", handleNativeError);
     }
 
     return () => {
@@ -437,6 +464,7 @@ export function VideoPlayer({
     const dur = video.duration || 0;
     setCurrentTime(cur);
     setDuration(dur);
+    failoverPositionRef.current = cur;
 
     // Buffer tracking
     if (video.buffered.length > 0) {

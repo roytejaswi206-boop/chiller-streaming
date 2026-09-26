@@ -133,24 +133,40 @@ export async function selectBestOrigin(
   const streamPath = video.hlsMasterUrl || video.fallbackMp4Url || "";
   const originBase = bestOrigin.server.endpoint.replace(/\/$/, "");
 
-  const streamUrl = originBase && streamPath.startsWith("http")
+  const rawStreamUrl = originBase && streamPath.startsWith("http")
     ? streamPath
     : originBase
     ? `${originBase}${streamPath.startsWith("/") ? "" : "/"}${streamPath}`
     : streamPath;
 
-  const backupStreamUrls = healthyOrigins.slice(1).map((o) => {
+  const rawBackupStreamUrls = healthyOrigins.slice(1).map((o) => {
     const base = o.server.endpoint.replace(/\/$/, "");
     return base ? `${base}${streamPath.startsWith("/") ? "" : "/"}${streamPath}` : streamPath;
   });
 
+  // 7. Route through high-speed CDN delivery layer
+  const { cdnRouter } = await import("@/lib/cdn/cdn-router");
+  const cdnDelivery = cdnRouter.resolveMediaDelivery({
+    mediaId: video.id,
+    mediaType: "video",
+    rawMasterUrl: rawStreamUrl,
+    clientIp,
+    userRegion: userRegion as any,
+  });
+
+  const finalStreamUrl = cdnDelivery.masterUrl || rawStreamUrl;
+  const finalBackupUrls = [
+    ...cdnDelivery.backupUrls,
+    ...rawBackupStreamUrls,
+  ].filter((u) => u && u !== finalStreamUrl);
+
   return {
-    streamUrl,
-    backupStreamUrls,
+    streamUrl: finalStreamUrl,
+    backupStreamUrls: finalBackupUrls,
     token,
     originServer: {
       id: bestOrigin.server.id,
-      name: bestOrigin.server.name,
+      name: `${bestOrigin.server.name} via ${cdnDelivery.cdnName}`,
       region: bestOrigin.server.region,
       endpoint: bestOrigin.server.endpoint,
       status: bestOrigin.server.status,

@@ -50,6 +50,12 @@ async function handleResolve(payload: ResolvePayload) {
 
   const start = Date.now();
 
+  const { cdnRouter } = await import("@/lib/cdn/cdn-router");
+  const cdnDelivery = cdnRouter.resolveMediaDelivery({
+    mediaId: rawAnilistId || rawId || "stream",
+    mediaType: mediaType as any,
+  });
+
   // 2. POOL B: Anime Playback Pool (Strict Isolation)
   if (classification.targetPool === "ANIME" && (rawAnilistId || rawId)) {
     const { resolveAnimeAnilistId } = await import("@/lib/media/identity/id-mapper");
@@ -85,6 +91,12 @@ async function handleResolve(payload: ResolvePayload) {
       availableVariants: animeRes.availableVariants || { sub: true, dub: true, raw: false },
       providersConsidered: animeRes.providersConsidered,
       providersSkipped: animeRes.providersSkipped,
+      cdn: {
+        id: cdnDelivery.cdnId,
+        name: cdnDelivery.cdnName,
+        region: cdnDelivery.region,
+        shieldEnabled: cdnDelivery.shieldEnabled,
+      },
     });
   }
 
@@ -120,6 +132,12 @@ async function handleResolve(payload: ResolvePayload) {
     episode,
     language,
     providersSkipped,
+    cdn: {
+      id: cdnDelivery.cdnId,
+      name: cdnDelivery.cdnName,
+      region: cdnDelivery.region,
+      shieldEnabled: cdnDelivery.shieldEnabled,
+    },
   });
 }
 
