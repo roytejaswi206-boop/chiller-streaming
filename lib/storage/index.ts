@@ -63,9 +63,13 @@ export class LocalStorageProvider implements StorageProvider {
       ];
 
       for (const sub of subDirs) {
-        const fullSub = path.join(/*turbopackIgnore: true*/ this.baseDir, sub);
-        if (!fs.existsSync(/*turbopackIgnore: true*/ fullSub)) {
-          fs.mkdirSync(fullSub, { recursive: true });
+        try {
+          const fullSub = path.join(/*turbopackIgnore: true*/ this.baseDir, sub);
+          if (!fs.existsSync(/*turbopackIgnore: true*/ fullSub)) {
+            fs.mkdirSync(fullSub, { recursive: true });
+          }
+        } catch {
+          // Read-only filesystem in serverless environments like Vercel
         }
       }
     }
