@@ -441,11 +441,42 @@ export function ExternalPlayer({
           }),
           keepalive: true,
         }).catch(() => {});
+
+        // Real first-party watch telemetry engine sync
+        const sid = localStorage.getItem("chiller_sid") || "cs_anonymous";
+        const mediaKey = tmdbId
+          ? `tmdb:${mediaType}:${tmdbId}${season ? `:s${season}e${episode}` : ""}`
+          : anilistId
+          ? `anilist:${anilistId}${episode ? `:ep${episode}` : ""}`
+          : title;
+
+        const isCompleted = durationSeconds > 0 && progressSeconds / durationSeconds >= 0.85;
+
+        fetch("/api/analytics/activity", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: sid,
+            type: "WATCH",
+            mediaKey,
+            mediaType: mediaType || "movie",
+            title,
+            season: season || null,
+            episode: episode || null,
+            watchSeconds: 15,
+            totalDuration: durationSeconds || 0,
+            completed: isCompleted,
+            device: typeof window !== "undefined" && window.innerWidth < 768 ? "mobile" : "desktop",
+            providerId: activeSource?.providerId || null,
+          }),
+          keepalive: true,
+        }).catch(() => {});
       } catch {
         // Non-blocking quota error handling
       }
     },
     [tmdbId, anilistId, mediaType, season, episode, activeSource, title, posterUrl]
+
   );
 
   const saveProgress = useCallback(

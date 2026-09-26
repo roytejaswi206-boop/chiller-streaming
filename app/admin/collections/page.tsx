@@ -21,6 +21,8 @@ export default function AdminCollectionsPage() {
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadCollections = async () => {
     setLoading(true);
@@ -44,24 +46,66 @@ export default function AdminCollectionsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    setActionSuccess("");
     try {
       const res = await fetch("/api/admin/collections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, slug, description }),
       });
+      const data = await res.json();
       if (res.ok) {
         setTitle("");
         setSlug("");
         setDescription("");
         setCreating(false);
+        setActionSuccess("✓ Collection created and published.");
+        setTimeout(() => setActionSuccess(""), 4000);
         loadCollections();
       } else {
-        const err = await res.json();
-        setErrorMsg(err.error || "Failed to create collection.");
+        setErrorMsg(data.error || "Failed to create collection.");
       }
     } catch (err: any) {
       setErrorMsg(err.message);
+    }
+  };
+
+  const handleTogglePublish = async (id: string, currentActive: boolean) => {
+    try {
+      const res = await fetch("/api/admin/collections", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, active: !currentActive }),
+      });
+      if (res.ok) {
+        setCollections((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, active: !currentActive } : c))
+        );
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
+  const handleDelete = async (id: string, colTitle: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete collection "${colTitle}"?`)) {
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/collections?id=${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setCollections((prev) => prev.filter((c) => c.id !== id));
+        setActionSuccess(`✓ Collection "${colTitle}" deleted.`);
+        setTimeout(() => setActionSuccess(""), 4000);
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -76,7 +120,7 @@ export default function AdminCollectionsPage() {
             Collection Builder
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Create thematic curated collections (e.g. Essential Sci-Fi, Award Winners, Anime Sagas).
+            Create thematic curated collections with publish controls and real database persistence.
           </p>
         </div>
 
@@ -87,6 +131,12 @@ export default function AdminCollectionsPage() {
           {creating ? "Cancel" : "+ New Collection"}
         </button>
       </div>
+
+      {actionSuccess && (
+        <div className="p-3.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
+          {actionSuccess}
+        </div>
+      )}
 
       {creating && (
         <form
@@ -164,9 +214,16 @@ export default function AdminCollectionsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="text-base font-bold text-white tracking-tight">{col.title}</h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
-                    Active
-                  </span>
+                  <button
+                    onClick={() => handleTogglePublish(col.id, col.active)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition ${
+                      col.active
+                        ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                        : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    }`}
+                  >
+                    {col.active ? "Published" : "Draft"}
+                  </button>
                 </div>
                 <p className="text-[11px] text-zinc-500 font-mono">/collection/{col.slug}</p>
                 {col.description && (
@@ -178,13 +235,22 @@ export default function AdminCollectionsPage() {
                 <span className="text-zinc-400 font-semibold">
                   {col._count?.items || 0} Titles Curated
                 </span>
-                <Link
-                  href={`/collection/${col.slug}`}
-                  target="_blank"
-                  className="text-xs font-bold text-[#FF3B6B] hover:underline"
-                >
-                  View Live ↗
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/collection/${col.slug}`}
+                    target="_blank"
+                    className="text-xs font-bold text-[#FF3B6B] hover:underline"
+                  >
+                    View Live ↗
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(col.id, col.title)}
+                    disabled={deletingId === col.id}
+                    className="text-xs text-zinc-500 hover:text-rose-400 font-bold transition cursor-pointer disabled:opacity-50"
+                  >
+                    {deletingId === col.id ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
               </div>
             </div>
           ))}

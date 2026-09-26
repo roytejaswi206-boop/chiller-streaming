@@ -832,3 +832,50 @@ model AdImpression {
   @@map("ad_impressions")
 }
 
+model WatchSession {
+  id              String   @id @default(cuid())
+  sessionId       String
+  userId          String?
+  mediaKey        String   // e.g. tmdb:movie:550, tmdb:tv:1399:s1e1, anilist:16498:ep1
+  mediaType       String   // movie, tv, anime
+  title           String?
+  season          Int?
+  episode         Int?
+  watchDuration   Int      @default(0) // seconds actually watched in playback
+  totalDuration   Int      @default(0) // video length in seconds if reported
+  completed       Boolean  @default(false)
+  device          String   @default("desktop")
+  providerId      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([mediaKey])
+  @@index([mediaType])
+  @@index([createdAt])
+  @@index([completed])
+  @@map("watch_sessions")
+}
+
+model DailyMetricRollup {
+  id                 String   @id @default(cuid())
+  date               String   @unique // YYYY-MM-DD
+  visitors           Int      @default(0)
+  uniqueVisitors     Int      @default(0)
+  pageViews          Int      @default(0)
+  sessions           Int      @default(0)
+  registrations      Int      @default(0)
+  logins             Int      @default(0)
+  watchStarts        Int      @default(0)
+  completedWatches   Int      @default(0)
+  totalWatchSeconds  Int      @default(0)
+  searches           Int      @default(0)
+  playbackFailures   Int      @default(0)
+  errors             Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([date])
+  @@map("daily_metric_rollups")
+}
