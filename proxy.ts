@@ -22,6 +22,8 @@ const DESIGNATED_SUPER_ADMIN_EMAILS = new Set([
 ]);
 
 const ALLOWED_ORIGINS = new Set([
+  "https://chillerstream.duckdns.org",
+  "http://chillerstream.duckdns.org",
   "https://chillerstream.unaux.com",
   "http://chillerstream.unaux.com",
   "https://streaming-chi-red.vercel.app",
@@ -32,7 +34,7 @@ const ALLOWED_ORIGINS = new Set([
 export async function proxy(request: NextRequest) {
   const origin = request.headers.get("origin");
   const isAllowedOrigin = origin
-    ? ALLOWED_ORIGINS.has(origin) || origin.endsWith(".unaux.com")
+    ? ALLOWED_ORIGINS.has(origin) || origin.endsWith(".unaux.com") || origin.endsWith(".duckdns.org")
     : false;
 
   const { pathname } = request.nextUrl;

@@ -3,7 +3,7 @@
  * Ensures CHILLER consistently uses canonical branding and avoids exposing raw hosting URLs.
  */
 
-export const DEFAULT_SITE_URL = "https://chillerstream.unaux.com";
+export const DEFAULT_SITE_URL = "https://chillerstream.duckdns.org";
 
 export function getSiteUrl(): string {
   // 1. Explicitly configured custom domain
