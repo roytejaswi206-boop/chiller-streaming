@@ -31,16 +31,32 @@ export async function GET() {
   const storagePath = process.env.LOCAL_STORAGE_PATH || "./media_storage";
 
   // 3. Queue / Workers
-  const queueMetrics = await VideoJobQueue.getMetrics();
+  let queueMetrics = { mode: "embedded", processing: 0, queued: 0 };
+  try {
+    queueMetrics = await VideoJobQueue.getMetrics();
+  } catch {
+    // fallback default
+  }
 
   // 4. In-Memory Cache
-  const cacheMetrics = discoveryCache.getMetrics();
+  let cacheMetrics = { totalEntries: 0, hits: 0, misses: 0, totalRequests: 0 };
+  try {
+    cacheMetrics = discoveryCache.getMetrics();
+  } catch {
+    // fallback default
+  }
 
   // 5. Playback Dual-Pool Providers
-  const generalProviders = playbackRegistry.getGeneralProviders();
-  const animeProviders = playbackRegistry.getAnimeProviders();
-  const activeGeneral = generalProviders.filter((p) => p.enabled).length;
-  const activeAnime = animeProviders.filter((p) => p.enabled).length;
+  let activeGeneral = 0;
+  let activeAnime = 0;
+  try {
+    const generalProviders = playbackRegistry.getGeneralProviders();
+    const animeProviders = playbackRegistry.getAnimeProviders();
+    activeGeneral = generalProviders.filter((p) => p.enabled).length;
+    activeAnime = animeProviders.filter((p) => p.enabled).length;
+  } catch {
+    // fallback
+  }
   const playbackHealthy = activeGeneral > 0 && activeAnime > 0;
 
   // 6. Redis Broker
@@ -50,9 +66,16 @@ export async function GET() {
   const authHealthy = DESIGNATED_SUPER_ADMIN_EMAILS.length > 0;
 
   // 8. Origins
-  const origins = await prisma.streamingServer.findMany({
-    select: { name: true, region: true, isHealthy: true, status: true, latencyMs: true },
-  });
+  let origins: any[] = [];
+  if (dbHealthy) {
+    try {
+      origins = await prisma.streamingServer.findMany({
+        select: { name: true, region: true, isHealthy: true, status: true, latencyMs: true },
+      });
+    } catch {
+      origins = [];
+    }
+  }
 
   const overallHealthy = dbHealthy && storageHealthy && playbackHealthy;
 
