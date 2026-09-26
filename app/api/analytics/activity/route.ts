@@ -63,9 +63,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
-    // Non-blocking response
-    return NextResponse.json({ success: false }, { status: 200 });
+  } catch (err: any) {
+    console.error("[Activity Error]", err?.message);
+    return NextResponse.json({ success: false, error: err?.message }, { status: 200 });
   }
 }
 
