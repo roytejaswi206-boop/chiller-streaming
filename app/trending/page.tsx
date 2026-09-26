@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { MediaCard } from "@/components/video/MediaCard";
 import { InfiniteMediaGrid } from "@/components/video/InfiniteMediaGrid";
 import { MediaItem, DiscoveryQuery } from "@/lib/content/discovery";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 export default function TrendingPage() {
   const [mediaType, setMediaType] = useState<"all" | "movie" | "tv" | "anime">("all");
@@ -186,6 +187,9 @@ export default function TrendingPage() {
           </section>
         )}
 
+        {/* Centralized Ad Slot: Between Major Sections */}
+        <AdSlot placement="trending_mid" />
+
         {/* Section 3: Infinite Paginated Trending Beyond #20 */}
         <section>
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
@@ -197,6 +201,9 @@ export default function TrendingPage() {
 
           <InfiniteMediaGrid query={query} initialPage={2} />
         </section>
+
+        {/* Centralized Ad Slot: Before Footer Native Banner */}
+        <AdSlot placement="trending_bottom" format="native" />
       </main>
     </div>
   );

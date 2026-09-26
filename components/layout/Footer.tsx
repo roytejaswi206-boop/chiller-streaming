@@ -4,7 +4,7 @@ import { ChillerLogo } from "@/components/icons";
 
 export function Footer() {
   return (
-    <footer className="w-full border-t border-white/[0.08] bg-[#09090C] text-zinc-400 text-xs mt-auto py-12 px-4 lg:px-12">
+    <footer className="w-full border-t border-white/[0.08] bg-[#09090C] text-zinc-400 text-xs mt-auto pt-12 pb-24 md:pb-12 px-4 lg:px-12">
       <div className="max-w-[1680px] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 mb-10">
         {/* Brand & Slogan */}
         <div className="sm:col-span-2 space-y-3">

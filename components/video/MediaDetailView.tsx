@@ -433,6 +433,9 @@ export function MediaDetailView({
         )}
       </div>
 
+      {/* Centralized Ad Slot: Between Metadata/Overview and Content Sections */}
+      <AdSlot placement="detail_mid" />
+
       {/* ── 3. Tab Contents ── */}
       {(activeTab === "overview" || activeTab === "episodes") && (mediaType === "tv" || mediaType === "anime") && seasons.length > 0 && (
         <div className="space-y-6">
@@ -513,8 +516,8 @@ export function MediaDetailView({
         </div>
       )}
 
-      {/* ── Centralized Ad Slot: Detail Bottom Banner ── */}
-      <AdSlot placement="detail_bottom" />
+      {/* ── Centralized Ad Slot: Before Trailer / Similar Content ── */}
+      <AdSlot placement="detail_similar" />
 
       {/* ── 4. Similar Titles Rail ── */}
       {similarTitles.length > 0 && (
@@ -555,6 +558,9 @@ export function MediaDetailView({
           />
         </div>
       )}
+
+      {/* ── Centralized Ad Slot: Before Footer Native Banner ── */}
+      <AdSlot placement="detail_bottom" format="native" />
     </div>
   );
 }

@@ -1074,6 +1074,9 @@ export function WatchExperience({
         )}
       </div>
 
+      {/* ── Centralized Ad Slot: Below Player Safe Recommendation Area ── */}
+      <AdSlot placement="player_below" className="my-8" />
+
       {/* ── 8. Smart Multi-Rail Content Recommendations (Sections 25-46) ── */}
       {recommendationSections.length > 0 ? (
         <div className="mt-8 space-y-6">

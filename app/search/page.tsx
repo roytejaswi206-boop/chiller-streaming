@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { MediaCard } from "@/components/video/MediaCard";
 import { IconSearch } from "@/components/icons";
 import { getGenreNames } from "@/lib/tmdb/genres";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -345,6 +346,9 @@ function SearchContent() {
           </div>
         )}
 
+        {/* Centralized Ad Slot: Between Result Sections */}
+        <AdSlot placement="search_mid" />
+
         {/* Loading Spinner */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-20">
@@ -407,6 +411,9 @@ function SearchContent() {
             </div>
           </>
         )}
+
+        {/* Centralized Ad Slot: Before Footer Native Banner */}
+        <AdSlot placement="search_bottom" format="native" />
       </main>
     </div>
   );

@@ -113,6 +113,9 @@ export default async function MoviesPage({ searchParams }: MoviesPageProps) {
               badge="#TRENDING"
             />
 
+            {/* Centralized Ad Slot: After First Major Rail */}
+            <AdSlot placement="movies_top" />
+
             <InfiniteMediaRail
               title="Popular Movies"
               query={{ category: "popular", mediaType: "movie" }}
@@ -150,8 +153,8 @@ export default async function MoviesPage({ searchParams }: MoviesPageProps) {
               badge="#TOPRATED"
             />
 
-            {/* Centralized Ad Slot: Browse Content Banner */}
-            <AdSlot placement="browse_content" />
+            {/* Centralized Ad Slot: Between Content Sections */}
+            <AdSlot placement="movies_mid" />
 
             {/* Genre Rails */}
             <InfiniteMediaRail
@@ -287,6 +290,9 @@ export default async function MoviesPage({ searchParams }: MoviesPageProps) {
             />
           </>
         )}
+
+        {/* Centralized Ad Slot: Before Footer Native Banner */}
+        <AdSlot placement="movies_bottom" format="native" />
       </main>
     </div>
   );

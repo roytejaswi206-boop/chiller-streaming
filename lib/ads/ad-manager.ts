@@ -61,7 +61,8 @@ export function evaluateAdEligibility(
   pathname: string,
   user: UserContextForAds | null | undefined,
   isMobile: boolean,
-  settings: AdSettingsData = DEFAULT_AD_SETTINGS
+  settings: AdSettingsData = DEFAULT_AD_SETTINGS,
+  formatPreference?: "responsive" | "native" | "banner"
 ): AdEligibilityResult {
   // 1. Global Kill Switch Check
   if (!settings.adsEnabled) {
@@ -117,16 +118,28 @@ export function evaluateAdEligibility(
   }
 
   // 8. Placement-Specific Switches
-  if (placement === "home_top" && !settings.topBannerEnabled) {
+  const isTop = placement === "home_top" || placement.endsWith("_top");
+  const isContent =
+    placement === "home_content" ||
+    placement === "browse_content" ||
+    placement.endsWith("_mid") ||
+    placement.endsWith("_discovery");
+  const isDetailOrBottom =
+    placement === "detail_bottom" ||
+    placement.startsWith("detail_") ||
+    placement.endsWith("_bottom");
+  const isPlayer = placement === "player_below";
+
+  if (isTop && !settings.topBannerEnabled) {
     return { eligible: false, reason: "Top banner placement disabled" };
   }
-  if ((placement === "home_content" || placement === "browse_content") && !settings.contentBannerEnabled) {
+  if (isContent && !settings.contentBannerEnabled) {
     return { eligible: false, reason: "Content banner placement disabled" };
   }
-  if (placement === "detail_bottom" && !settings.detailBannerEnabled) {
-    return { eligible: false, reason: "Detail banner placement disabled" };
+  if (isDetailOrBottom && !settings.detailBannerEnabled) {
+    return { eligible: false, reason: "Detail/bottom banner placement disabled" };
   }
-  if (placement === "player_below" && !settings.playerBannerEnabled) {
+  if (isPlayer && !settings.playerBannerEnabled) {
     return { eligible: false, reason: "Player below placement disabled" };
   }
 
@@ -140,8 +153,17 @@ export function evaluateAdEligibility(
   let selectedProvider: AdProviderId;
   let selectedFormat: "728x90" | "320x50" | "invoke" | "native";
 
-  if (isMobile) {
-    // Mobile preference
+  // Check if Native Banner is preferred for this slot
+  const preferNative =
+    formatPreference === "native" ||
+    placement.endsWith("_bottom") ||
+    placement.includes("discovery");
+
+  if (preferNative && settings.providerProfitableRate && isProviderAvailable(AD_PROVIDERS.PROFITABLERATE_INVOKE.id)) {
+    selectedProvider = "profitablerate_invoke";
+    selectedFormat = "native";
+  } else if (isMobile) {
+    // Mobile banner preference (320x50)
     if (settings.providerHighRevenue320 && isProviderAvailable(AD_PROVIDERS.HIGHREVENUE_320x50.id)) {
       selectedProvider = "highrevenue_320x50";
       selectedFormat = "320x50";
@@ -152,7 +174,7 @@ export function evaluateAdEligibility(
       return { eligible: false, reason: "All mobile providers in cooldown" };
     }
   } else {
-    // Desktop preference
+    // Desktop leaderboard preference (728x90)
     if (settings.providerHighRevenue728 && isProviderAvailable(AD_PROVIDERS.HIGHREVENUE_728x90.id)) {
       selectedProvider = "highrevenue_728x90";
       selectedFormat = "728x90";

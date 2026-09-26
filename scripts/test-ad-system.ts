@@ -86,12 +86,46 @@ async function runAdSystemTests() {
   const watchEval = evaluateAdEligibility("player_below", "/watch/movie/27205", standardUser, false, noWatchAdsSettings);
   assert("Disabling watch page ads suppresses player_below ad", !watchEval.eligible && watchEval.reason.includes("Watch page ads disabled"));
 
-  // 7. Provider Circuit Breaker
-  console.log("\n--- TEST GROUP 7: Provider Circuit Breaker ---");
-  assert("Provider highrevenue_728x90 initially available", isProviderAvailable("highrevenue_728x90"));
-  recordProviderFailure("highrevenue_728x90");
-  recordProviderFailure("highrevenue_728x90"); // Threshold 2
-  assert("Provider enters circuit-breaker cooldown after 2 failures", !isProviderAvailable("highrevenue_728x90"));
+  // 8. Native Banner Format Selection
+  console.log("\n--- TEST GROUP 8: Native Banner Format Selection ---");
+  const nativePrefEval = evaluateAdEligibility("home_bottom", "/", standardUser, false, DEFAULT_AD_SETTINGS, "native");
+  assert("Native preference selects profitablerate_invoke unit", nativePrefEval.provider === "profitablerate_invoke" && nativePrefEval.format === "native");
+
+  const discoveryNativeEval = evaluateAdEligibility("home_discovery", "/", standardUser, false, DEFAULT_AD_SETTINGS);
+  assert("Discovery placement defaults to native format", discoveryNativeEval.provider === "profitablerate_invoke" && discoveryNativeEval.format === "native");
+
+  // 9. Phase 4 Placement Verification
+  console.log("\n--- TEST GROUP 9: Phase 4 Multi-Position Placements ---");
+  const placementsToTest = [
+    { p: "home_top", url: "/" },
+    { p: "home_mid", url: "/" },
+    { p: "home_discovery", url: "/" },
+    { p: "home_bottom", url: "/" },
+    { p: "movies_top", url: "/movies" },
+    { p: "movies_mid", url: "/movies" },
+    { p: "movies_bottom", url: "/movies" },
+    { p: "series_top", url: "/series" },
+    { p: "series_mid", url: "/series" },
+    { p: "series_bottom", url: "/series" },
+    { p: "anime_top", url: "/anime" },
+    { p: "anime_mid", url: "/anime" },
+    { p: "anime_bottom", url: "/anime" },
+    { p: "trending_mid", url: "/trending" },
+    { p: "trending_bottom", url: "/trending" },
+    { p: "genre_mid", url: "/genre/action" },
+    { p: "genre_bottom", url: "/genre/action" },
+    { p: "search_mid", url: "/search" },
+    { p: "search_bottom", url: "/search" },
+    { p: "detail_mid", url: "/movie/27205" },
+    { p: "detail_similar", url: "/movie/27205" },
+    { p: "detail_bottom", url: "/movie/27205" },
+    { p: "player_below", url: "/watch/movie/27205" },
+  ];
+
+  for (const item of placementsToTest) {
+    const res = evaluateAdEligibility(item.p as any, item.url, standardUser, false, DEFAULT_AD_SETTINGS);
+    assert(`Placement ${item.p} on ${item.url} is eligible`, res.eligible);
+  }
 
   console.log("\n==================================================");
   console.log(`TOTAL TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);

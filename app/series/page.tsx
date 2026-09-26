@@ -109,6 +109,9 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
               badge="#TRENDING"
             />
 
+            {/* Centralized Ad Slot: After First Major Rail */}
+            <AdSlot placement="series_top" />
+
             <InfiniteMediaRail
               title="Popular Series"
               query={{ category: "popular", mediaType: "tv" }}
@@ -146,8 +149,8 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
               badge="#TODAY"
             />
 
-            {/* Centralized Ad Slot: Browse Content Banner */}
-            <AdSlot placement="browse_content" />
+            {/* Centralized Ad Slot: Between Content Sections */}
+            <AdSlot placement="series_mid" />
 
             {/* Genre Rails */}
             <InfiniteMediaRail
@@ -226,6 +229,9 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
             />
           </>
         )}
+
+        {/* Centralized Ad Slot: Before Footer Native Banner */}
+        <AdSlot placement="series_bottom" format="native" />
       </main>
     </div>
   );

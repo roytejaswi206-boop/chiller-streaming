@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AdPlacement, AdSettingsData, AdEligibilityResult } from "@/lib/ads/ad-types";
 import { DEFAULT_AD_SETTINGS } from "@/lib/ads/config";
@@ -10,20 +10,22 @@ import { recordSessionImpression } from "@/lib/ads/ad-frequency";
 import { AdSafeWrapper } from "./AdSafeWrapper";
 import { AdContainer } from "./AdContainer";
 import { ResponsiveBannerAd } from "./ResponsiveBannerAd";
+import { NativeAd } from "./NativeAd";
 
 interface AdSlotProps {
   placement: AdPlacement;
   className?: string;
   minHeight?: number;
+  format?: "responsive" | "native" | "banner";
 }
 
 export function AdSlot({
   placement,
   className = "",
   minHeight,
+  format = "responsive",
 }: AdSlotProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { data: session } = useSession();
 
   const slotRef = useRef<HTMLDivElement>(null);
@@ -32,9 +34,15 @@ export function AdSlot({
   const [dismissed, setDismissed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [settings, setSettings] = useState<AdSettingsData>(DEFAULT_AD_SETTINGS);
+  const [isDebugRequested, setIsDebugRequested] = useState(false);
 
-  // Admin debug mode check (?adsDebug=true)
-  const isDebugRequested = searchParams?.get("adsDebug") === "true";
+  // Admin debug mode check (?adsDebug=true) without forcing SSR bailout
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsDebugRequested(new URLSearchParams(window.location.search).get("adsDebug") === "true");
+    }
+  }, []);
+
   const userRole = (session?.user as any)?.role;
   const isSuperAdmin = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
   const showDebugInfo = isDebugRequested && isSuperAdmin;
@@ -95,11 +103,12 @@ export function AdSlot({
       pathname,
       userContext,
       isMobile,
-      settings
+      settings,
+      format
     );
 
     setEligibility(result);
-  }, [inView, dismissed, pathname, session, settings, placement]);
+  }, [inView, dismissed, pathname, session, settings, placement, format]);
 
   // If user dismissed this placement
   if (dismissed) {
@@ -158,18 +167,27 @@ export function AdSlot({
     <div ref={slotRef} className="w-full">
       {inView && eligibility?.eligible && (
         <AdSafeWrapper>
-          <AdContainer
-            placement={placement}
-            className={className}
-            minHeight={minHeight}
-            onDismiss={() => setDismissed(true)}
-          >
-            <ResponsiveBannerAd
-              preferredProvider={eligibility.provider}
+          {eligibility.format === "native" ? (
+            <NativeAd
+              className={className}
+              minHeight={minHeight || 180}
               onLoaded={handleLoaded}
               onError={handleError}
             />
-          </AdContainer>
+          ) : (
+            <AdContainer
+              placement={placement}
+              className={className}
+              minHeight={minHeight}
+              onDismiss={() => setDismissed(true)}
+            >
+              <ResponsiveBannerAd
+                preferredProvider={eligibility.provider}
+                onLoaded={handleLoaded}
+                onError={handleError}
+              />
+            </AdContainer>
+          )}
         </AdSafeWrapper>
       )}
     </div>

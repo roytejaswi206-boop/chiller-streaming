@@ -160,6 +160,9 @@ export default async function HomePage() {
             {/* 6.5. Browse by Language (NetMirror-Inspired Native Experience) */}
             <LanguageDiscoveryRail />
 
+            {/* Centralized Ad Slot: Mid Content Banner */}
+            <AdSlot placement="home_mid" />
+
             {/* 7. Popular Movies */}
             <InfiniteMediaRail
               title="Popular Movies"
@@ -251,6 +254,9 @@ export default async function HomePage() {
               layout="poster"
             />
 
+            {/* Centralized Ad Slot: Lower Discovery Native Banner */}
+            <AdSlot placement="home_discovery" format="native" />
+
             {/* 18. Romance & Love Stories */}
             <InfiniteMediaRail
               title="Romance & Love Stories"
@@ -319,6 +325,9 @@ export default async function HomePage() {
               layout="poster"
               badge="For You"
             />
+
+            {/* Centralized Ad Slot: Before Footer Native Banner */}
+            <AdSlot placement="home_bottom" format="native" />
           </>
         )}
       </main>

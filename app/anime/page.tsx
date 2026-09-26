@@ -113,6 +113,9 @@ export default async function AnimePage({ searchParams }: AnimePageProps) {
               badge="AniList Top"
             />
 
+            {/* Centralized Ad Slot: After First Major Rail */}
+            <AdSlot placement="anime_top" />
+
             <InfiniteMediaRail
               title="Currently Airing This Season"
               query={{ mediaType: "anime", category: "airing" }}
@@ -144,8 +147,8 @@ export default async function AnimePage({ searchParams }: AnimePageProps) {
               badge="#MOVIE"
             />
 
-            {/* Centralized Ad Slot: Browse Content Banner */}
-            <AdSlot placement="browse_content" />
+            {/* Centralized Ad Slot: Between Content Sections */}
+            <AdSlot placement="anime_mid" />
 
             <InfiniteMediaRail
               title="Action & Shonen"
@@ -198,6 +201,9 @@ export default async function AnimePage({ searchParams }: AnimePageProps) {
             />
           </>
         )}
+
+        {/* Centralized Ad Slot: Before Footer Native Banner */}
+        <AdSlot placement="anime_bottom" format="native" />
       </main>
     </div>
   );

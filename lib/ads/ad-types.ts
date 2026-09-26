@@ -5,11 +5,41 @@
  */
 
 export type AdPlacement =
+  // Home placements
   | "home_top"
-  | "home_content"
-  | "browse_content"
+  | "home_mid"
+  | "home_discovery"
+  | "home_bottom"
+  // Movies placements
+  | "movies_top"
+  | "movies_mid"
+  | "movies_bottom"
+  // Series placements
+  | "series_top"
+  | "series_mid"
+  | "series_bottom"
+  // Anime placements
+  | "anime_top"
+  | "anime_mid"
+  | "anime_bottom"
+  // Trending placements
+  | "trending_mid"
+  | "trending_bottom"
+  // Genre placements
+  | "genre_mid"
+  | "genre_bottom"
+  // Search placements
+  | "search_mid"
+  | "search_bottom"
+  // Detail page placements
+  | "detail_mid"
+  | "detail_similar"
   | "detail_bottom"
-  | "player_below";
+  // Watch / Player placement
+  | "player_below"
+  // Legacy aliases
+  | "home_content"
+  | "browse_content";
 
 export type AdProviderId =
   | "profitablerate_cpm"

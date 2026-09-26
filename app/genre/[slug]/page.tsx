@@ -6,6 +6,7 @@ import { InfiniteMediaGrid } from "@/components/video/InfiniteMediaGrid";
 import { GENRE_SLUG_MAP } from "@/lib/content/discovery";
 import { getCanonicalUrl } from "@/lib/config/site";
 import { JsonLd, buildCollectionSchema, buildBreadcrumbSchema } from "@/components/seo/JsonLd";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 export const dynamic = "force-dynamic";
 
@@ -155,6 +156,9 @@ export default async function GenrePage({ params, searchParams }: GenrePageProps
           </div>
         </section>
 
+        {/* Centralized Ad Slot: Between Content Groups */}
+        <AdSlot placement="genre_mid" />
+
         {/* Infinite Media Grid for Genre */}
         <InfiniteMediaGrid
           query={{
@@ -165,6 +169,9 @@ export default async function GenrePage({ params, searchParams }: GenrePageProps
           emptyTitle={`No ${genreTitle} titles found.`}
           emptySubtitle="Try selecting a different content type or filter."
         />
+
+        {/* Centralized Ad Slot: Before Footer Native Banner */}
+        <AdSlot placement="genre_bottom" format="native" />
       </main>
     </div>
   );

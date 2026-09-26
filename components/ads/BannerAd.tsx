@@ -43,7 +43,13 @@ export function BannerAd({
           iframe.style.overflow = "hidden";
           iframe.scrolling = "no";
           iframe.title = "Advertisement";
-          iframe.sandbox.add("allow-scripts", "allow-same-origin", "allow-popups", "allow-forms");
+          iframe.sandbox.add(
+            "allow-scripts",
+            "allow-same-origin",
+            "allow-popups",
+            "allow-popups-to-escape-sandbox",
+            "allow-forms"
+          );
 
           const docContent = `
             <!DOCTYPE html>
