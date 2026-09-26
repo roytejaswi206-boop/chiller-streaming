@@ -10,6 +10,8 @@ import { LanguageDiscoveryRail } from "@/components/discovery/LanguageDiscoveryR
 import { ChillerIntro } from "@/components/intro/ChillerIntro";
 import { discoverContent } from "@/lib/content/discovery";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { ResponsiveAdSlot } from "@/components/ads/AdManager";
+import { AdContainer } from "@/components/ads/AdContainer";
 import { getCanonicalUrl } from "@/lib/config/site";
 
 export const dynamic = "force-dynamic";
@@ -160,8 +162,8 @@ export default async function HomePage() {
             {/* 6.5. Browse by Language (NetMirror-Inspired Native Experience) */}
             <LanguageDiscoveryRail />
 
-            {/* Centralized Ad Slot: Mid Content Banner */}
-            <AdSlot placement="home_mid" />
+            {/* Centralized Responsive Ad Slot: Mid Content Banner (728x90 desktop / 320x50 mobile) */}
+            <ResponsiveAdSlot placement="home_mid" />
 
             {/* 7. Popular Movies */}
             <InfiniteMediaRail
@@ -326,8 +328,8 @@ export default async function HomePage() {
               badge="For You"
             />
 
-            {/* Centralized Ad Slot: Before Footer Native Banner */}
-            <AdSlot placement="home_bottom" format="native" />
+            {/* Supplied Ad Code 4: Container Ad (Clean single ID, non-intrusive) */}
+            <AdContainer placement="home_bottom_container" />
           </>
         )}
       </main>

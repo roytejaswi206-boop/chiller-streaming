@@ -18,6 +18,8 @@ const AgeGateContext = createContext<AgeGateContextType>({
 
 export const useAgeGate = () => useContext(AgeGateContext);
 
+import { AdProvider } from "@/components/ads/AdManager";
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isAgeVerified, setIsAgeVerified] = useState<boolean>(true);
   const [isMounted, setIsMounted] = useState<boolean>(false);
@@ -45,7 +47,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <AgeGateContext.Provider value={{ isAgeVerified, verifyAge, openAgeGate }}>
         <ToastProvider>
-          {children}
+          <AdProvider>
+            {children}
+          </AdProvider>
         </ToastProvider>
       </AgeGateContext.Provider>
     </SessionProvider>

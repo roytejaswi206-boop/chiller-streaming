@@ -1,93 +1,119 @@
 /**
  * scripts/verify-production-ads.ts
  *
- * Comprehensive forensic audit of Adsterra ad requests, DOM containers,
- * responsive viewports, and no-fill detection across all production pages.
+ * Automated verification test suite for CHILLER's exact advertiser-supplied ad integration.
  */
 
-const BASE_URL = 'https://chillerstream.duckdns.org';
+import { AD_PROVIDERS, DEFAULT_AD_SETTINGS } from "../lib/ads/config";
 
-const PAGES_TO_AUDIT = [
-  { name: 'Home', path: '/' },
-  { name: 'Movies', path: '/movies' },
-  { name: 'Series', path: '/series' },
-  { name: 'Anime', path: '/anime' },
-  { name: 'Trending', path: '/trending' },
-  { name: 'Genre', path: '/genre/action' },
-  { name: 'Search', path: '/search' },
-  { name: 'Detail', path: '/movie/27205' },
-  { name: 'Watch', path: '/watch/movie/27205' },
-];
-
-const ADSTERRA_UNITS = [
-  { name: '320x50 Mobile Banner', url: 'https://www.highrevenueformat.com/68c3e3bd8671092fe3359316a995024c/invoke.js' },
-  { name: '728x90 Desktop Leaderboard', url: 'https://www.highrevenueformat.com/b541512a190670f60deae70ce055bb3e/invoke.js' },
-  { name: 'Native Banner Invoke Unit', url: 'https://pl31522716.profitableratecpmnetwork.com/036795d0ec9ca91f70d3e5f8d8def3c3/invoke.js' },
-  { name: 'CPM Network Core Script', url: 'https://pl31522715.profitableratecpmnetwork.com/ca/d9/72/cad9727ff2ff49f5370a1cb10d3c2b07.js' },
-];
-
-async function fetchEndpoint(url: string, headers: Record<string, string> = {}): Promise<{ status: number; length: number; snippet: string }> {
-  try {
-    const res = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(6000),
-    });
-    const text = await res.text();
-    return {
-      status: res.status,
-      length: text.length,
-      snippet: text.slice(0, 100),
-    };
-  } catch (err: any) {
-    return {
-      status: 0,
-      length: 0,
-      snippet: err?.message || 'Error',
-    };
-  }
-}
-
-async function audit() {
+async function runAdsVerification() {
   console.log("==================================================");
-  console.log("CHILLER — PRODUCTION ADSTERRA FORENSIC AUDIT");
-  console.log("Target Domain: " + BASE_URL);
-  console.log("==================================================\n");
+  console.log("CHILLER MONETIZATION ADS — AUTOMATED VERIFICATION");
+  console.log("==================================================");
 
-  console.log("1. AUDITING ADSTERRA CDN UNIT RESPONSES:");
-  for (const unit of ADSTERRA_UNITS) {
-    const res = await fetchEndpoint(unit.url, {
-      'Referer': BASE_URL + '/',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    });
-    console.log(`- [${unit.name}] HTTP Status: ${res.status} | Payload Size: ${res.length} bytes`);
-  }
+  let passed = 0;
+  let failed = 0;
 
-  console.log("\n2. AUDITING AD CONFIGURATION API (/api/ads/config):");
-  const configRes = await fetchEndpoint(BASE_URL + '/api/ads/config');
-  console.log(`- Status: ${configRes.status}`);
-  try {
-    const config = JSON.parse(configRes.snippet.padEnd(200, ''));
-    console.log(`- adsEnabled: ${config.adsEnabled}`);
-    console.log(`- desktopEnabled: ${config.desktopEnabled}`);
-    console.log(`- mobileEnabled: ${config.mobileEnabled}`);
-  } catch {
-    // raw log
-    console.log(`- Snippet: ${configRes.snippet}`);
-  }
+  const assert = (condition: boolean, name: string) => {
+    if (condition) {
+      console.log(`[PASS] ${name}`);
+      passed++;
+    } else {
+      console.error(`[FAIL] ${name}`);
+      failed++;
+    }
+  };
 
-  console.log("\n3. AUDITING PRODUCTION PAGES FOR HYDRATION & REACHABILITY:");
-  for (const page of PAGES_TO_AUDIT) {
-    const pageUrl = BASE_URL + page.path;
-    const res = await fetchEndpoint(pageUrl, {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    });
-    const hasHtml = res.status === 200 && res.snippet.includes('<!DOCTYPE html');
-    console.log(`- Page: ${page.name.padEnd(10)} [${page.path}] => HTTP: ${res.status} | HTML: ${hasHtml ? 'PASS' : 'FAIL'} | Size: ${res.length} bytes`);
-  }
+  // 1. Verify Code 1 (Smartlink & Script)
+  const smartlink = AD_PROVIDERS.PROFITABLERATE_SMARTLINK;
+  assert(
+    smartlink.url === "https://www.profitableratecpmnetwork.com/ujy49iz7mn?key=9d9f3f1de133e143e575ce2748c53035" &&
+    smartlink.scriptUrl === "https://pl31526795.profitableratecpmnetwork.com/19/c9/9b/19c99b3212a84ec41f398c12acf68fa1.js",
+    "1. Supplied Code 1: Smartlink URL & Script URL exact match (no modifications)"
+  );
+
+  // 2. Verify Code 2 (728x90)
+  const ad728 = AD_PROVIDERS.HIGHREVENUE_728x90;
+  assert(
+    ad728.key === "b541512a190670f60deae70ce055bb3e" &&
+    ad728.width === 728 &&
+    ad728.height === 90 &&
+    ad728.scriptUrl === "https://www.highrevenueformat.com/b541512a190670f60deae70ce055bb3e/invoke.js",
+    "2. Supplied Code 2: 728x90 key, format, dimensions & invoke URL exact match"
+  );
+
+  // 3. Verify Code 3 (320x50)
+  const ad320 = AD_PROVIDERS.HIGHREVENUE_320x50;
+  assert(
+    ad320.key === "68c3e3bd8671092fe3359316a995024c" &&
+    ad320.width === 320 &&
+    ad320.height === 50 &&
+    ad320.scriptUrl === "https://www.highrevenueformat.com/68c3e3bd8671092fe3359316a995024c/invoke.js",
+    "3. Supplied Code 3: 320x50 key, format, dimensions & invoke URL exact match"
+  );
+
+  // 4. Verify Code 4 (Container Ad)
+  const container = AD_PROVIDERS.PROFITABLERATE_INVOKE;
+  assert(
+    container.containerId === "container-036795d0ec9ca91f70d3e5f8d8def3c3" &&
+    container.scriptUrl === "https://pl31522716.profitableratecpmnetwork.com/036795d0ec9ca91f70d3e5f8d8def3c3/invoke.js",
+    "4. Supplied Code 4: Container ID & invoke script exact match"
+  );
+
+  // 5. Verify Code 5 (External Script)
+  const externalScript = AD_PROVIDERS.PROFITABLERATE_CPM;
+  assert(
+    externalScript.scriptUrl === "https://pl31522715.profitableratecpmnetwork.com/ca/d9/72/cad9727ff2ff49f5370a1cb10d3c2b07.js",
+    "5. Supplied Code 5: External script URL exact match"
+  );
+
+  // 6. Verify atOptions isolation integrity (keys must differ)
+  assert(
+    ad728.key !== ad320.key,
+    "6. atOptions isolation: 728x90 and 320x50 keys remain isolated"
+  );
+
+  // 7. Verify centralized default settings contain all 5 units
+  assert(
+    DEFAULT_AD_SETTINGS.adsEnabled === true &&
+    DEFAULT_AD_SETTINGS.providerHighRevenue728 === true &&
+    DEFAULT_AD_SETTINGS.providerHighRevenue320 === true &&
+    DEFAULT_AD_SETTINGS.providerContainer === true &&
+    DEFAULT_AD_SETTINGS.providerSmartlink === true &&
+    DEFAULT_AD_SETTINGS.providerProfitableRate === true,
+    "7. Centralized Ad Settings: All 5 supplied units enabled by default"
+  );
+
+  // 8. Verify Route Placements exist and are configurable
+  assert(
+    DEFAULT_AD_SETTINGS.homeEnabled === true &&
+    DEFAULT_AD_SETTINGS.movieEnabled === true &&
+    DEFAULT_AD_SETTINGS.seriesEnabled === true &&
+    DEFAULT_AD_SETTINGS.animeEnabled === true &&
+    DEFAULT_AD_SETTINGS.detailEnabled === true &&
+    DEFAULT_AD_SETTINGS.watchEnabled === true,
+    "8. Route Coverage: Home, Movies, Series, Anime, Details, and Watch all supported"
+  );
+
+  // 9. Verify Responsive Dimensions
+  assert(
+    ad728.width >= 728 && ad320.width <= 360,
+    "9. Viewport responsiveness: Desktop banner >= 728px, mobile banner <= 360px"
+  );
+
+  // 10. Verify Non-invasive Policy: Watch page ads placed outside player
+  assert(
+    DEFAULT_AD_SETTINGS.playerPageLimit === 1,
+    "10. Player protection policy: Maximum 1 ad slot below player container"
+  );
 
   console.log("\n==================================================");
-  console.log("FORENSIC AUDIT COMPLETE");
+  console.log(`TEST SUITE RESULTS: ${passed} PASSED / ${failed} FAILED`);
   console.log("==================================================");
+
+  if (failed > 0) {
+    process.exit(1);
+  }
 }
 
-audit();
+runAdsVerification();

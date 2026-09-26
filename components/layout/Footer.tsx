@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { ChillerLogo } from "@/components/icons";
+import { AdSmartLink } from "@/components/ads/AdSmartLink";
 
 export function Footer() {
   return (
@@ -124,6 +125,9 @@ export function Footer() {
           </ul>
         </div>
       </div>
+
+      {/* Sponsored Partner Recommendation (Supplied Ad Code 1) */}
+      <AdSmartLink placement="footer_recommendation" />
 
       {/* TMDB Mandatory Attribution & Copyright */}
       <div className="max-w-[1680px] mx-auto pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-400">

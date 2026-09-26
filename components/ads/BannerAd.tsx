@@ -139,6 +139,26 @@ export function BannerAd({
         if (containerRef.current) {
           containerRef.current.appendChild(script);
         }
+      } else if (provider === "profitablerate_smartlink") {
+        const config = AD_PROVIDERS.PROFITABLERATE_SMARTLINK;
+        const script = document.createElement("script");
+        script.src = config.scriptUrl;
+        script.async = true;
+        script.onload = () => {
+          if (isMounted) {
+            setIsRendered(true);
+            onLoaded?.();
+          }
+        };
+        script.onerror = () => {
+          if (isMounted) {
+            recordProviderFailure(provider);
+            onError?.("Smartlink script failure");
+          }
+        };
+        if (containerRef.current) {
+          containerRef.current.appendChild(script);
+        }
       }
     } catch (err: any) {
       recordProviderFailure(provider);

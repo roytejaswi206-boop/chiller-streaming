@@ -15,6 +15,7 @@ import { TmdbSeasonDetail } from "@/lib/tmdb/client";
 import { formatDuration } from "@/lib/utils";
 import { resolveResumeSourceOfTruth } from "@/lib/playback/resume-service";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { ResponsiveAdSlot } from "@/components/ads/AdManager";
 
 interface MediaDetailViewProps {
   id: number;
@@ -516,8 +517,8 @@ export function MediaDetailView({
         </div>
       )}
 
-      {/* ── Centralized Ad Slot: Before Trailer / Similar Content ── */}
-      <AdSlot placement="detail_similar" />
+      {/* ── Centralized Responsive Ad Slot: Before Trailer / Similar Content (728x90 desktop / 320x50 mobile) ── */}
+      <ResponsiveAdSlot placement="detail_similar" />
 
       {/* ── 4. Similar Titles Rail ── */}
       {similarTitles.length > 0 && (

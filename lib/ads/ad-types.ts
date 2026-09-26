@@ -45,7 +45,8 @@ export type AdProviderId =
   | "profitablerate_cpm"
   | "profitablerate_invoke"
   | "highrevenue_320x50"
-  | "highrevenue_728x90";
+  | "highrevenue_728x90"
+  | "profitablerate_smartlink";
 
 export interface AdSettingsData {
   id: string;
@@ -65,10 +66,12 @@ export interface AdSettingsData {
   providerProfitableRate: boolean;
   providerHighRevenue320: boolean;
   providerHighRevenue728: boolean;
-  initialPageAdDelay: number; // in seconds (default: 12)
-  minIntervalSeconds: number; // in seconds (default: 120)
-  sessionLimit: number; // default: 5
-  pageLimit: number; // default: 2
+  providerContainer: boolean;
+  providerSmartlink: boolean;
+  initialPageAdDelay: number; // in seconds (default: 0)
+  minIntervalSeconds: number; // in seconds (default: 0)
+  sessionLimit: number; // default: 50
+  pageLimit: number; // default: 6
   playerPageLimit: number; // default: 1
   contentSpacing: number; // items between ads (default: 30)
   updatedAt: string | Date;

@@ -609,10 +609,12 @@ model AdSettings {
   providerProfitableRate Boolean  @default(true)
   providerHighRevenue320 Boolean  @default(true)
   providerHighRevenue728 Boolean  @default(true)
-  initialPageAdDelay     Int      @default(12)
-  minIntervalSeconds     Int      @default(120)
-  sessionLimit           Int      @default(5)
-  pageLimit              Int      @default(2)
+  providerContainer      Boolean  @default(true)
+  providerSmartlink      Boolean  @default(true)
+  initialPageAdDelay     Int      @default(0)
+  minIntervalSeconds     Int      @default(0)
+  sessionLimit           Int      @default(50)
+  pageLimit              Int      @default(6)
   playerPageLimit        Int      @default(1)
   contentSpacing         Int      @default(30)
   updatedAt              DateTime @updatedAt
@@ -683,6 +685,7 @@ model DailyMetricRollup {
   @@index([date])
   @@map("daily_metric_rollups")
 }
+
 
 
 

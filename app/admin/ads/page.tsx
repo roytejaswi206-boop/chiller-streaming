@@ -250,6 +250,22 @@ export default function AdminAdsPage() {
         </div>
       </div>
 
+      {/* Real Monetization & Provider Analytics Status */}
+      <div className="p-4 rounded-xl border border-white/5 bg-zinc-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span className="text-xs font-bold text-white flex items-center gap-2">
+            <span>📊</span> Advertiser Network Revenue & CPM Telemetry
+          </span>
+          <p className="text-[11px] text-zinc-400 mt-0.5">
+            Internal telemetry captures genuine client slot renders. External ad network earnings reporting requires publisher API credentials.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg text-amber-300 text-xs font-semibold shrink-0">
+          <span>⚠️</span>
+          <span>Provider analytics not connected</span>
+        </div>
+      </div>
+
       {/* Main Grid: Controls & Settings */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Device & Page Controls */}
@@ -344,43 +360,13 @@ export default function AdminAdsPage() {
               Verified ad networks supplied by site owner with automatic circuit breakers.
             </p>
             <div className="space-y-3">
+              {/* Code 2: 728x90 */}
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-white">Profitablerate CPM Network</span>
-                  <button
-                    onClick={() => handleToggle("providerProfitableRate")}
-                    className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${
-                      settings.providerProfitableRate ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-zinc-500"
-                    }`}
-                  >
-                    {settings.providerProfitableRate ? "ON" : "OFF"}
-                  </button>
-                </div>
-                <span className="text-[10px] text-zinc-400 font-mono block">
-                  Network script + Invoke container (pl31522715 & pl31522716)
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-white">HighRevenueFormat 320x50</span>
-                  <button
-                    onClick={() => handleToggle("providerHighRevenue320")}
-                    className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${
-                      settings.providerHighRevenue320 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-zinc-500"
-                    }`}
-                  >
-                    {settings.providerHighRevenue320 ? "ON" : "OFF"}
-                  </button>
-                </div>
-                <span className="text-[10px] text-zinc-400 font-mono block">
-                  Key: 68c3e3bd... (Mobile isolated iframe)
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-white">HighRevenueFormat 728x90</span>
+                  <div>
+                    <span className="text-xs font-bold text-white block">HighRevenueFormat 728x90</span>
+                    <span className="text-[10px] text-zinc-500">Format: iframe Leaderboard • Desktop</span>
+                  </div>
                   <button
                     onClick={() => handleToggle("providerHighRevenue728")}
                     className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${
@@ -391,7 +377,91 @@ export default function AdminAdsPage() {
                   </button>
                 </div>
                 <span className="text-[10px] text-zinc-400 font-mono block">
-                  Key: b541512a... (Desktop/Tablet isolated iframe)
+                  Key: b541512a190670f60deae70ce055bb3e
+                </span>
+              </div>
+
+              {/* Code 3: 320x50 */}
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <span className="text-xs font-bold text-white block">HighRevenueFormat 320x50</span>
+                    <span className="text-[10px] text-zinc-500">Format: iframe Mobile Banner • Handheld</span>
+                  </div>
+                  <button
+                    onClick={() => handleToggle("providerHighRevenue320")}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${
+                      settings.providerHighRevenue320 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-zinc-500"
+                    }`}
+                  >
+                    {settings.providerHighRevenue320 ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <span className="text-[10px] text-zinc-400 font-mono block">
+                  Key: 68c3e3bd8671092fe3359316a995024c
+                </span>
+              </div>
+
+              {/* Code 4: Container Ad */}
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <span className="text-xs font-bold text-white block">Profitablerate Container Ad</span>
+                    <span className="text-[10px] text-zinc-500">Format: In-DOM Container Injection</span>
+                  </div>
+                  <button
+                    onClick={() => handleToggle("providerContainer")}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${
+                      settings.providerContainer ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-zinc-500"
+                    }`}
+                  >
+                    {settings.providerContainer ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <span className="text-[10px] text-zinc-400 font-mono block">
+                  Target: container-036795d0ec9ca91f70d3e5f8d8def3c3
+                </span>
+              </div>
+
+              {/* Code 1: Smartlink & Script */}
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <span className="text-xs font-bold text-white block">Profitablerate Smartlink & Script</span>
+                    <span className="text-[10px] text-zinc-500">Format: Partner Recommendation & Telemetry</span>
+                  </div>
+                  <button
+                    onClick={() => handleToggle("providerSmartlink")}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${
+                      settings.providerSmartlink ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-zinc-500"
+                    }`}
+                  >
+                    {settings.providerSmartlink ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <span className="text-[10px] text-zinc-400 font-mono block">
+                  Script: pl31526795 • Direct Key: 9d9f3f1de133...
+                </span>
+              </div>
+
+              {/* Code 5: External Network Script */}
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <span className="text-xs font-bold text-white block">Profitablerate External Network Script</span>
+                    <span className="text-[10px] text-zinc-500">Format: Global CDN Script Loader</span>
+                  </div>
+                  <button
+                    onClick={() => handleToggle("providerProfitableRate")}
+                    className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${
+                      settings.providerProfitableRate ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-zinc-500"
+                    }`}
+                  >
+                    {settings.providerProfitableRate ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <span className="text-[10px] text-zinc-400 font-mono block">
+                  Script: pl31522715.profitableratecpmnetwork.com/ca/d9/...
                 </span>
               </div>
             </div>
