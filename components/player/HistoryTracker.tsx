@@ -49,23 +49,36 @@ export function HistoryTracker({
       // Ignore
     }
 
-    // 2. Sync with database if logged in
-    if (session?.user) {
-      fetch("/api/user/history", {
+    // 3. Record lightweight anonymous watch session (deduplicated)
+    try {
+      const mediaKey = tmdbId
+        ? `tmdb:${mediaType}:${tmdbId}${season ? `:s${season}e${episode}` : ""}`
+        : videoId
+        ? `video:${videoId}`
+        : title;
+
+      const sid = localStorage.getItem("chiller_sid") || "cs_guest";
+      const isTouch = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
+      const device =
+        typeof navigator !== "undefined" && (/Mobi|Android|iPhone|iPod/i.test(navigator.userAgent) || isTouch)
+          ? "mobile"
+          : "desktop";
+
+      fetch("/api/analytics/activity", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tmdbId,
-          videoId,
+          sessionId: sid,
+          type: "WATCH",
+          device,
+          mediaKey,
           mediaType,
-          title,
-          posterUrl,
-          season,
-          episode,
+          route: typeof window !== "undefined" ? window.location.pathname : "",
         }),
-      }).catch(() => {
-        // Ignore background error
-      });
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      // Ignore
     }
   }, [tmdbId, videoId, mediaType, title, posterUrl, season, episode, session]);
 

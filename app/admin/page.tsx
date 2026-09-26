@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatBytes, formatDuration, formatViews } from "@/lib/utils";
+import { UsageActivitySection } from "@/components/admin/UsageActivitySection";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,9 @@ export default async function AdminOverviewPage() {
           </Link>
         </div>
       </div>
+
+      {/* Usage & Activity Telemetry */}
+      <UsageActivitySection />
 
       {/* Section 15: Component Health Matrix */}
       <div className="rounded-2xl border border-white/10 bg-[#12121a] p-5 shadow-2xl">

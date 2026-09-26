@@ -565,4 +565,30 @@ model TelegramImportItem {
   @@map("telegram_import_items")
 }
 
+// ============================================================================
+// 17. Telemetry & Basic Usage Statistics
+// ============================================================================
+
+model SiteActivity {
+  id         String   @id @default(cuid())
+  sessionId  String
+  userId     String?
+  type       String   // "VISIT", "WATCH", "HEARTBEAT"
+  device     String?  // "mobile", "desktop", "tablet"
+  mediaKey   String?  // movie/tv/anime identifier
+  mediaType  String?  // "movie", "tv", "anime"
+  route      String?  // optional path
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([device])
+  @@index([mediaKey])
+  @@map("site_activities")
+}
+
+
 

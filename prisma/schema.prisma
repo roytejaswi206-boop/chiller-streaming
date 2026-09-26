@@ -341,6 +341,28 @@ model AnalyticsEvent {
   @@map("analytics_events")
 }
 
+model SiteActivity {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String?
+  type      String   @default("VISIT") // VISIT, WATCH, HEARTBEAT
+  device    String   @default("desktop") // mobile, desktop, tablet
+  mediaKey  String?  // e.g. tmdb:movie:550, tmdb:tv:1399:s1e1, anilist:16498:ep1
+  mediaType String?  // movie, tv, anime
+  route     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([type])
+  @@index([device])
+  @@index([mediaKey])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@map("site_activities")
+}
+
 // ============================================================================
 // 5. Multi-Server Origin Architecture & Replication
 // ============================================================================

@@ -5,6 +5,8 @@ import { Footer } from "@/components/layout/Footer";
 import { Providers } from "@/components/providers";
 import { PwaUpdateManager } from "@/components/pwa/PwaUpdateManager";
 import { PwaInstallBanner } from "@/components/layout/PwaInstallBanner";
+import { ActivityTracker } from "@/components/analytics/ActivityTracker";
+import { getSiteUrl } from "@/lib/config/site";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -16,6 +18,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: "CHILLER — Watch Beyond",
     template: "%s • CHILLER",
@@ -41,7 +44,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://streaming-chi-red.vercel.app",
+    url: getSiteUrl(),
     title: "CHILLER — Watch Beyond",
     description: "A premium streaming and discovery experience for Movies, Anime, and TV Series.",
     siteName: "CHILLER",
@@ -71,6 +74,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="min-h-screen min-h-[100dvh] bg-[#09090C] text-[#F8FAFC] antialiased selection:bg-[#FF3B6B] selection:text-white pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden">
         <Providers>
+          <ActivityTracker />
           <PwaUpdateManager>
             <Header />
             {children}
