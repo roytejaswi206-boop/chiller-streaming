@@ -5,15 +5,15 @@ import { ChillerLogo } from "@/components/icons";
 export function Footer() {
   return (
     <footer className="w-full border-t border-white/[0.08] bg-[#09090C] text-zinc-400 text-xs mt-auto py-12 px-4 lg:px-12">
-      <div className="max-w-[1680px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
+      <div className="max-w-[1680px] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8 mb-10">
         {/* Brand & Slogan */}
-        <div className="md:col-span-2 space-y-3">
+        <div className="sm:col-span-2 space-y-3">
           <ChillerLogo className="w-9 h-9" />
           <p className="text-sm font-semibold text-zinc-300">
             GOOD STORIES. BETTER DAYS.
           </p>
           <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
-            A cinematic entertainment discovery and streaming platform bringing together movies, anime, TV series, and documentaries. Just chill and enjoy infinite stories.
+            A cinematic entertainment discovery and streaming platform bringing together movies, anime, TV series, and documentaries. Just chill and enjoy infinite stories in high definition.
           </p>
         </div>
 
@@ -43,23 +43,72 @@ export function Footer() {
                 Trending Now
               </Link>
             </li>
+            <li>
+              <Link href="/top-rated" className="hover:text-white transition">
+                Top Rated
+              </Link>
+            </li>
+            <li>
+              <Link href="/new" className="hover:text-white transition">
+                New Releases
+              </Link>
+            </li>
           </ul>
         </div>
 
-        {/* Account & Info */}
+        {/* Popular Genres */}
+        <div>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-3">
+            Top Genres
+          </h4>
+          <ul className="space-y-2">
+            <li>
+              <Link href="/genre/action" className="hover:text-white transition">
+                Action
+              </Link>
+            </li>
+            <li>
+              <Link href="/genre/scifi" className="hover:text-white transition">
+                Sci-Fi
+              </Link>
+            </li>
+            <li>
+              <Link href="/genre/horror" className="hover:text-white transition">
+                Horror
+              </Link>
+            </li>
+            <li>
+              <Link href="/genre/comedy" className="hover:text-white transition">
+                Comedy
+              </Link>
+            </li>
+            <li>
+              <Link href="/genre/drama" className="hover:text-white transition">
+                Drama
+              </Link>
+            </li>
+            <li>
+              <Link href="/genre/animation" className="hover:text-white transition">
+                Animation
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        {/* Legal & Platform */}
         <div>
           <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-3">
             Platform
           </h4>
           <ul className="space-y-2">
             <li>
-              <Link href="/watchlist" className="hover:text-white transition">
-                My List
+              <Link href="/categories" className="hover:text-white transition">
+                All Categories
               </Link>
             </li>
             <li>
-              <Link href="/history" className="hover:text-white transition">
-                Watch History
+              <Link href="/trailers" className="hover:text-white transition">
+                Movie Trailers
               </Link>
             </li>
             <li>

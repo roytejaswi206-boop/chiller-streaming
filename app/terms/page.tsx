@@ -1,4 +1,14 @@
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { getCanonicalUrl } from "@/lib/config/site";
+
+export const metadata: Metadata = {
+  title: "Terms of Service • CHILLER",
+  description: "Terms of Service, acceptable use guidelines, and platform policies for CHILLER streaming.",
+  alternates: {
+    canonical: getCanonicalUrl("/terms"),
+  },
+};
 
 export default function TermsPage() {
   return (

@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         email: true,
         role: true,
         tier: true,
+        adsFree: true,
         mustChangePassword: true,
         createdAt: true,
         _count: {
@@ -59,7 +60,7 @@ export async function PATCH(request: NextRequest) {
 
   const ip = getClientIp(request);
   const body = await request.json();
-  const { userId, role, tier } = body;
+  const { userId, role, tier, adsFree } = body;
 
   if (!userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
@@ -67,7 +68,7 @@ export async function PATCH(request: NextRequest) {
 
   const targetUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, role: true, tier: true },
+    select: { id: true, email: true, role: true, tier: true, adsFree: true },
   });
 
   if (!targetUser) {
@@ -75,6 +76,11 @@ export async function PATCH(request: NextRequest) {
   }
 
   const updates: Record<string, string | boolean> = {};
+
+  // Ads-free toggle — any ADMIN can toggle adsFree for users
+  if (adsFree !== undefined) {
+    updates.adsFree = Boolean(adsFree);
+  }
 
   // Role update — requires SUPER_ADMIN to set SUPER_ADMIN role
   if (role !== undefined) {
@@ -128,14 +134,14 @@ export async function PATCH(request: NextRequest) {
   const updated = await prisma.user.update({
     where: { id: userId },
     data: updates,
-    select: { id: true, email: true, role: true, tier: true },
+    select: { id: true, email: true, role: true, tier: true, adsFree: true },
   });
 
   await writeAuditLog({
     adminEmail: actorCtx.email,
     action: "USER_UPDATED",
     target: targetUser.email,
-    details: { before: { role: targetUser.role, tier: targetUser.tier }, after: updates },
+    details: { before: { role: targetUser.role, tier: targetUser.tier, adsFree: targetUser.adsFree }, after: updates },
     ipAddress: ip,
   });
 

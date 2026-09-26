@@ -18,6 +18,7 @@ interface ProfileAccountCenterProps {
     name?: string | null;
     email?: string | null;
     role?: string;
+    adsFree?: boolean;
     createdAt?: Date | string;
     stats: {
       watchlistCount: number;
@@ -108,6 +109,11 @@ export function ProfileAccountCenter({ user }: ProfileAccountCenterProps) {
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-white/10 text-zinc-300 border border-white/10">
                   {user.role || "MEMBER"}
                 </span>
+                {user.adsFree && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                    ADS-FREE ACCOUNT
+                  </span>
+                )}
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                   FREE ACCESS
                 </span>

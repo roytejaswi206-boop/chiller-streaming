@@ -16,6 +16,7 @@ import { IconStar, IconChevronLeft, IconChevronRight } from "@/components/icons"
 import { PlaybackCandidate, PlaybackSource, AnimePlaybackVariant, HotSwitchState } from "@/lib/playback/types";
 import { TmdbSeasonDetail } from "@/lib/tmdb/client";
 import { resolveResumeSourceOfTruth } from "@/lib/playback/resume-service";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 interface WatchExperienceProps {
   initialSources: PlaybackCandidate[];
@@ -967,6 +968,9 @@ export function WatchExperience({
           </div>
         </div>
       )}
+
+      {/* ── Centralized Ad Slot: Below Player Banner (Section 8 — Protected from Fullscreen) ── */}
+      <AdSlot placement="player_below" />
 
       {/* ── 4. Episode Navigation (Part 17) ── */}
       {(mediaType === "tv" || mediaType === "anime") && (

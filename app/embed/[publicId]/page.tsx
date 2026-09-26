@@ -1,8 +1,18 @@
+import { Metadata } from "next";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { prisma } from "@/lib/prisma";
 import { selectBestOrigin } from "@/lib/origin-manager";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Embed Player • CHILLER",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
 
 interface EmbedPageProps {
   params: Promise<{ publicId: string }>;

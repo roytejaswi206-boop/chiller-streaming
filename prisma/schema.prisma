@@ -20,6 +20,7 @@ model User {
   image         String?
   role               String         @default("USER") // USER, ADMIN, MODERATOR, SUPER_ADMIN
   tier               String         @default("FREE") // FREE, PREMIUM_MONTHLY, PREMIUM_YEARLY
+  adsFree            Boolean        @default(false) // Ad-free exempt account
   mustChangePassword Boolean        @default(false) // Force password reset on next login
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
@@ -784,5 +785,50 @@ model ProviderConfig {
   updatedAt  DateTime @updatedAt
 
   @@map("provider_configs")
+}
+
+model AdSettings {
+  id                     String   @id @default("global")
+  adsEnabled             Boolean  @default(true)
+  desktopEnabled         Boolean  @default(true)
+  mobileEnabled          Boolean  @default(true)
+  homeEnabled            Boolean  @default(true)
+  movieEnabled           Boolean  @default(true)
+  seriesEnabled          Boolean  @default(true)
+  animeEnabled           Boolean  @default(true)
+  detailEnabled          Boolean  @default(true)
+  watchEnabled           Boolean  @default(true)
+  topBannerEnabled       Boolean  @default(true)
+  contentBannerEnabled   Boolean  @default(true)
+  detailBannerEnabled    Boolean  @default(true)
+  playerBannerEnabled    Boolean  @default(true)
+  providerProfitableRate Boolean  @default(true)
+  providerHighRevenue320 Boolean  @default(true)
+  providerHighRevenue728 Boolean  @default(true)
+  initialPageAdDelay     Int      @default(12)
+  minIntervalSeconds     Int      @default(120)
+  sessionLimit           Int      @default(5)
+  pageLimit              Int      @default(2)
+  playerPageLimit        Int      @default(1)
+  contentSpacing         Int      @default(30)
+  updatedAt              DateTime @updatedAt
+  createdAt              DateTime @default(now())
+
+  @@map("ad_settings")
+}
+
+model AdImpression {
+  id         String   @id @default(cuid())
+  provider   String
+  placement  String
+  page       String
+  deviceType String   @default("desktop")
+  status     String   @default("success") // success, failed, dismissed
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([provider])
+  @@index([placement])
+  @@map("ad_impressions")
 }
 

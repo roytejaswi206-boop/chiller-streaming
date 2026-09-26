@@ -1,6 +1,16 @@
 import React from "react";
 import Link from "next/link";
+import { Metadata } from "next";
 import { ChillerLogo } from "@/components/icons";
+
+export const metadata: Metadata = {
+  title: "CHILLER Super Admin — Root Control Center",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const adminNav = [
@@ -17,6 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: "User Management", href: "/admin/users", icon: "👥" },
     { label: "Audit Logs", href: "/admin/audit", icon: "📜" },
     { label: "Settings & Flags", href: "/admin/settings", icon: "⚙️" },
+    { label: "Ads Monetization", href: "/admin/ads", icon: "💰" },
     { label: "Collections CMS", href: "/admin/collections", icon: "📚" },
     { label: "Homepage CMS", href: "/admin/homepage", icon: "🏠" },
     { label: "Search Analytics", href: "/admin/search-analytics", icon: "🔍" },

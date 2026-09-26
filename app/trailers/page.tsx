@@ -1,9 +1,33 @@
 import React from "react";
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { discoverContent } from "@/lib/content/discovery";
 import { getTrailers } from "@/lib/tmdb/client";
+import { getCanonicalUrl } from "@/lib/config/site";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Official Movie & TV Trailers — HD Previews • CHILLER",
+  description: "Watch latest official HD movie trailers, teaser clips, and series previews on CHILLER.",
+  alternates: {
+    canonical: getCanonicalUrl("/trailers"),
+  },
+  openGraph: {
+    title: "CHILLER | Official Movie & TV Trailers",
+    description: "Watch latest official HD movie trailers, teaser clips, and series previews on CHILLER.",
+    url: getCanonicalUrl("/trailers"),
+    siteName: "CHILLER",
+    type: "website",
+    images: [{ url: "/branding/og-image.jpg", width: 1200, height: 630, alt: "Movie Trailers on CHILLER" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CHILLER | Official Movie & TV Trailers",
+    description: "Watch latest official HD movie trailers and series previews on CHILLER.",
+    images: ["/branding/og-image.jpg"],
+  },
+};
 
 interface TrailerCardProps {
   id: number | string;

@@ -1,7 +1,10 @@
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MediaDetailView } from "@/components/video/MediaDetailView";
 import { getTVDetails, getSeasonDetails } from "@/lib/tmdb/client";
+import { getCanonicalUrl } from "@/lib/config/site";
+import { JsonLd, buildTVSeriesSchema, buildBreadcrumbSchema } from "@/components/seo/JsonLd";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +12,153 @@ interface AnimeDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) {
-  const { id } = await params;
+function parseAnimeId(id: string): number {
   let animeId = parseInt(id, 10);
   if (isNaN(animeId) && id.includes("-")) {
     const parts = id.split("-");
     const last = parseInt(parts[parts.length - 1], 10);
     if (!isNaN(last) && last > 0) animeId = last;
   }
+  return animeId;
+}
+
+export async function generateMetadata({ params }: AnimeDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const animeId = parseAnimeId(id);
+
+  if (isNaN(animeId) || animeId <= 0) {
+    return {
+      title: "Anime Not Found • CHILLER",
+      robots: { index: false, follow: true },
+    };
+  }
+
+  const canonicalUrl = getCanonicalUrl(`/anime/${animeId}`);
+
+  // Attempt AniList fetch first
+  try {
+    const { resolveAnimeAnilistId } = await import("@/lib/media/identity/id-mapper");
+    const canonicalAnilistId = await resolveAnimeAnilistId({
+      anilistId: animeId,
+      tmdbId: animeId,
+    });
+    const effectiveAnilistId = canonicalAnilistId || animeId;
+
+    const { AniListContentProvider } = await import("@/lib/content/providers/anilist");
+    const anilistProvider = new AniListContentProvider();
+    const anime = await anilistProvider.getAnime(effectiveAnilistId).catch(() => null);
+
+    if (anime) {
+      const title = anime.title || "Anime";
+      const releaseYear = anime.year ? String(anime.year) : (anime.releaseDate || "").split("-")[0];
+      const pageTitle = releaseYear ? `${title} (${releaseYear})` : title;
+      const description = anime.overview
+        ? anime.overview.length > 155
+          ? `${anime.overview.slice(0, 155)}...`
+          : anime.overview
+        : `Watch ${title} subbed and dubbed in HD on CHILLER with seamless episode streaming.`;
+      const imageUrl = anime.backdropUrl || anime.posterUrl || "/branding/og-image.jpg";
+
+      return {
+        title: `${pageTitle} — Watch Beyond`,
+        description,
+        alternates: {
+          canonical: canonicalUrl,
+        },
+        openGraph: {
+          type: "video.tv_show",
+          locale: "en_US",
+          url: canonicalUrl,
+          title: `CHILLER | ${title}`,
+          description,
+          siteName: "CHILLER",
+          images: [{ url: imageUrl, width: 1200, height: 675, alt: title }],
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: `CHILLER | ${title}`,
+          description,
+          images: [imageUrl],
+        },
+        robots: {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+          },
+        },
+      };
+    }
+  } catch {
+    // Fallback to TMDB
+  }
+
+  try {
+    const tvData = await getTVDetails(animeId).catch(() => null);
+    if (tvData) {
+      const title = tvData.name || tvData.title || "Anime";
+      const releaseYear = (tvData.first_air_date || "").split("-")[0];
+      const pageTitle = releaseYear ? `${title} (${releaseYear})` : title;
+      const description = tvData.overview
+        ? tvData.overview.length > 155
+          ? `${tvData.overview.slice(0, 155)}...`
+          : tvData.overview
+        : `Watch ${title} anime on CHILLER with crystal-clear high quality streaming.`;
+      const backdropUrl = tvData.backdrop_path
+        ? `https://image.tmdb.org/t/p/w1280${tvData.backdrop_path}`
+        : tvData.poster_path
+        ? `https://image.tmdb.org/t/p/w780${tvData.poster_path}`
+        : "/branding/og-image.jpg";
+
+      return {
+        title: `${pageTitle} — Watch Beyond`,
+        description,
+        alternates: {
+          canonical: canonicalUrl,
+        },
+        openGraph: {
+          type: "video.tv_show",
+          locale: "en_US",
+          url: canonicalUrl,
+          title: `CHILLER | ${title}`,
+          description,
+          siteName: "CHILLER",
+          images: [{ url: backdropUrl, width: 1200, height: 675, alt: title }],
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: `CHILLER | ${title}`,
+          description,
+          images: [backdropUrl],
+        },
+        robots: {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+          },
+        },
+      };
+    }
+  } catch {
+    // Graceful fallback
+  }
+
+  return {
+    title: "Anime Details • CHILLER",
+    robots: { index: true, follow: true },
+  };
+}
+
+export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) {
+  const { id } = await params;
+  const animeId = parseAnimeId(id);
 
   if (isNaN(animeId) || animeId <= 0) {
     notFound();
@@ -63,8 +205,31 @@ export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) 
           // Graceful fallback for recommendations
         }
 
+        const animeSchema = buildTVSeriesSchema({
+          id: animeId,
+          name: anime.title,
+          overview: anime.overview,
+          posterPath: anime.posterUrl,
+          backdropPath: anime.backdropUrl,
+          firstAirDate: anime.releaseDate || (anime.year ? `${anime.year}-01-01` : undefined),
+          numberOfSeasons: 1,
+          numberOfEpisodes: (anime as any).episodes || 12,
+          genres: anime.genres || [],
+          rating: anime.rating || undefined,
+          voteCount: undefined,
+          country: "Japan",
+          isAnime: true,
+        });
+
+        const breadcrumbsSchema = buildBreadcrumbSchema([
+          { name: "Home", url: getCanonicalUrl("/") },
+          { name: "Anime", url: getCanonicalUrl("/anime") },
+          { name: anime.title, url: getCanonicalUrl(`/anime/${animeId}`) },
+        ]);
+
         return (
           <div className="flex min-h-[calc(100vh-4rem)] bg-[#09090C]">
+            <JsonLd schema={[animeSchema, breadcrumbsSchema]} />
             <Sidebar />
             <main className="flex-1 p-4 lg:p-8 max-w-[1680px] overflow-hidden">
               <MediaDetailView
@@ -101,6 +266,7 @@ export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) 
     const tvData = tv.status === "fulfilled" ? tv.value : null;
     if (!tvData) notFound();
 
+    const title = tvData.name || tvData.title || "Untitled Anime";
     const season1Data = season1.status === "fulfilled" ? season1.value : undefined;
 
     const filteredSeasons = (tvData.seasons || [])
@@ -112,13 +278,36 @@ export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) 
         poster_path: s.poster_path,
       }));
 
+    const animeSchema = buildTVSeriesSchema({
+      id: animeId,
+      name: title,
+      overview: tvData.overview,
+      posterPath: tvData.poster_path,
+      backdropPath: tvData.backdrop_path,
+      firstAirDate: tvData.first_air_date,
+      numberOfSeasons: tvData.number_of_seasons || filteredSeasons.length,
+      genres: tvData.genres?.map((g) => g.name) || [],
+      rating: tvData.vote_average,
+      voteCount: tvData.vote_count,
+      cast: tvData.credits?.cast?.slice(0, 10).map((c) => ({ name: c.name })),
+      country: "Japan",
+      isAnime: true,
+    });
+
+    const breadcrumbsSchema = buildBreadcrumbSchema([
+      { name: "Home", url: getCanonicalUrl("/") },
+      { name: "Anime", url: getCanonicalUrl("/anime") },
+      { name: title, url: getCanonicalUrl(`/anime/${animeId}`) },
+    ]);
+
     return (
       <div className="flex min-h-[calc(100vh-4rem)] bg-[#09090C]">
+        <JsonLd schema={[animeSchema, breadcrumbsSchema]} />
         <Sidebar />
         <main className="flex-1 p-4 lg:p-8 max-w-[1680px] overflow-hidden">
           <MediaDetailView
             id={animeId}
-            title={tvData.name || tvData.title || "Untitled Anime"}
+            title={title}
             originalTitle={tvData.original_name}
             overview={tvData.overview || "No description provided."}
             posterPath={tvData.poster_path}

@@ -1,4 +1,5 @@
 import React from "react";
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ChillerHero, HeroItem } from "@/components/video/ChillerHero";
 import { InfiniteMediaRail } from "@/components/video/InfiniteMediaRail";
@@ -6,8 +7,32 @@ import { InfiniteMediaGrid } from "@/components/video/InfiniteMediaGrid";
 import { RegionalDiscoveryRail } from "@/components/discovery/RegionalDiscoveryRail";
 import { LanguageDiscoveryRail } from "@/components/discovery/LanguageDiscoveryRail";
 import { discoverContent } from "@/lib/content/discovery";
+import { AdSlot } from "@/components/ads/AdSlot";
+import { getCanonicalUrl } from "@/lib/config/site";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Stream Movies Online — Action, Sci-Fi, Drama & Blockbusters",
+  description: "Explore top-rated, trending, and newly released movies on CHILLER. Watch in high definition with fast streaming and subtitles.",
+  alternates: {
+    canonical: getCanonicalUrl("/movies"),
+  },
+  openGraph: {
+    title: "CHILLER | Stream Movies Online",
+    description: "Explore top-rated, trending, and newly released movies on CHILLER. Watch in HD with fast streaming and subtitles.",
+    url: getCanonicalUrl("/movies"),
+    siteName: "CHILLER",
+    type: "website",
+    images: [{ url: "/branding/og-image.jpg", width: 1200, height: 630, alt: "Stream Movies on CHILLER" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CHILLER | Stream Movies Online",
+    description: "Explore top-rated, trending, and newly released movies on CHILLER.",
+    images: ["/branding/og-image.jpg"],
+  },
+};
 
 interface MoviesPageProps {
   searchParams: Promise<{ category?: string; genre?: string; view?: string }>;
@@ -124,6 +149,9 @@ export default async function MoviesPage({ searchParams }: MoviesPageProps) {
               layout="poster"
               badge="#TOPRATED"
             />
+
+            {/* Centralized Ad Slot: Browse Content Banner */}
+            <AdSlot placement="browse_content" />
 
             {/* Genre Rails */}
             <InfiniteMediaRail

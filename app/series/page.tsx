@@ -1,4 +1,5 @@
 import React from "react";
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ChillerHero, HeroItem } from "@/components/video/ChillerHero";
 import { InfiniteMediaRail } from "@/components/video/InfiniteMediaRail";
@@ -6,8 +7,32 @@ import { InfiniteMediaGrid } from "@/components/video/InfiniteMediaGrid";
 import { RegionalDiscoveryRail } from "@/components/discovery/RegionalDiscoveryRail";
 import { LanguageDiscoveryRail } from "@/components/discovery/LanguageDiscoveryRail";
 import { discoverContent } from "@/lib/content/discovery";
+import { AdSlot } from "@/components/ads/AdSlot";
+import { getCanonicalUrl } from "@/lib/config/site";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Stream TV Series Online — Full Seasons, Episodes & Dramas",
+  description: "Binge-watch your favorite TV series and dramas on CHILLER. Full seasons, episode guides, and seamless playback across devices.",
+  alternates: {
+    canonical: getCanonicalUrl("/series"),
+  },
+  openGraph: {
+    title: "CHILLER | Stream TV Series Online",
+    description: "Binge-watch your favorite TV series and dramas on CHILLER. Full seasons, episode guides, and seamless playback across devices.",
+    url: getCanonicalUrl("/series"),
+    siteName: "CHILLER",
+    type: "website",
+    images: [{ url: "/branding/og-image.jpg", width: 1200, height: 630, alt: "Stream TV Series on CHILLER" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CHILLER | Stream TV Series Online",
+    description: "Binge-watch your favorite TV series and dramas on CHILLER.",
+    images: ["/branding/og-image.jpg"],
+  },
+};
 
 interface SeriesPageProps {
   searchParams: Promise<{ category?: string; genre?: string; view?: string }>;
@@ -120,6 +145,9 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
               layout="poster"
               badge="#TODAY"
             />
+
+            {/* Centralized Ad Slot: Browse Content Banner */}
+            <AdSlot placement="browse_content" />
 
             {/* Genre Rails */}
             <InfiniteMediaRail

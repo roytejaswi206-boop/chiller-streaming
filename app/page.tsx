@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ChillerHero, HeroItem } from "@/components/video/ChillerHero";
 import { InfiniteMediaRail } from "@/components/video/InfiniteMediaRail";
@@ -8,8 +9,32 @@ import { RegionalDiscoveryRail } from "@/components/discovery/RegionalDiscoveryR
 import { LanguageDiscoveryRail } from "@/components/discovery/LanguageDiscoveryRail";
 import { ChillerIntro } from "@/components/intro/ChillerIntro";
 import { discoverContent } from "@/lib/content/discovery";
+import { AdSlot } from "@/components/ads/AdSlot";
+import { getCanonicalUrl } from "@/lib/config/site";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "CHILLER — Watch Beyond | Free Movies, TV Series & Anime",
+  description: "A premium cinematic streaming and discovery platform. Watch thousands of HD movies, TV shows, and subbed/dubbed anime with zero subscription fees.",
+  alternates: {
+    canonical: getCanonicalUrl("/"),
+  },
+  openGraph: {
+    title: "CHILLER — Watch Beyond",
+    description: "A premium cinematic streaming and discovery platform. Watch thousands of HD movies, TV shows, and subbed/dubbed anime.",
+    url: getCanonicalUrl("/"),
+    siteName: "CHILLER",
+    type: "website",
+    images: [{ url: "/branding/og-image.jpg", width: 1200, height: 630, alt: "CHILLER — Watch Beyond" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CHILLER — Watch Beyond",
+    description: "A premium cinematic streaming and discovery platform. Watch thousands of HD movies, TV shows, and subbed/dubbed anime.",
+    images: ["/branding/og-image.jpg"],
+  },
+};
 
 export default async function HomePage() {
   // Pre-fetch top rails for instant initial server render
@@ -84,6 +109,9 @@ export default async function HomePage() {
           <>
             {/* 1. Cinematic Hero Section */}
             {heroItems.length > 0 && <ChillerHero items={heroItems} />}
+
+            {/* Centralized Ad Slot: Top Banner */}
+            <AdSlot placement="home_top" />
 
             {/* 2. Trending Now (Backdrop layout with Top 10 ranking) */}
             <InfiniteMediaRail

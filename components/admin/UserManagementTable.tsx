@@ -8,6 +8,7 @@ interface UserItem {
   email: string;
   role: string;
   tier: string;
+  adsFree?: boolean;
   mustChangePassword: boolean;
   createdAt: string | Date;
   _count?: {
@@ -108,6 +109,36 @@ export function UserManagementTable({
     }
   };
 
+  const handleAdsFreeToggle = async (userId: string, currentStatus: boolean) => {
+    setIsLoading(userId);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, adsFree: !currentStatus }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update ad-free status");
+      }
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, adsFree: !currentStatus } : u))
+      );
+      setSuccessMsg(`Successfully toggled ad-free status to ${!currentStatus ? "ON" : "OFF"}`);
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to toggle ad-free status");
+      setTimeout(() => setErrorMsg(null), 5000);
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Search and Filters Bar */}
@@ -174,6 +205,7 @@ export function UserManagementTable({
                   <th className="py-3 px-4">Watchlist</th>
                   <th className="py-3 px-4">History</th>
                   <th className="py-3 px-4">Joined</th>
+                  <th className="py-3 px-4">Ads Exemption</th>
                   <th className="py-3 px-4">Actions</th>
                 </tr>
               </thead>
@@ -182,6 +214,8 @@ export function UserManagementTable({
                   const isRootOwner = ROOT_OWNER_EMAILS.includes(
                     u.email.toLowerCase()
                   );
+                  const isSuperAdmin = u.role === "SUPER_ADMIN" || isRootOwner;
+                  const isAdFree = isSuperAdmin || Boolean(u.adsFree);
 
                   return (
                     <tr key={u.id} className="hover:bg-white/[0.02]">
@@ -238,6 +272,26 @@ export function UserManagementTable({
 
                       <td className="py-3 px-4 text-zinc-500 text-[11px]">
                         {new Date(u.createdAt).toLocaleDateString()}
+                      </td>
+
+                      <td className="py-3 px-4">
+                        {isSuperAdmin ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            AUTO ADS-FREE
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleAdsFreeToggle(u.id, Boolean(u.adsFree))}
+                            disabled={isLoading === u.id}
+                            className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase transition border ${
+                              isAdFree
+                                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30"
+                                : "bg-white/5 text-zinc-400 border-white/10 hover:text-white hover:bg-white/10"
+                            }`}
+                          >
+                            {isAdFree ? "Ads Free: ON" : "Ads Free: OFF"}
+                          </button>
+                        )}
                       </td>
 
                       <td className="py-3 px-4">

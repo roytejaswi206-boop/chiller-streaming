@@ -29,11 +29,17 @@ export default async function ProfilePage() {
     }
   }
 
+  const isSuperAdmin = session?.user?.email
+    ? session.user.email === "roytejaswi40@gmail.com" || session.user.email === "roytejaswi206@gmail.com" || (session.user as any).role === "SUPER_ADMIN"
+    : false;
+  const isAdsFree = isSuperAdmin || Boolean((session?.user as any)?.adsFree) || Boolean(user?.adsFree);
+
   const userData = user
     ? {
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: isSuperAdmin ? "SUPER_ADMIN" : user.role,
+        adsFree: isAdsFree,
         createdAt: user.createdAt,
         stats: {
           watchlistCount: user._count.watchlist || 0,
@@ -44,7 +50,8 @@ export default async function ProfilePage() {
     : {
         name: session?.user?.name || "Guest Explorer",
         email: session?.user?.email || "Guest (Local Storage)",
-        role: "GUEST",
+        role: isSuperAdmin ? "SUPER_ADMIN" : "GUEST",
+        adsFree: isAdsFree,
         createdAt: new Date(),
         stats: {
           watchlistCount: 0,

@@ -105,6 +105,7 @@ export const authOptions: NextAuthOptions = {
         // SUPER_ADMIN email check is authoritative — never trust DB role alone for this.
         const effectiveRole = isSuperAdmin ? "SUPER_ADMIN" : user.role;
         const mustChangePassword = isSuperAdmin ? false : user.mustChangePassword;
+        const adsFree = isSuperAdmin ? true : Boolean(user.adsFree);
 
         return {
           id: user.id,
@@ -114,6 +115,7 @@ export const authOptions: NextAuthOptions = {
           role: effectiveRole,
           tier: user.tier,
           mustChangePassword,
+          adsFree,
         } as any;
       },
     }),
@@ -125,10 +127,12 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         token.tier = (user as any).tier;
         token.mustChangePassword = (user as any).mustChangePassword;
+        token.adsFree = (user as any).adsFree;
       }
       if (token?.email && isSuperAdminEmail(token.email)) {
         token.role = "SUPER_ADMIN";
         token.mustChangePassword = false;
+        token.adsFree = true;
       }
       return token;
     },
@@ -139,6 +143,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = isSA ? "SUPER_ADMIN" : token.role;
         (session.user as any).tier = token.tier;
         (session.user as any).mustChangePassword = isSA ? false : token.mustChangePassword;
+        (session.user as any).adsFree = isSA ? true : Boolean(token.adsFree);
       }
       return session;
     },

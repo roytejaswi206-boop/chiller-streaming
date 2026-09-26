@@ -14,6 +14,7 @@ import { TrailerPreview } from "@/components/video/TrailerPreview";
 import { TmdbSeasonDetail } from "@/lib/tmdb/client";
 import { formatDuration } from "@/lib/utils";
 import { resolveResumeSourceOfTruth } from "@/lib/playback/resume-service";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 interface MediaDetailViewProps {
   id: number;
@@ -279,14 +280,22 @@ export function MediaDetailView({
 
             {genres.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {genres.map((g) => (
-                  <span
-                    key={g}
-                    className="px-2.5 py-0.5 rounded-full bg-white/[0.06] text-[11px] font-semibold text-zinc-300 border border-white/5"
-                  >
-                    {g}
-                  </span>
-                ))}
+                {genres.map((g) => {
+                  const genreSlug = g
+                    .toLowerCase()
+                    .replace(/&/g, "and")
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/^-+|-+$/g, "");
+                  return (
+                    <Link
+                      key={g}
+                      href={`/genre/${genreSlug}`}
+                      className="px-2.5 py-0.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] hover:text-white transition text-[11px] font-semibold text-zinc-300 border border-white/5 cursor-pointer"
+                    >
+                      {g}
+                    </Link>
+                  );
+                })}
               </div>
             )}
 
@@ -503,6 +512,9 @@ export function MediaDetailView({
           </div>
         </div>
       )}
+
+      {/* ── Centralized Ad Slot: Detail Bottom Banner ── */}
+      <AdSlot placement="detail_bottom" />
 
       {/* ── 4. Similar Titles Rail ── */}
       {similarTitles.length > 0 && (

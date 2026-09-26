@@ -1,9 +1,11 @@
 import React from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { InfiniteMediaGrid } from "@/components/video/InfiniteMediaGrid";
 import { GENRE_SLUG_MAP } from "@/lib/content/discovery";
+import { getCanonicalUrl } from "@/lib/config/site";
+import { JsonLd, buildCollectionSchema, buildBreadcrumbSchema } from "@/components/seo/JsonLd";
 
 export const dynamic = "force-dynamic";
 
@@ -12,36 +14,97 @@ interface GenrePageProps {
   searchParams: Promise<{ type?: string; sort?: string }>;
 }
 
+export async function generateMetadata({ params }: GenrePageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const normalizedSlug = slug.toLowerCase();
+  const genreMeta = GENRE_SLUG_MAP[normalizedSlug];
+  const genreTitle = genreMeta?.name || normalizedSlug.charAt(0).toUpperCase() + normalizedSlug.slice(1);
+
+  const title = `${genreTitle} Movies, Series & Anime`;
+  const description = `Explore top-rated, popular, and trending ${genreTitle.toLowerCase()} movies, television shows, and anime on CHILLER. HD streaming, multiple languages, and continuous discovery.`;
+  const canonicalUrl = getCanonicalUrl(`/genre/${normalizedSlug}`);
+
+  return {
+    title: `${title} — Watch Beyond`,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: canonicalUrl,
+      title: `CHILLER | ${title}`,
+      description,
+      siteName: "CHILLER",
+      images: [
+        {
+          url: "/branding/og-image.jpg",
+          width: 1200,
+          height: 630,
+          alt: `${genreTitle} on CHILLER`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `CHILLER | ${title}`,
+      description,
+      images: ["/branding/og-image.jpg"],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+      },
+    },
+  };
+}
+
 export default async function GenrePage({ params, searchParams }: GenrePageProps) {
   const { slug } = await params;
   const { type = "all", sort = "popularity.desc" } = await searchParams;
 
   const normalizedSlug = slug.toLowerCase();
   const genreMeta = GENRE_SLUG_MAP[normalizedSlug];
-
-  // If completely unknown slug, check if capital or dashed
   const genreTitle = genreMeta?.name || normalizedSlug.charAt(0).toUpperCase() + normalizedSlug.slice(1);
 
   const mediaType = (type === "movie" || type === "tv" || type === "anime" ? type : undefined) as any;
 
+  const collectionSchema = buildCollectionSchema(
+    `${genreTitle} Streaming & Discovery`,
+    `Discover ${genreTitle.toLowerCase()} movies, series, and anime on CHILLER.`,
+    `/genre/${normalizedSlug}`
+  );
+
+  const breadcrumbsSchema = buildBreadcrumbSchema([
+    { name: "Home", url: getCanonicalUrl("/") },
+    { name: "Categories", url: getCanonicalUrl("/categories") },
+    { name: genreTitle, url: getCanonicalUrl(`/genre/${normalizedSlug}`) },
+  ]);
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)] bg-[#09090C]">
+      <JsonLd schema={[collectionSchema, breadcrumbsSchema]} />
       <Sidebar />
 
       <main className="flex-1 p-4 lg:p-8 max-w-[1680px] overflow-hidden">
         {/* Genre Banner */}
-        <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-r from-[#181824] via-[#12121A] to-[#09090C] p-6 lg:p-10 mb-8 shadow-2xl">
+        <section aria-labelledby="genre-heading" className="relative rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-r from-[#181824] via-[#12121A] to-[#09090C] p-6 lg:p-10 mb-8 shadow-2xl">
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-[#FF3B6B]/15 to-transparent rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 max-w-2xl">
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#FF3B6B]">
               Genre Exploration
             </span>
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-1 mb-2">
+            <h1 id="genre-heading" className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-1 mb-2">
               {genreTitle}
             </h1>
             <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed mb-6">
-              Browse thousands of {genreTitle.toLowerCase()} movies, series, and anime. Continuously discovery powered by the Chiller Engine.
+              Browse thousands of {genreTitle.toLowerCase()} movies, series, and anime. Continuous discovery powered by the Chiller Engine.
             </p>
 
             {/* Filter Chips */}
@@ -90,7 +153,7 @@ export default async function GenrePage({ params, searchParams }: GenrePageProps
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Infinite Media Grid for Genre */}
         <InfiniteMediaGrid

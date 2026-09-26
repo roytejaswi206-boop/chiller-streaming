@@ -1,9 +1,19 @@
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { WatchExperience } from "@/components/player/WatchExperience";
 import { resolveContent } from "@/lib/playback/resolver";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Watch • CHILLER",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
 
 interface WatchPageProps {
   params: Promise<{ slug: string[] }>;

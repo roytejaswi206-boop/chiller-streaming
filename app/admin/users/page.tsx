@@ -16,6 +16,7 @@ export default async function AdminUsersPage() {
         email: true,
         role: true,
         tier: true,
+        adsFree: true,
         mustChangePassword: true,
         createdAt: true,
         _count: {

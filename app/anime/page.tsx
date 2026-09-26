@@ -1,11 +1,36 @@
 import React from "react";
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ChillerHero, HeroItem } from "@/components/video/ChillerHero";
 import { InfiniteMediaRail } from "@/components/video/InfiniteMediaRail";
 import { InfiniteMediaGrid } from "@/components/video/InfiniteMediaGrid";
 import { discoverContent } from "@/lib/content/discovery";
+import { AdSlot } from "@/components/ads/AdSlot";
+import { getCanonicalUrl } from "@/lib/config/site";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Watch Anime Online Free — Subbed & Dubbed HD Episodes",
+  description: "Stream trending, popular, and classic anime on CHILLER. Fast HD buffering, Japanese audio with English subtitles, English dubs, and seamless AniList discovery.",
+  alternates: {
+    canonical: getCanonicalUrl("/anime"),
+  },
+  openGraph: {
+    title: "CHILLER | Watch Anime Online Free",
+    description: "Stream trending, popular, and classic anime on CHILLER. Fast HD buffering, Japanese audio with English subtitles, and English dubs.",
+    url: getCanonicalUrl("/anime"),
+    siteName: "CHILLER",
+    type: "website",
+    images: [{ url: "/branding/og-image.jpg", width: 1200, height: 630, alt: "Watch Anime on CHILLER" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CHILLER | Watch Anime Online Free",
+    description: "Stream trending, popular, and classic anime on CHILLER.",
+    images: ["/branding/og-image.jpg"],
+  },
+};
 
 interface AnimePageProps {
   searchParams: Promise<{ category?: string; genre?: string; format?: string; view?: string }>;
@@ -118,6 +143,9 @@ export default async function AnimePage({ searchParams }: AnimePageProps) {
               layout="poster"
               badge="#MOVIE"
             />
+
+            {/* Centralized Ad Slot: Browse Content Banner */}
+            <AdSlot placement="browse_content" />
 
             <InfiniteMediaRail
               title="Action & Shonen"

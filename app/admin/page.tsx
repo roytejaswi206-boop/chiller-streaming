@@ -1,9 +1,19 @@
 import Link from "next/link";
+import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { formatBytes, formatDuration, formatViews } from "@/lib/utils";
 import { UsageActivitySection } from "@/components/admin/UsageActivitySection";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Admin Dashboard • CHILLER",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
 
 export default async function AdminOverviewPage() {
   // Query real database metrics

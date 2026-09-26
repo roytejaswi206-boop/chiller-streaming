@@ -1,4 +1,14 @@
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { getCanonicalUrl } from "@/lib/config/site";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy • CHILLER",
+  description: "Privacy Policy, data handling practices, and user confidentiality commitments for CHILLER.",
+  alternates: {
+    canonical: getCanonicalUrl("/privacy"),
+  },
+};
 
 export default function PrivacyPage() {
   return (
