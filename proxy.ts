@@ -21,13 +21,40 @@ const DESIGNATED_SUPER_ADMIN_EMAILS = new Set([
   "roytejaswi206@gmail.com",
 ]);
 
+const ALLOWED_ORIGINS = new Set([
+  "https://chillerstream.unaux.com",
+  "http://chillerstream.unaux.com",
+  "https://streaming-chi-red.vercel.app",
+  "https://chiller.site",
+  "http://localhost:3000",
+]);
+
 export async function proxy(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const isAllowedOrigin = origin
+    ? ALLOWED_ORIGINS.has(origin) || origin.endsWith(".unaux.com")
+    : false;
+
+  const { pathname } = request.nextUrl;
+
+  // Handle CORS Preflight for API requests
+  if (request.method === "OPTIONS" && pathname.startsWith("/api/")) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": isAllowedOrigin && origin ? origin : "*",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, X-CSRF-Token, Range",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
+
   const token = await getToken({
     req: request,
     secret: NEXTAUTH_SECRET,
   });
-
-  const { pathname } = request.nextUrl;
 
   // ────────────────────────────────────────────────────────────────────────
   // 1. Force password change
@@ -95,7 +122,12 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (pathname.startsWith("/api") && isAllowedOrigin && origin) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+  }
+  return response;
 }
 
 export const config = {

@@ -11,6 +11,7 @@
 # Production build artifacts
 build
 dist
+profreehost_dist
 
 # Environment variables & secrets — NEVER commit real credentials
 .env

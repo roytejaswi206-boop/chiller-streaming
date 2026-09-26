@@ -17,6 +17,8 @@
     "health": "npx tsx scripts/health-check.ts",
     "verify-video": "npx tsx scripts/verify-video.ts",
     "test:scale": "npx tsx scripts/scale-test.ts",
+    "build:profreehost": "npx tsx scripts/build-profreehost.ts",
+    "deploy:profreehost": "npx tsx scripts/deploy-profreehost.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -43,6 +45,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "basic-ftp": "^6.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "prisma": "^5.22.0",
