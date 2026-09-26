@@ -44,6 +44,10 @@ export function getRegisteredCdnNodes(): CdnNodeConfig[] {
   const secondaryBase = process.env.CDN_SECONDARY_BASE_URL || "";
   const tertiaryBase = process.env.CDN_TERTIARY_BASE_URL || "";
 
+  const isPrimaryConfigured = Boolean(primaryBase && primaryBase.trim() !== "");
+  const isSecondaryConfigured = Boolean(secondaryBase && secondaryBase.trim() !== "");
+  const isTertiaryConfigured = Boolean(tertiaryBase && tertiaryBase.trim() !== "");
+
   const nodes: CdnNodeConfig[] = [
     {
       id: "cdn-primary",
@@ -52,7 +56,8 @@ export function getRegisteredCdnNodes(): CdnNodeConfig[] {
       region: (process.env.CDN_PRIMARY_REGION as CdnRegion) || "GLOBAL",
       priority: 1,
       weight: 100,
-      isEnabled: process.env.CDN_PRIMARY_ENABLED !== "false",
+      isEnabled: process.env.CDN_PRIMARY_ENABLED !== "false" && isPrimaryConfigured,
+      isConfigured: isPrimaryConfigured,
       supportsHls: true,
       supportsByteRange: true,
       supportsHttp3: true,
@@ -66,7 +71,8 @@ export function getRegisteredCdnNodes(): CdnNodeConfig[] {
       region: (process.env.CDN_SECONDARY_REGION as CdnRegion) || "ASIA",
       priority: 2,
       weight: 80,
-      isEnabled: process.env.CDN_SECONDARY_ENABLED !== "false",
+      isEnabled: process.env.CDN_SECONDARY_ENABLED !== "false" && isSecondaryConfigured,
+      isConfigured: isSecondaryConfigured,
       supportsHls: true,
       supportsByteRange: true,
       supportsHttp3: true,
@@ -80,7 +86,8 @@ export function getRegisteredCdnNodes(): CdnNodeConfig[] {
       region: (process.env.CDN_TERTIARY_REGION as CdnRegion) || "GLOBAL",
       priority: 3,
       weight: 50,
-      isEnabled: process.env.CDN_TERTIARY_ENABLED === "true" || true,
+      isEnabled: (process.env.CDN_TERTIARY_ENABLED === "true") && isTertiaryConfigured,
+      isConfigured: isTertiaryConfigured,
       supportsHls: true,
       supportsByteRange: true,
       supportsHttp3: false,

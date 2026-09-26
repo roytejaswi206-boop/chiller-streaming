@@ -42,10 +42,10 @@ export class CdnRouter {
    * Select best healthy CDN node based on health status, region, priority, and weight
    */
   public getHealthyCdn(userRegion: CdnRegion = "GLOBAL", excludedCdnIds: string[] = []): CdnNodeConfig {
-    const nodes = getRegisteredCdnNodes().filter((n) => n.isEnabled && !excludedCdnIds.includes(n.id));
+    const nodes = getRegisteredCdnNodes().filter((n) => n.isEnabled && n.isConfigured && !excludedCdnIds.includes(n.id));
 
     if (nodes.length === 0) {
-      // Emergency fallback to primary node
+      // Fallback to primary definition (marked isConfigured: false)
       return getRegisteredCdnNodes()[0];
     }
 
@@ -56,7 +56,7 @@ export class CdnRouter {
 
       // Penalize degraded nodes
       if (metric.status === "DEGRADED") score -= 35;
-      if (metric.status === "COOLDOWN" || metric.status === "UNHEALTHY") score -= 90;
+      if (metric.status === "COOLDOWN" || metric.status === "UNHEALTHY" || metric.status === "UNCONFIGURED") score -= 90;
 
       // Reward region match
       if (userRegion !== "GLOBAL" && (node.region === userRegion || (userRegion === "IN" && node.region === "ASIA"))) {
@@ -89,7 +89,7 @@ export class CdnRouter {
       : this.getHealthyCdn(userRegion);
 
     const backupNodes = getRegisteredCdnNodes().filter(
-      (n) => n.id !== primaryCdn.id && n.isEnabled && cdnHealth.getMetrics(n.id).status !== "COOLDOWN"
+      (n) => n.id !== primaryCdn.id && n.isEnabled && n.isConfigured && cdnHealth.getMetrics(n.id).status !== "COOLDOWN"
     );
 
     // 2. Generate signed token if configured
@@ -100,30 +100,34 @@ export class CdnRouter {
       expiresAt = Math.floor(Date.now() / 1000) + 7200;
     }
 
-    // 3. Construct master manifest URL & backup URLs
-    const masterUrl = options.rawMasterUrl && options.rawMasterUrl.startsWith("http") && !primaryCdn.baseUrl
-      ? options.rawMasterUrl
-      : CdnUrlEngine.buildManifestUrl(primaryCdn, options.mediaId, options.version || "v1", signedToken);
+    // 3. Construct master manifest URL & backup URLs (only if a real CDN endpoint is configured)
+    let masterUrl = options.rawMasterUrl || "";
+    let backupUrls: string[] = [];
 
-    const backupUrls = backupNodes.map((backupNode) =>
-      CdnUrlEngine.buildManifestUrl(backupNode, options.mediaId, options.version || "v1", signedToken)
-    );
+    if (primaryCdn.isConfigured && primaryCdn.baseUrl) {
+      masterUrl = CdnUrlEngine.buildManifestUrl(primaryCdn, options.mediaId, options.version || "v1", signedToken);
+      backupUrls = backupNodes.map((backupNode) =>
+        CdnUrlEngine.buildManifestUrl(backupNode, options.mediaId, options.version || "v1", signedToken)
+      );
+    }
 
     // 4. Generate RFC-compliant caching headers
     const cacheHeaders = CdnCacheEngine.getCacheHeaders("MASTER_MANIFEST");
 
-    // 5. Record telemetry
-    cdnMetrics.recordRequest(primaryCdn.id, "MASTER_MANIFEST", cdnHealth.getMetrics(primaryCdn.id).latencyMs, true);
+    // 5. Record telemetry if configured
+    if (primaryCdn.isConfigured) {
+      cdnMetrics.recordRequest(primaryCdn.id, "MASTER_MANIFEST", cdnHealth.getMetrics(primaryCdn.id).latencyMs, true);
+    }
 
     return {
       mediaId: options.mediaId,
       mediaType: options.mediaType,
       masterUrl,
       backupUrls,
-      cdnId: primaryCdn.id,
-      cdnName: primaryCdn.name,
+      cdnId: primaryCdn.isConfigured ? primaryCdn.id : "unconfigured",
+      cdnName: primaryCdn.isConfigured ? primaryCdn.name : "Direct Origin / Playback Provider (No CDN Configured)",
       region: primaryCdn.region,
-      shieldEnabled: config.originShieldEnabled && primaryCdn.supportsOriginShield,
+      shieldEnabled: config.originShieldEnabled && primaryCdn.supportsOriginShield && primaryCdn.isConfigured,
       signedToken,
       expiresAt,
       cacheHeaders,
@@ -216,7 +220,7 @@ export class CdnRouter {
     return {
       timestamp: Date.now(),
       routerEnabled: config.routerEnabled,
-      activeCdnCount: cdns.filter((c) => c.health.status === "HEALTHY").length,
+      activeCdnCount: cdns.filter((c) => c.config.isConfigured && c.health.status === "HEALTHY").length,
       cdns,
       recentFailovers: summary.recentFailovers,
       globalMetrics: {

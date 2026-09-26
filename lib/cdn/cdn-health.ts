@@ -31,16 +31,17 @@ class CdnHealthRegistry {
     const nodes = getRegisteredCdnNodes();
     for (const node of nodes) {
       if (!this.metrics.has(node.id)) {
+        const isConfigured = Boolean(node.baseUrl && node.baseUrl.trim() !== "");
         this.metrics.set(node.id, {
           cdnId: node.id,
-          status: "HEALTHY",
-          latencyMs: 35 + (node.priority * 15),
+          status: isConfigured ? "HEALTHY" : "UNCONFIGURED",
+          latencyMs: 0,
           lastChecked: Date.now(),
-          consecutiveFailures: 0,
-          consecutiveSuccesses: 10,
-          lastFailureAt: null,
-          lastRecoveryAt: Date.now(),
-          failureReason: null,
+          consecutiveFailures: isConfigured ? 0 : 1,
+          consecutiveSuccesses: isConfigured ? 10 : 0,
+          lastFailureAt: isConfigured ? null : Date.now(),
+          lastRecoveryAt: isConfigured ? Date.now() : null,
+          failureReason: isConfigured ? null : "Endpoint URL not configured in environment",
           cooldownUntil: null,
           totalRequests: 0,
           totalErrors: 0,
@@ -160,11 +161,13 @@ class CdnHealthRegistry {
    */
   public async probeNode(node: CdnNodeConfig): Promise<{ reachable: boolean; latencyMs: number; statusText: string }> {
     const start = Date.now();
-    if (!node.baseUrl || node.baseUrl === "") {
-      // Local / edge routed node
-      const latency = Math.round(15 + Math.random() * 20);
-      this.reportSuccess(node.id, latency);
-      return { reachable: true, latencyMs: latency, statusText: "EDGE_ACTIVE" };
+    if (!node.baseUrl || node.baseUrl.trim() === "") {
+      const reason = "UNCONFIGURED (Base URL not set in environment)";
+      this.reportFailure(node.id, reason);
+      const m = this.getMetrics(node.id);
+      m.status = "UNCONFIGURED";
+      m.latencyMs = 0;
+      return { reachable: false, latencyMs: 0, statusText: reason };
     }
 
     try {

@@ -6,7 +6,7 @@
 
 export type CdnRegion = "GLOBAL" | "IN" | "ASIA" | "EU" | "US";
 
-export type CdnHealthState = "HEALTHY" | "DEGRADED" | "UNHEALTHY" | "COOLDOWN";
+export type CdnHealthState = "HEALTHY" | "DEGRADED" | "UNHEALTHY" | "COOLDOWN" | "UNCONFIGURED";
 
 export type CdnAssetType =
   | "MASTER_MANIFEST"
@@ -25,6 +25,7 @@ export interface CdnNodeConfig {
   priority: number; // 1 = highest
   weight: number;   // 1 - 100 for weighted round-robin among equal priorities
   isEnabled: boolean;
+  isConfigured: boolean;
   supportsHls: boolean;
   supportsByteRange: boolean;
   supportsHttp3: boolean;

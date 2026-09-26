@@ -181,9 +181,10 @@ export default function AdminCdnPage() {
             </thead>
             <tbody className="divide-y divide-white/5">
               {snapshot?.cdns.map(({ config, health }) => {
-                const isHealthy = health.status === "HEALTHY";
+                const isConfigured = Boolean(config.isConfigured && config.baseUrl);
+                const isHealthy = health.status === "HEALTHY" && isConfigured;
                 const isDegraded = health.status === "DEGRADED";
-                const isCooldown = health.status === "COOLDOWN";
+                const isUnconfigured = !isConfigured || health.status === "UNCONFIGURED";
 
                 return (
                   <tr key={config.id} className="hover:bg-white/[0.02] transition">
@@ -191,7 +192,7 @@ export default function AdminCdnPage() {
                       <div>
                         <p className="font-bold text-white">{config.name}</p>
                         <p className="text-[10px] text-zinc-400 font-mono truncate max-w-[200px]">
-                          {config.baseUrl || "Local Edge (Proxy Sliced)"}
+                          {config.baseUrl || "Not configured in .env"}
                         </p>
                       </div>
                     </td>
@@ -205,19 +206,21 @@ export default function AdminCdnPage() {
                     <td className="py-3 px-4">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          isHealthy
+                          isUnconfigured
+                            ? "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                            : isHealthy
                             ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                             : isDegraded
                             ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
                             : "bg-red-500/20 text-red-400 border border-red-500/30"
                         }`}
                       >
-                        {health.status}
+                        {isUnconfigured ? "UNCONFIGURED" : health.status}
                       </span>
                     </td>
 
                     <td className="py-3 px-4 font-mono text-zinc-300">
-                      {health.latencyMs}ms
+                      {isUnconfigured ? "—" : `${health.latencyMs}ms`}
                     </td>
 
                     <td className="py-3 px-4 font-mono text-zinc-300">
