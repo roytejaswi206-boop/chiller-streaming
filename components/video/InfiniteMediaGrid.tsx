@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { MediaCard } from "./MediaCard";
-import { MediaItem, DiscoveryQuery } from "@/lib/content/discovery";
+import type { MediaItem, DiscoveryQuery } from "@/lib/content/discovery";
 
 export interface InfiniteMediaGridProps {
   query: DiscoveryQuery;
@@ -80,34 +80,43 @@ export function InfiniteMediaGrid({
     }
   }, [currentPage, hasNextPage, isLoadingMore, query]);
 
-  // Initial fetch if initialItems empty
-  useEffect(() => {
-    if (initialItems.length === 0) {
-      setInitialLoading(true);
-      const params = new URLSearchParams();
-      if (query.mediaType) params.set("mediaType", query.mediaType);
-      if (query.category) params.set("category", query.category);
-      if (query.genre) params.set("genre", String(query.genre));
-      if (query.language) params.set("language", query.language);
-      if (query.country) params.set("country", query.country);
-      if (query.sort) params.set("sort", query.sort);
-      if (query.timeWindow) params.set("timeWindow", query.timeWindow);
-      if (query.format) params.set("format", query.format);
-      if (query.query) params.set("query", query.query);
-      params.set("page", "1");
+  const queryString = JSON.stringify(query);
+  const isFirstMountRef = useRef(true);
 
-      fetch(`/api/discover?${params.toString()}`)
-        .then((r) => r.json())
-        .then((data) => {
-          setItems(data.items || []);
-          setCurrentPage(1);
-          setHasNextPage(Boolean(data.hasNextPage));
-          loadedPagesRef.current.add(1);
-        })
-        .catch(() => {})
-        .finally(() => setInitialLoading(false));
+  // Sync / fetch whenever query changes or initialItems is empty
+  useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      if (initialItems.length > 0) return;
     }
-  }, [query, initialItems.length]);
+
+    setInitialLoading(true);
+    loadingPagesRef.current.clear();
+    loadedPagesRef.current.clear();
+
+    const params = new URLSearchParams();
+    if (query.mediaType && query.mediaType !== "all") params.set("mediaType", query.mediaType);
+    if (query.category) params.set("category", query.category);
+    if (query.genre) params.set("genre", String(query.genre));
+    if (query.language) params.set("language", query.language);
+    if (query.country) params.set("country", query.country);
+    if (query.sort) params.set("sort", query.sort);
+    if (query.timeWindow) params.set("timeWindow", query.timeWindow);
+    if (query.format) params.set("format", query.format);
+    if (query.query) params.set("query", query.query);
+    params.set("page", "1");
+
+    fetch(`/api/discover?${params.toString()}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setItems(data.items || []);
+        setCurrentPage(1);
+        setHasNextPage(Boolean(data.hasNextPage));
+        loadedPagesRef.current.add(1);
+      })
+      .catch(() => {})
+      .finally(() => setInitialLoading(false));
+  }, [queryString]);
 
   // IntersectionObserver for vertical infinite scroll sentinel
   useEffect(() => {

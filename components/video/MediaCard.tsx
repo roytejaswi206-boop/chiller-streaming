@@ -81,7 +81,7 @@ function MediaCardComponent({
   return (
     <Link
       href={detailUrl}
-      className={`group relative flex flex-col rounded-2xl overflow-hidden bg-[#0F172A] border border-white/[0.08] hover:border-[#FF3B6B]/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#FF3B6B]/15 cursor-pointer select-none touch-manipulation active:scale-[0.98] ${className}`}
+      className={`group relative flex flex-col rounded-2xl overflow-hidden bg-[#0F172A] border border-white/[0.08] hover:border-[#FF3B6B]/50 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#FF3B6B]/15 cursor-pointer select-none touch-manipulation tap-instant active:scale-[0.97] transform-gpu ${className}`}
     >
       {/* Image container */}
       <div

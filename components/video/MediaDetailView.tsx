@@ -3,12 +3,14 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { IconPlay, IconStar } from "@/components/icons";
 import { SeasonSelector, SeasonInfo } from "@/components/player/SeasonSelector";
 import { EpisodeList, EpisodeItem } from "@/components/player/EpisodeList";
 import { WatchlistButton } from "@/components/player/WatchlistButton";
 import { MediaRail } from "@/components/video/MediaRail";
+import { TrailerPreview } from "@/components/video/TrailerPreview";
 import { TmdbSeasonDetail } from "@/lib/tmdb/client";
 import { formatDuration } from "@/lib/utils";
 import { resolveResumeSourceOfTruth } from "@/lib/playback/resume-service";
@@ -22,15 +24,19 @@ interface MediaDetailViewProps {
   backdropPath: string | null;
   mediaType: "movie" | "tv" | "anime";
   releaseYear: string;
+  releaseDate?: string;
   status?: string;
   genres: string[];
   rating: number;
   runtime?: number;
+  country?: string;
+  trailerKey?: string | null;
   totalSeasons?: number;
   seasons?: SeasonInfo[];
   initialSeasonDetails?: TmdbSeasonDetail;
   cast?: { id: number; name: string; character: string; profile_path: string | null }[];
   recommendations?: any[];
+  similarTitles?: any[];
 }
 
 export function MediaDetailView({
@@ -42,16 +48,21 @@ export function MediaDetailView({
   backdropPath,
   mediaType,
   releaseYear,
+  releaseDate,
   status,
   genres = [],
   rating = 0,
   runtime,
+  country,
+  trailerKey,
   totalSeasons = 1,
   seasons = [],
   initialSeasonDetails,
   cast = [],
   recommendations = [],
+  similarTitles = [],
 }: MediaDetailViewProps) {
+  const router = useRouter();
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [episodes, setEpisodes] = useState<EpisodeItem[]>(
     initialSeasonDetails?.episodes || []
@@ -226,6 +237,12 @@ export function MediaDetailView({
                 </span>
               )}
 
+              {country && (
+                <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-zinc-300 text-[10px] font-bold border border-white/5">
+                  {country}
+                </span>
+              )}
+
               {releaseYear && <span className="text-xs font-semibold text-zinc-300">{releaseYear}</span>}
 
               {runtime ? (
@@ -313,6 +330,20 @@ export function MediaDetailView({
                   <IconPlay className="w-3.5 sm:w-4 h-3.5 sm:h-4 fill-white" />
                   <span>{resumeInfo?.isCompleted ? "Watch Again" : "Watch Now"}</span>
                 </Link>
+              )}
+
+              {trailerKey && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById("chiller-trailer-section");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-zinc-200 hover:text-white text-xs sm:text-sm font-bold transition-all border border-white/10 touch-manipulation tap-instant active:scale-95 cursor-pointer"
+                >
+                  <span>🎬</span>
+                  <span>Trailer</span>
+                </button>
               )}
 
               {mediaType === "anime" && (
@@ -411,7 +442,7 @@ export function MediaDetailView({
             episodes={episodes}
             currentEpisode={0}
             onSelectEpisode={(epNum) => {
-              window.location.href = `/watch/${mediaType === "anime" ? "anime" : "tv"}/${id}?s=${selectedSeason}&e=${epNum}`;
+              router.push(`/watch/${mediaType === "anime" ? "anime" : "tv"}/${id}?s=${selectedSeason}&e=${epNum}`);
             }}
             tmdbId={id}
             seasonNumber={selectedSeason}
@@ -419,13 +450,28 @@ export function MediaDetailView({
         </div>
       )}
 
+      {/* ── Trailer Preview Section ── */}
+      {trailerKey && (
+        <div id="chiller-trailer-section" className="space-y-3">
+          <h3 className="text-base sm:text-lg font-black text-white tracking-wide flex items-center gap-2">
+            <span>🎬</span>
+            <span>Official Trailer</span>
+          </h3>
+          <TrailerPreview
+            trailerKey={trailerKey}
+            title={title}
+            backdropUrl={backdropUrl}
+          />
+        </div>
+      )}
+
       {/* Cast Grid (Clickable to /person/[id]) */}
       {(activeTab === "overview" || activeTab === "cast") && cast.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.08] bg-[#0F172A] p-6">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0F172A] p-5 sm:p-6">
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-zinc-400 mb-4">
             Starring Cast
           </h3>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+          <div className="flex gap-4 overflow-x-auto rail-track touch-pan-x pb-2">
             {cast.map((actor) => {
               const profileUrl = actor.profile_path
                 ? `https://image.tmdb.org/t/p/w185${actor.profile_path}`
@@ -435,7 +481,7 @@ export function MediaDetailView({
                 <Link
                   key={actor.id}
                   href={`/person/${actor.id}`}
-                  className="flex flex-col items-center text-center shrink-0 w-20 group cursor-pointer"
+                  className="flex flex-col items-center text-center shrink-0 w-20 group cursor-pointer tap-instant active:scale-95 transition-transform"
                 >
                   <div className="relative w-14 h-14 rounded-full overflow-hidden mb-1.5 bg-black/40 border border-white/10 group-hover:border-[#FF3B6B] transition duration-200">
                     <Image
@@ -458,7 +504,27 @@ export function MediaDetailView({
         </div>
       )}
 
-      {/* ── 4. Recommended Content Rail ── */}
+      {/* ── 4. Similar Titles Rail ── */}
+      {similarTitles.length > 0 && (
+        <div>
+          <MediaRail
+            title="Similar Titles"
+            items={similarTitles.map((r: any) => ({
+              id: r.id,
+              title: r.title || r.name || "Untitled",
+              posterPath: r.poster_path,
+              backdropPath: r.backdrop_path,
+              mediaType: mediaType as any,
+              rating: r.vote_average,
+              releaseYear: (r.release_date || r.first_air_date || "").split("-")[0],
+              genres: [],
+            }))}
+            layout="poster"
+          />
+        </div>
+      )}
+
+      {/* ── 5. Recommended Content Rail ── */}
       {recommendations.length > 0 && (
         <div>
           <MediaRail

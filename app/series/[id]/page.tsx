@@ -50,6 +50,19 @@ export default async function SeriesDetailPage({ params }: SeriesDetailPageProps
         poster_path: s.poster_path,
       }));
 
+    const trailerKey =
+      (tvData as any).videos?.results?.find((v: any) => v.site === "YouTube" && v.type === "Trailer")?.key ||
+      (tvData as any).videos?.results?.find((v: any) => v.site === "YouTube")?.key ||
+      null;
+
+    const country =
+      (tvData as any).production_countries?.[0]?.name ||
+      (tvData as any).origin_country?.[0] ||
+      undefined;
+
+    const similarTitles = (tvData.similar?.results || []).slice(0, 15);
+    const recommendations = (tvData.recommendations?.results || []).slice(0, 15);
+
     return (
       <div className="flex min-h-[calc(100vh-4rem)] bg-[#09090C]">
         <Sidebar />
@@ -66,11 +79,14 @@ export default async function SeriesDetailPage({ params }: SeriesDetailPageProps
             status={(tvData as any).status}
             genres={tvData.genres?.map((g) => g.name) || []}
             rating={Number(tvData.vote_average.toFixed(1))}
+            country={country}
+            trailerKey={trailerKey}
             totalSeasons={tvData.number_of_seasons || filteredSeasons.length}
             seasons={filteredSeasons}
             initialSeasonDetails={season1Data}
-            cast={tvData.credits?.cast?.slice(0, 10)}
-            recommendations={(tvData.recommendations?.results || tvData.similar?.results || []).slice(0, 10)}
+            cast={tvData.credits?.cast?.slice(0, 12)}
+            similarTitles={similarTitles}
+            recommendations={recommendations.length > 0 ? recommendations : similarTitles}
           />
         </main>
       </div>

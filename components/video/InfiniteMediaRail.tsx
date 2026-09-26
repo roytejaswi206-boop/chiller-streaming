@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { IconChevronLeft, IconChevronRight } from "@/components/icons";
 import { MediaCard, MediaCardProps } from "./MediaCard";
-import { MediaItem, DiscoveryQuery } from "@/lib/content/discovery";
+import type { MediaItem, DiscoveryQuery } from "@/lib/content/discovery";
 
 export interface InfiniteMediaRailProps {
   title: string;
@@ -234,18 +234,18 @@ export function InfiniteMediaRail({
             </Link>
           )}
 
-          <div className="hidden sm:flex items-center gap-1 text-zinc-400">
+          <div className="flex items-center gap-1 text-zinc-400">
             <button
               onClick={() => scrollDirection("left")}
               aria-label="Scroll left"
-              className="p-1.5 rounded-full hover:bg-white/10 hover:text-white transition cursor-pointer border border-white/5"
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 hover:text-white transition cursor-pointer border border-white/5 touch-manipulation tap-instant active:scale-95"
             >
               <IconChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => scrollDirection("right")}
               aria-label="Scroll right"
-              className="p-1.5 rounded-full hover:bg-white/10 hover:text-white transition cursor-pointer border border-white/5"
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 hover:text-white transition cursor-pointer border border-white/5 touch-manipulation tap-instant active:scale-95"
             >
               <IconChevronRight className="w-4 h-4" />
             </button>
@@ -257,7 +257,7 @@ export function InfiniteMediaRail({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1 -mx-1 px-1 snap-x snap-mandatory touch-pan-x"
+        className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1 -mx-1 px-1 snap-x snap-mandatory rail-track touch-pan-x"
         style={{ WebkitOverflowScrolling: "touch" }}
       >
         {isInitialLoading ? (

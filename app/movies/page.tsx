@@ -3,6 +3,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { ChillerHero, HeroItem } from "@/components/video/ChillerHero";
 import { InfiniteMediaRail } from "@/components/video/InfiniteMediaRail";
 import { InfiniteMediaGrid } from "@/components/video/InfiniteMediaGrid";
+import { RegionalDiscoveryRail } from "@/components/discovery/RegionalDiscoveryRail";
+import { LanguageDiscoveryRail } from "@/components/discovery/LanguageDiscoveryRail";
 import { discoverContent } from "@/lib/content/discovery";
 
 export const dynamic = "force-dynamic";
@@ -92,6 +94,12 @@ export default async function MoviesPage({ searchParams }: MoviesPageProps) {
               seeAllHref="/movies?category=popular"
               layout="poster"
             />
+
+            {/* Regional & Country Movies Discovery */}
+            <RegionalDiscoveryRail />
+
+            {/* Language Discovery */}
+            <LanguageDiscoveryRail />
 
             <InfiniteMediaRail
               title="Now Playing in Theaters"

@@ -111,12 +111,42 @@ body {
   max-height: 100dvh;
 }
 
-/* Touch manipulation optimization */
+/* Touch manipulation & Fast Tap Optimization */
+button, a, input, select, textarea, [role="button"], .interactive-control {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .touch-manipulation {
   touch-action: manipulation;
 }
 
-/* Touch target minimum accessibility standard */
+/* Horizontal Rail Containment & Performance */
+.rail-track {
+  touch-action: pan-x;
+  contain: layout paint;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+}
+
+/* Vertical Scroll Performance */
+.vertical-scroll {
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+}
+
+/* Instantaneous Tap Feedback */
+.tap-instant {
+  transition: transform 60ms cubic-bezier(0.16, 1, 0.3, 1), opacity 60ms ease;
+  transform: translateZ(0);
+}
+.tap-instant:active {
+  transform: scale(0.96) translateZ(0);
+  opacity: 0.9;
+}
+
+/* Touch target minimum accessibility standard (44x44px) */
 .touch-target {
   min-height: 44px;
   min-width: 44px;
@@ -138,15 +168,20 @@ body {
 /* Content Visibility & Offscreen Render Windowing */
 .content-visibility-auto {
   content-visibility: auto;
-  contain-intrinsic-size: 0 280px;
+  contain-intrinsic-size: 0 320px;
 }
 
-/* Low-cost mobile blur alternative */
+/* Mobile GPU optimization: reduce heavy blur to preserve 60fps */
 @media (max-width: 768px) {
+  .backdrop-blur-2xl, .backdrop-blur-xl {
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+
   .mobile-optimized-blur {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    background-color: rgba(9, 9, 12, 0.92) !important;
+    background-color: rgba(9, 9, 12, 0.94) !important;
   }
 }
 
@@ -166,4 +201,5 @@ body {
     font-size: 15px;
   }
 }
+
 

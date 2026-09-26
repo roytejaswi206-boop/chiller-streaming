@@ -26,6 +26,19 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
     const movie = await getMovieDetails(tmdbId);
     if (!movie) notFound();
 
+    const trailerKey =
+      (movie as any).videos?.results?.find((v: any) => v.site === "YouTube" && v.type === "Trailer")?.key ||
+      (movie as any).videos?.results?.find((v: any) => v.site === "YouTube")?.key ||
+      null;
+
+    const country =
+      (movie as any).production_countries?.[0]?.name ||
+      (movie as any).origin_country?.[0] ||
+      undefined;
+
+    const similarTitles = (movie.similar?.results || []).slice(0, 15);
+    const recommendations = (movie.recommendations?.results || []).slice(0, 15);
+
     return (
       <div className="flex min-h-[calc(100vh-4rem)] bg-[#09090C]">
         <Sidebar />
@@ -43,8 +56,11 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
             genres={movie.genres?.map((g) => g.name) || []}
             rating={Number(movie.vote_average.toFixed(1))}
             runtime={movie.runtime}
-            cast={movie.credits?.cast?.slice(0, 10)}
-            recommendations={(movie.recommendations?.results || movie.similar?.results || []).slice(0, 10)}
+            country={country}
+            trailerKey={trailerKey}
+            cast={movie.credits?.cast?.slice(0, 12)}
+            similarTitles={similarTitles}
+            recommendations={recommendations.length > 0 ? recommendations : similarTitles}
           />
         </main>
       </div>

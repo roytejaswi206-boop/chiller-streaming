@@ -4,6 +4,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { ChillerHero, HeroItem } from "@/components/video/ChillerHero";
 import { InfiniteMediaRail } from "@/components/video/InfiniteMediaRail";
 import { ContinueWatchingRail } from "@/components/video/ContinueWatchingRail";
+import { RegionalDiscoveryRail } from "@/components/discovery/RegionalDiscoveryRail";
+import { LanguageDiscoveryRail } from "@/components/discovery/LanguageDiscoveryRail";
 import { ChillerIntro } from "@/components/intro/ChillerIntro";
 import { discoverContent } from "@/lib/content/discovery";
 
@@ -97,6 +99,9 @@ export default async function HomePage() {
             {/* 3. Continue Watching (Client state or authenticated DB) */}
             <ContinueWatchingRail />
 
+            {/* 3.5. Regional & Country Discovery (NetMirror-Inspired Native Experience) */}
+            <RegionalDiscoveryRail />
+
             {/* 4. Trending Movies Rail */}
             <InfiniteMediaRail
               title="Trending Movies"
@@ -123,6 +128,9 @@ export default async function HomePage() {
               layout="poster"
               badge="AniList"
             />
+
+            {/* 6.5. Browse by Language (NetMirror-Inspired Native Experience) */}
+            <LanguageDiscoveryRail />
 
             {/* 7. Popular Movies */}
             <InfiniteMediaRail

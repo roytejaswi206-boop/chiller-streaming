@@ -25,6 +25,39 @@ function SearchContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
 
+  // Recent Searches state
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("chiller_recent_searches");
+      if (stored) {
+        setRecentSearches(JSON.parse(stored).slice(0, 8));
+      }
+    } catch {}
+  }, []);
+
+  const saveRecentSearch = (term: string) => {
+    try {
+      const trimmed = term.trim();
+      if (!trimmed) return;
+      setRecentSearches((prev) => {
+        const next = [trimmed, ...prev.filter((s) => s.toLowerCase() !== trimmed.toLowerCase())].slice(0, 8);
+        try {
+          localStorage.setItem("chiller_recent_searches", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    } catch {}
+  };
+
+  const clearRecentSearches = () => {
+    try {
+      localStorage.removeItem("chiller_recent_searches");
+      setRecentSearches([]);
+    } catch {}
+  };
+
   const loadingPagesRef = useRef<Set<number>>(new Set());
   const loadedPagesRef = useRef<Set<number>>(new Set());
   const observerTargetRef = useRef<HTMLDivElement>(null);
@@ -74,6 +107,9 @@ function SearchContent() {
         setTotalPages(data.total_pages || 1);
         setTotalResults(data.total_results || 0);
         loadedPagesRef.current.add(1);
+        if (initialItems.length > 0) {
+          saveRecentSearch(trimmed);
+        }
       } catch (err: any) {
         if (err.name !== "AbortError") {
           setErrorMessage(err.message || "Failed to search stories.");
@@ -199,17 +235,77 @@ function SearchContent() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
-              className="w-full h-12 pl-12 pr-4 rounded-2xl bg-[#0F172A] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-2 focus:ring-[#FF3B6B]/20 transition shadow-lg"
+              className="w-full h-12 pl-12 pr-4 rounded-2xl bg-[#0F172A] border border-white/10 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF3B6B] focus:ring-2 focus:ring-[#FF3B6B]/20 transition shadow-lg touch-manipulation"
             />
             {query && (
               <button
                 onClick={() => setQuery("")}
-                className="absolute right-4 text-xs font-bold text-zinc-500 hover:text-white transition"
+                className="absolute right-4 text-xs font-bold text-zinc-500 hover:text-white transition tap-instant"
               >
                 Clear
               </button>
             )}
           </div>
+
+          {/* Quick Suggestions & Recent Searches */}
+          {!query.trim() && (
+            <div className="mt-6 space-y-4">
+              {recentSearches.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-zinc-400 font-bold uppercase tracking-wider">
+                    <span className="flex items-center gap-1.5">
+                      <span>🕒</span>
+                      <span>Recent Searches</span>
+                    </span>
+                    <button
+                      onClick={clearRecentSearches}
+                      className="text-zinc-500 hover:text-red-400 transition cursor-pointer text-[11px]"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {recentSearches.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setQuery(s)}
+                        className="px-3.5 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-xs font-semibold text-zinc-200 border border-white/10 tap-instant active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <span>{s}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2 pt-2">
+                <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🔥</span>
+                  <span>Popular Suggestions</span>
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "Demon Slayer",
+                    "Inception",
+                    "Stranger Things",
+                    "Interstellar",
+                    "Breaking Bad",
+                    "Jujutsu Kaisen",
+                    "Oppenheimer",
+                    "Spirited Away",
+                  ].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => setQuery(suggestion)}
+                      className="px-3.5 py-1.5 rounded-full bg-[#0F172A] hover:bg-white/[0.08] text-xs font-semibold text-zinc-300 border border-white/[0.08] tap-instant active:scale-95 transition-all cursor-pointer"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Filter Chips */}
@@ -231,7 +327,7 @@ function SearchContent() {
                   <button
                     key={filter}
                     onClick={() => setActiveFilter(filter)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer tap-instant active:scale-95 touch-manipulation ${
                       isActive
                         ? "bg-[#FF3B6B] text-white shadow-lg shadow-[#FF3B6B]/25"
                         : "bg-[#0F172A] border border-white/10 text-zinc-400 hover:text-white"
