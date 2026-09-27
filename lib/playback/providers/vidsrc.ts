@@ -26,7 +26,10 @@ export class VidSrcProvider implements PlaybackProvider {
   priority = 2;
 
   private getBaseUrl(): string {
-    const raw = process.env.VIDSRC_BASE_URL?.trim() || "https://vidsrc.pm";
+    let raw = process.env.VIDSRC_BASE_URL?.trim() || "https://vidsrc.pm";
+    if (raw.includes("vidsrc.sbs")) {
+      raw = "https://vidsrc.pm";
+    }
     return raw.replace(/\/+$/, "");
   }
 
