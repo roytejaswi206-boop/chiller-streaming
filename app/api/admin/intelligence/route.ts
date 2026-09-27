@@ -33,11 +33,17 @@ export async function GET(req: NextRequest) {
       recommendationDebug = { error: e.message };
     }
 
-    // Query real playback attempts from database
-    const attempts = await prisma.playbackAttempt.findMany({
-      take: 500,
-      orderBy: { createdAt: "desc" },
-    });
+    // Query real playback attempts from database safely
+    let attempts: any[] = [];
+    try {
+      attempts = await prisma.playbackAttempt.findMany({
+        take: 500,
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (dbErr) {
+      console.error("[INTELLIGENCE_DB_FALLBACK]", dbErr);
+      attempts = [];
+    }
 
     const statsMap: Record<string, { total: number; success: number; failures: number; latencies: number[] }> = {};
     for (const a of attempts) {

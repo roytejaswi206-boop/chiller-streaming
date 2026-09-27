@@ -21,11 +21,11 @@ export async function GET(req: NextRequest) {
       prisma.siteActivity.groupBy({
         by: ["sessionId"],
         where: { updatedAt: { gte: fiveMinAgo } },
-      }),
+      }).catch(() => []),
       prisma.watchSession.groupBy({
         by: ["sessionId"],
         where: { updatedAt: { gte: fiveMinAgo } },
-      }),
+      }).catch(() => []),
     ]);
 
     return NextResponse.json({
