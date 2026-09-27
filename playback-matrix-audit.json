@@ -1,0 +1,162 @@
+[
+  {
+    "title": "Fight Club",
+    "category": "MOVIE",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/movie/550?autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "The Matrix",
+    "category": "MOVIE",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/movie/603?autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "Inception",
+    "category": "MOVIE",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/movie/27205?autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "Interstellar",
+    "category": "MOVIE",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/movie/157336?autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "Oppenheimer",
+    "category": "MOVIE",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/movie/872585?autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "The Last of Us",
+    "category": "TV",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/tv/100088?s=1&e=1&autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "Breaking Bad",
+    "category": "TV",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/tv/1396?s=1&e=1&autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "Stranger Things",
+    "category": "TV",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/tv/66732?s=1&e=1&autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "Wednesday",
+    "category": "TV",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/tv/119051?s=1&e=1&autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "Dark",
+    "category": "TV",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "CineSrc",
+    "sourceUrl": "https://cinesrc.st/embed/tv/70523?s=1&e=1&autoplay=true&controls=true&autonext=true&autoskip=true&continueprompt=false",
+    "status": "PASS"
+  },
+  {
+    "title": "Naruto",
+    "category": "ANIME",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "NHD",
+    "sourceUrl": "https://nhdapi.st/anime/20/1",
+    "status": "PASS"
+  },
+  {
+    "title": "One Piece",
+    "category": "ANIME",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "NHD",
+    "sourceUrl": "https://nhdapi.st/anime/21/1",
+    "status": "PASS"
+  },
+  {
+    "title": "Demon Slayer",
+    "category": "ANIME",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "NHD",
+    "sourceUrl": "https://nhdapi.st/anime/101922/1",
+    "status": "PASS"
+  },
+  {
+    "title": "Jujutsu Kaisen",
+    "category": "ANIME",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "NHD",
+    "sourceUrl": "https://nhdapi.st/anime/113415/1",
+    "status": "PASS"
+  },
+  {
+    "title": "Attack on Titan",
+    "category": "ANIME",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "NHD",
+    "sourceUrl": "https://nhdapi.st/anime/16498/1",
+    "status": "PASS"
+  },
+  {
+    "title": "Dragon Ball",
+    "category": "ANIME",
+    "detailOk": true,
+    "watchOk": true,
+    "hasPlayer": true,
+    "provider": "NHD",
+    "sourceUrl": "https://nhdapi.st/anime/223/1",
+    "status": "PASS"
+  }
+]
