@@ -1,6 +1,8 @@
 import { MetadataRoute } from "next";
 import { getCanonicalUrl } from "@/lib/config/site";
 
+export const revalidate = 86400;
+
 export default function robots(): MetadataRoute.Robots {
   const sitemapUrl = getCanonicalUrl("/sitemap.xml");
 
@@ -35,6 +37,8 @@ export default function robots(): MetadataRoute.Robots {
           "/documentaries",
           "/terms",
           "/privacy",
+          "/sitemap.xml",
+          "/robots.txt",
         ],
         disallow: [
           "/api/",
@@ -61,7 +65,32 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: "Googlebot",
-        allow: "/",
+        allow: [
+          "/",
+          "/movies",
+          "/series",
+          "/anime",
+          "/trending",
+          "/top-rated",
+          "/upcoming",
+          "/new",
+          "/trailers",
+          "/categories",
+          "/category/",
+          "/genre/",
+          "/movie/",
+          "/movies/",
+          "/tv/",
+          "/series/",
+          "/kdrama",
+          "/cdrama",
+          "/kids",
+          "/documentaries",
+          "/terms",
+          "/privacy",
+          "/sitemap.xml",
+          "/robots.txt",
+        ],
         disallow: [
           "/api/",
           "/admin",

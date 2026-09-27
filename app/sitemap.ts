@@ -3,8 +3,7 @@ import { getCanonicalUrl } from "@/lib/config/site";
 import { GENRE_SLUG_MAP } from "@/lib/content/discovery";
 import { getPopularMovies, getPopularTV, getTrending } from "@/lib/tmdb/client";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 86400; // Cache sitemap for 24 hours
+export const revalidate = 86400; // Static ISR pre-rendered, revalidated in background every 24 hours
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
@@ -136,7 +135,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     // Timeout guard so sitemap generation never hangs or blocks the build
-    const fetchWithTimeout = <T>(promise: Promise<T>, ms = 4000): Promise<T | null> =>
+    const fetchWithTimeout = <T>(promise: Promise<T>, ms = 2500): Promise<T | null> =>
       Promise.race([
         promise,
         new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
@@ -192,19 +191,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // If external APIs fail or are offline, graceful fallback preserves sitemap integrity
   }
 
-  // Guaranteed fallback popular content IDs for search crawlers in offline/cold-start states
-  if (dynamicRoutes.length === 0) {
-    // Evergreen popular movie IDs
-    const fallbackMovieIds = [550, 27205, 157336, 155, 680, 299536, 19995, 24428, 424, 769];
-    // Evergreen popular TV IDs
-    const fallbackTvIds = [1399, 66732, 1396, 60059, 100088, 94605, 84773, 71446];
-    // Evergreen popular anime IDs
-    const fallbackAnimeIds = [16498, 1429, 31964, 85937, 85990, 80752, 92685];
+  // Guaranteed popular evergreen content IDs for search crawlers
+  const evergreenMovieIds = [
+    550, 27205, 157336, 155, 680, 299536, 19995, 24428, 424, 769,
+    120, 121, 122, 671, 672, 673, 238, 240, 496243, 872585,
+  ];
+  const evergreenTvIds = [
+    1399, 66732, 1396, 60059, 100088, 94605, 84773, 71446, 76479, 119051,
+  ];
+  const evergreenAnimeIds = [
+    16498, 1429, 31964, 85937, 85990, 80752, 92685, 37854, 13916, 46260, 215070,
+  ];
 
-    for (const id of fallbackMovieIds) addRoute(`/movie/${id}`, 0.8);
-    for (const id of fallbackTvIds) addRoute(`/tv/${id}`, 0.8);
-    for (const id of fallbackAnimeIds) addRoute(`/anime/${id}`, 0.8);
-  }
+  for (const id of evergreenMovieIds) addRoute(`/movie/${id}`, 0.8);
+  for (const id of evergreenTvIds) addRoute(`/tv/${id}`, 0.8);
+  for (const id of evergreenAnimeIds) addRoute(`/anime/${id}`, 0.8);
 
   return [...staticRoutes, ...genreRoutes, ...dynamicRoutes];
 }

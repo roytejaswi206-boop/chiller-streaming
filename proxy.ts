@@ -32,12 +32,21 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // 1. Immediately bypass proxy for public crawler & verification files
+  if (
+    pathname === "/sitemap.xml" ||
+    pathname === "/robots.txt" ||
+    pathname.startsWith("/google")
+  ) {
+    return NextResponse.next();
+  }
+
   const origin = request.headers.get("origin");
   const isAllowedOrigin = origin
     ? ALLOWED_ORIGINS.has(origin) || origin.endsWith(".unaux.com") || origin.endsWith(".duckdns.org")
     : false;
-
-  const { pathname } = request.nextUrl;
 
   // Handle CORS Preflight for API requests
   if (request.method === "OPTIONS" && pathname.startsWith("/api/")) {
@@ -139,8 +148,11 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization)
      * - favicon.ico
+     * - sitemap.xml
+     * - robots.txt
+     * - google verification files
      * - /api/auth/* (NextAuth internal routes)
      */
-    "/((?!_next/static|_next/image|favicon.ico|api/auth).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap|robots|google|api/auth).*)",
   ],
 };

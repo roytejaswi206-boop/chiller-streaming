@@ -35,6 +35,9 @@ export function getSiteUrl(): string {
 export function getCanonicalUrl(path: string = ""): string {
   const base = process.env.NEXT_PUBLIC_CANONICAL_URL || CANONICAL_BASE_URL;
   const cleanBase = base.replace(/\/+$/, "");
+  if (!path || path === "/") {
+    return `${cleanBase}/`;
+  }
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return cleanPath === "/" ? cleanBase : `${cleanBase}${cleanPath}`;
+  return `${cleanBase}${cleanPath}`;
 }
