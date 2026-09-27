@@ -23,7 +23,8 @@ import {
   selectBestAudioTrack,
 } from "@/lib/playback/audio-normalizer";
 
-const PLAYER_CONTROLS_AUTO_HIDE_MS = 3000;
+export const PLAYER_CONTROLS_HIDE_DELAY = 25000;
+const PLAYER_CONTROLS_AUTO_HIDE_MS = PLAYER_CONTROLS_HIDE_DELAY;
 
 export interface VideoPlayerProps {
   streamUrl: string;

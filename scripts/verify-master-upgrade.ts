@@ -166,8 +166,8 @@ async function runVerification() {
     "ExternalPlayer converts Settings into slide-up bottom sheet on mobile"
   );
   assert(
-    extPlayerContent.includes("PLAYER_CONTROLS_AUTO_HIDE_MS = 3000") || extPlayerContent.includes("3000"),
-    "Player controls use ~3000ms auto-hide timing"
+    extPlayerContent.includes("PLAYER_CONTROLS_HIDE_DELAY = 25000") || extPlayerContent.includes("25000"),
+    "Player controls use 25000ms auto-hide timing"
   );
 
   // ── 6. TRUE RESUME & 95% COMPLETION ──

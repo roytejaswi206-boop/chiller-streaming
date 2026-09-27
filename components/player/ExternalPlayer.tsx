@@ -44,8 +44,9 @@ const FALLBACK_COOLDOWN_MS = 600;
 const LOAD_TIMEOUT_MS = 10000;
 // Debounce for progress saves (ms)
 const PROGRESS_DEBOUNCE_MS = 10000;
-// Auto-hide controls duration (ms) - Section 4
-export const PLAYER_CONTROLS_AUTO_HIDE_MS = 3000;
+// Auto-hide controls duration (ms) - Configurable 25s inactivity delay
+export const PLAYER_CONTROLS_HIDE_DELAY = 25000;
+export const PLAYER_CONTROLS_AUTO_HIDE_MS = PLAYER_CONTROLS_HIDE_DELAY;
 
 export function ExternalPlayer({
   sources = [],
@@ -147,6 +148,8 @@ export function ExternalPlayer({
   // ─────────────────────────────────────────────────────────────────
   // UNIFIED AUTO-HIDE CONTROLS ENGINE (Sections 4, 5, 8, 44, 45, 46)
   // ─────────────────────────────────────────────────────────────────
+  const lastInteractionTimeRef = useRef<number>(0);
+
   const resetControlsTimeout = useCallback(() => {
     setControlsVisible(true);
     if (controlsTimeoutRef.current) {
@@ -154,24 +157,69 @@ export function ExternalPlayer({
       controlsTimeoutRef.current = null;
     }
 
-    // Do NOT auto-hide if paused, in error, or a settings/sheet menu is open (Section 5)
+    const isPlayingOrReady = [
+      "PLAYBACK_CONFIRMED",
+      "PLAYBACK_NOT_VERIFIABLE",
+      "PLAYER_READY",
+      "EMBED_LOADED",
+    ].includes(playbackState);
+
+    // Do NOT auto-hide if paused, loading, switching, error, or a settings/sheet menu is open
     if (
       !isPaused &&
+      !isLoading &&
+      !isSwitching &&
       !showSettingsMenu &&
       !showSafetySheet &&
       !showDiag &&
+      !showResumePrompt &&
       !allFailed &&
-      ["PLAYBACK_CONFIRMED", "PLAYER_READY", "EMBED_LOADED"].includes(playbackState)
+      isPlayingOrReady
     ) {
       controlsTimeoutRef.current = setTimeout(() => {
         setControlsVisible(false);
-      }, PLAYER_CONTROLS_AUTO_HIDE_MS);
+      }, PLAYER_CONTROLS_HIDE_DELAY);
     }
-  }, [isPaused, showSettingsMenu, showSafetySheet, showDiag, allFailed, playbackState]);
+  }, [
+    isPaused,
+    isLoading,
+    isSwitching,
+    showSettingsMenu,
+    showSafetySheet,
+    showDiag,
+    showResumePrompt,
+    allFailed,
+    playbackState,
+  ]);
 
-  // Keep controls visible whenever menu opens or paused state changes
+  // Handle genuine user activity with throttling to prevent high-frequency churn
+  const handleUserActivity = useCallback(() => {
+    const now = Date.now();
+    // If controls are hidden, show immediately without throttling
+    if (!controlsVisible) {
+      resetControlsTimeout();
+      lastInteractionTimeRef.current = now;
+      return;
+    }
+    // Throttle repeated activity events (e.g. mouse movement) to at most once per 300ms
+    if (now - lastInteractionTimeRef.current > 300) {
+      resetControlsTimeout();
+      lastInteractionTimeRef.current = now;
+    }
+  }, [controlsVisible, resetControlsTimeout]);
+
+  // Keep controls visible whenever menu opens or paused/loading/switching state changes
   useEffect(() => {
-    if (isPaused || showSettingsMenu || showSafetySheet || showDiag) {
+    if (
+      isPaused ||
+      isLoading ||
+      isSwitching ||
+      showSettingsMenu ||
+      showSafetySheet ||
+      showDiag ||
+      showResumePrompt ||
+      allFailed
+    ) {
       setControlsVisible(true);
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
@@ -180,7 +228,17 @@ export function ExternalPlayer({
     } else {
       resetControlsTimeout();
     }
-  }, [isPaused, showSettingsMenu, showSafetySheet, showDiag, resetControlsTimeout]);
+  }, [
+    isPaused,
+    isLoading,
+    isSwitching,
+    showSettingsMenu,
+    showSafetySheet,
+    showDiag,
+    showResumePrompt,
+    allFailed,
+    resetControlsTimeout,
+  ]);
 
   // Keyboard accessibility reveals controls (Section 9)
   useEffect(() => {
@@ -191,7 +249,7 @@ export function ExternalPlayer({
       }
 
       if ([" ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "f", "F", "m", "M", "Escape"].includes(e.key)) {
-        resetControlsTimeout();
+        handleUserActivity();
       }
       if (e.key === "Escape") {
         setShowSettingsMenu(false);
@@ -201,7 +259,7 @@ export function ExternalPlayer({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [resetControlsTimeout]);
+  }, [handleUserActivity]);
 
   // Cleanup auto-hide timer on unmount
   useEffect(() => {
@@ -312,9 +370,12 @@ export function ExternalPlayer({
   const handlePlayerSurfaceClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     // If clicking an interactive button or control, allow normal bubbling
     const target = e.target as HTMLElement;
-    if (target.closest("button, a, input, select, [role='button']")) return;
-    resetControlsTimeout();
-  }, [resetControlsTimeout]);
+    if (target.closest("button, a, input, select, [role='button']")) {
+      handleUserActivity();
+      return;
+    }
+    handleUserActivity();
+  }, [handleUserActivity]);
 
   const handleQuickReload = useCallback(() => {
     setIsLoading(true);
@@ -908,10 +969,12 @@ export function ExternalPlayer({
           : "space-y-0"
       }`}
       ref={playerContainerRef}
-      onMouseMove={resetControlsTimeout}
-      onMouseEnter={resetControlsTimeout}
-      onPointerDown={resetControlsTimeout}
+      onMouseMove={handleUserActivity}
+      onMouseEnter={handleUserActivity}
+      onPointerDown={handleUserActivity}
+      onTouchStart={handleUserActivity}
       onClick={handlePlayerSurfaceClick}
+      onFocus={handleUserActivity}
     >
       {/* ── Player Shell Container (Aspect Ratio 16:9, Max Cinematic Height) ── */}
       <div
@@ -928,7 +991,7 @@ export function ExternalPlayer({
       >
         {/* ── Top-Left Overlay Badges (Clean Cinema Mode: Auto-Hides on Playback) ── */}
         <div
-          className={`absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 transition-all duration-300 ${
+          className={`absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 transition-all duration-300 focus-within:opacity-100 focus-within:pointer-events-auto focus-within:translate-y-0 ${
             controlsVisible
               ? "opacity-100 translate-y-0 pointer-events-auto"
               : "opacity-0 -translate-y-2 pointer-events-none"
@@ -964,7 +1027,7 @@ export function ExternalPlayer({
 
         {/* ── Top-Right Controls: Shield + Reload + Rotate + Settings + Fullscreen + DIAG (Auto-Hides) ── */}
         <div
-          className={`absolute top-3 right-3 z-20 flex items-center gap-2 transition-all duration-300 ${
+          className={`absolute top-3 right-3 z-20 flex items-center gap-2 transition-all duration-300 focus-within:opacity-100 focus-within:pointer-events-auto focus-within:translate-y-0 ${
             controlsVisible
               ? "opacity-100 translate-y-0 pointer-events-auto"
               : "opacity-0 -translate-y-2 pointer-events-none"
@@ -1541,7 +1604,9 @@ export function ExternalPlayer({
 
         {/* Subtle CHILLER Brand Watermark (Non-obtrusive, bottom-right) */}
         <div
-          className="absolute bottom-3 right-3 z-10 pointer-events-none select-none transition-opacity duration-300 opacity-40 flex items-center gap-1.5"
+          className={`absolute bottom-3 right-3 z-10 pointer-events-none select-none transition-opacity duration-500 flex items-center gap-1.5 ${
+            controlsVisible ? "opacity-40" : "opacity-0"
+          }`}
           aria-hidden="true"
         >
           <img
