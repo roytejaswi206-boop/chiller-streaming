@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 
+const AUTH_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "img-src 'self' data: https: blob:",
+  "connect-src 'self' https://chillerstream.duckdns.org https://streaming-chi-red.vercel.app",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "base-uri 'self'",
+].join("; ");
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
@@ -20,7 +32,28 @@ const nextConfig: NextConfig = {
     },
   },
   async headers() {
+    const authRoutes = [
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/reset-password",
+      "/change-password",
+    ];
+
+    const authHeaderConfigs = authRoutes.map((route) => ({
+      source: route,
+      headers: [
+        { key: "X-Frame-Options", value: "DENY" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, max-age=0" },
+        { key: "Content-Security-Policy", value: AUTH_CSP },
+      ],
+    }));
+
     return [
+      // 1. API CORS & Headers
       {
         source: "/api/:path*",
         headers: [
@@ -30,12 +63,14 @@ const nextConfig: NextConfig = {
           { key: "Access-Control-Allow-Credentials", value: "true" },
         ],
       },
+      // 2. Embed routes (allow legitimate embedding for external players)
       {
         source: "/embed/:path*",
         headers: [
           { key: "X-Frame-Options", value: "ALLOWALL" },
         ],
       },
+      // 3. Service Worker
       {
         source: "/sw.js",
         headers: [
@@ -44,6 +79,7 @@ const nextConfig: NextConfig = {
           { key: "Service-Worker-Allowed", value: "/" },
         ],
       },
+      // 4. PWA Manifest
       {
         source: "/manifest.webmanifest",
         headers: [
@@ -51,10 +87,23 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
         ],
       },
+      // 5. Version API
       {
         source: "/api/version",
         headers: [
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" },
+        ],
+      },
+      // 6. Hardened Security Headers for Authentication Routes
+      ...authHeaderConfigs,
+      // 7. Global Baseline Security Headers for all other routes
+      {
+        source: "/((?!embed).*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
         ],
       },
     ];

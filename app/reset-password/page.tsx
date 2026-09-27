@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ChillerLogo } from "@/components/icons";
+import { purgeAdScriptsAndElements } from "@/lib/ads/script-loader";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -16,6 +17,10 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    purgeAdScriptsAndElements();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,10 +67,10 @@ function ResetPasswordForm() {
       </div>
 
       <h1 className="text-xl sm:text-2xl font-black text-white text-center tracking-tight mb-2">
-        Set New Password
+        Set New Password • CHILLER
       </h1>
       <p className="text-xs text-zinc-400 text-center mb-6">
-        Create a new, secure password for your Chiller account.
+        Create a new, secure password for your CHILLER account.
       </p>
 
       {success ? (
@@ -81,7 +86,7 @@ function ResetPasswordForm() {
           </Link>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form method="POST" action="#" onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold text-center">
               {error}
@@ -90,10 +95,12 @@ function ResetPasswordForm() {
 
           {!initialToken && (
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+              <label htmlFor="reset-token" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
                 Reset Token
               </label>
               <input
+                id="reset-token"
+                name="token"
                 type="text"
                 required
                 value={token}
@@ -105,12 +112,15 @@ function ResetPasswordForm() {
           )}
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+            <label htmlFor="reset-new-password" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
               New Password
             </label>
             <input
+              id="reset-new-password"
+              name="password"
               type="password"
               required
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -119,12 +129,15 @@ function ResetPasswordForm() {
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+            <label htmlFor="reset-confirm-password" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
               Confirm New Password
             </label>
             <input
+              id="reset-confirm-password"
+              name="confirmPassword"
               type="password"
               required
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"

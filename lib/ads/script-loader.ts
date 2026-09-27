@@ -22,10 +22,72 @@ export interface LoadScriptOptions {
 }
 
 /**
+ * Sensitive authentication routes where NO third-party ad scripts are ever permitted.
+ * This guarantees compliance with Google Safe Browsing and prevents credential interception.
+ */
+export const SENSITIVE_AUTH_ROUTES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/change-password",
+  "/admin",
+];
+
+export function isAuthPath(pathname?: string): boolean {
+  if (typeof window === "undefined" && !pathname) return false;
+  const path = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
+  return SENSITIVE_AUTH_ROUTES.some(
+    (route) => path === route || path.startsWith(`${route}/`) || path.startsWith(`${route}?`)
+  );
+}
+
+/**
+ * Completely purges third-party ad scripts and related elements from the DOM.
+ * Invoked immediately whenever an authentication page is mounted.
+ */
+export function purgeAdScriptsAndElements(): void {
+  if (typeof document === "undefined") return;
+
+  const adScriptSelectors = [
+    'script[src*="profitableratecpmnetwork.com"]',
+    'script[src*="highrevenueformat.com"]',
+    'script[src*="atOptions"]',
+    'script[data-cfasync="false"]',
+  ];
+
+  adScriptSelectors.forEach((selector) => {
+    document.querySelectorAll(selector).forEach((el) => {
+      try {
+        el.remove();
+      } catch {}
+    });
+  });
+
+  // Also remove ad iframes or containers if any were injected
+  document.querySelectorAll('[id^="container-036795d0ec9ca91f70d3e5f8d8def3c3"]').forEach((el) => {
+    try {
+      el.remove();
+    } catch {}
+  });
+
+  // Reset in-memory cache for third-party scripts
+  loadedScripts.clear();
+  pendingPromises.clear();
+}
+
+/**
  * Loads a third-party ad script safely with deduplication and timeout protection.
+ * STRICT SECURITY: Rejects any load attempt if on an authentication page.
  */
 export function loadAdScript(src: string, options: LoadScriptOptions = {}): Promise<boolean> {
   if (typeof window === "undefined" || typeof document === "undefined") {
+    return Promise.resolve(false);
+  }
+
+  // HARD SECURITY FIREWALL: Never load ad scripts on auth/admin pages
+  if (isAuthPath()) {
+    purgeAdScriptsAndElements();
     return Promise.resolve(false);
   }
 

@@ -1,10 +1,45 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { ChillerLogo } from "@/components/icons";
+import { purgeAdScriptsAndElements } from "@/lib/ads/script-loader";
+
+/**
+ * Validates and sanitizes callbackUrl to completely eliminate Open Redirect vulnerabilities.
+ * STRICT SECURITY:
+ * - Only relative paths starting with a single '/' are permitted.
+ * - Protocol-relative paths ('//'), backslashes ('/\'), schemes ('javascript:', 'http:'), and colons are rejected.
+ */
+function sanitizeCallbackUrl(rawUrl: string | null | undefined, isSuperAdmin: boolean): string {
+  const defaultTarget = isSuperAdmin ? "/admin" : "/";
+  if (!rawUrl || typeof rawUrl !== "string") {
+    return defaultTarget;
+  }
+
+  const trimmed = rawUrl.trim();
+
+  // Must begin with a single '/' and not with '//' or '/\'
+  if (
+    !trimmed.startsWith("/") ||
+    trimmed.startsWith("//") ||
+    trimmed.startsWith("/\\") ||
+    trimmed.includes(":") ||
+    trimmed.includes("\\")
+  ) {
+    return defaultTarget;
+  }
+
+  // Whitelist safe internal path characters: alphanumeric, slash, hyphen, underscore, query, hash
+  const isSafePath = /^\/[a-zA-Z0-9_\-\/?&=#%]*$/.test(trimmed);
+  if (!isSafePath) {
+    return defaultTarget;
+  }
+
+  return trimmed;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +47,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Isolate sensitive authentication view: immediately purge any external scripts
+  useEffect(() => {
+    purgeAdScriptsAndElements();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,19 +87,18 @@ export default function LoginPage() {
         }
 
         const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-        let callbackUrl = searchParams?.get("callbackUrl");
+        const rawCallback = searchParams?.get("callbackUrl");
 
         const normalizedEmail = email.trim().toLowerCase();
         const isSuperAdmin =
           normalizedEmail === "roytejaswi40@gmail.com" ||
           normalizedEmail === "roytejaswi206@gmail.com";
 
-        if (!callbackUrl || callbackUrl === "/") {
-          callbackUrl = isSuperAdmin ? "/admin" : "/";
-        }
+        // Strictly sanitize redirect target — prevent open redirect
+        const safeDestination = sanitizeCallbackUrl(rawCallback, isSuperAdmin);
 
         // Full window navigation ensures cookies are committed and server components render authenticated state
-        window.location.href = callbackUrl;
+        window.location.href = safeDestination;
       }
     } catch {
       setError("An unexpected error occurred. Please try again.");
@@ -78,10 +117,10 @@ export default function LoginPage() {
         </div>
 
         <h1 className="text-xl sm:text-2xl font-black text-white text-center tracking-tight mb-2">
-          Welcome to Chiller
+          Sign In to CHILLER
         </h1>
         <p className="text-xs text-zinc-400 text-center mb-6">
-          Sign in to synchronize your watchlist, history, and preferences across devices.
+          Synchronize your personalized watchlist, streaming progress, and playback preferences across all devices.
         </p>
 
         {error && (
@@ -90,14 +129,17 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form method="POST" action="#" onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+            <label htmlFor="login-email" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
               Email Address
             </label>
             <input
+              id="login-email"
+              name="email"
               type="email"
               required
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
@@ -107,7 +149,7 @@ export default function LoginPage() {
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+              <label htmlFor="login-password" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
                 Password
               </label>
               <Link
@@ -118,8 +160,11 @@ export default function LoginPage() {
               </Link>
             </div>
             <input
+              id="login-password"
+              name="password"
               type="password"
               required
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -137,7 +182,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-xs text-center text-zinc-400">
-          Don't have an account?{" "}
+          Don't have a CHILLER account?{" "}
           <Link href="/register" className="text-[#FF3B6B] hover:text-[#FF3B6B]/80 font-semibold underline">
             Create an Account
           </Link>

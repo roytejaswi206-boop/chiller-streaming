@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { ChillerLogo } from "@/components/icons";
+import { purgeAdScriptsAndElements } from "@/lib/ads/script-loader";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,6 +15,11 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Isolate sensitive registration view: purge any external scripts
+  useEffect(() => {
+    purgeAdScriptsAndElements();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,10 +105,10 @@ export default function RegisterPage() {
         </div>
 
         <h1 className="text-xl sm:text-2xl font-black text-white text-center tracking-tight mb-2">
-          Create Chiller Account
+          Create CHILLER Account
         </h1>
         <p className="text-xs text-zinc-400 text-center mb-6">
-          Join Chiller to save your list, track watch progress, and stream across devices.
+          Join CHILLER to save your list, track watch progress, and stream across devices.
         </p>
 
         {error && (
@@ -111,14 +117,17 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form method="POST" action="#" onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+            <label htmlFor="reg-name" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
               Display Name
             </label>
             <input
+              id="reg-name"
+              name="name"
               type="text"
               required
+              autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name or alias"
@@ -127,12 +136,15 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+            <label htmlFor="reg-email" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
               Email Address
             </label>
             <input
+              id="reg-email"
+              name="email"
               type="email"
               required
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
@@ -141,12 +153,15 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+            <label htmlFor="reg-password" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
               Password
             </label>
             <input
+              id="reg-password"
+              name="password"
               type="password"
               required
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 6 characters"
@@ -155,12 +170,15 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+            <label htmlFor="reg-confirm-password" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
               Confirm Password
             </label>
             <input
+              id="reg-confirm-password"
+              name="confirmPassword"
               type="password"
               required
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Re-enter password"
@@ -180,7 +198,7 @@ export default function RegisterPage() {
         </form>
 
         <p className="mt-6 text-xs text-center text-zinc-400">
-          Already have an account?{" "}
+          Already have a CHILLER account?{" "}
           <Link href="/login" className="text-[#FF3B6B] hover:text-[#FF3B6B]/80 font-semibold underline">
             Sign In
           </Link>

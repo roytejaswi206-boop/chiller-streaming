@@ -1,8 +1,10 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AdSettingsData } from "@/lib/ads/ad-types";
 import { DEFAULT_AD_SETTINGS } from "@/lib/ads/config";
+import { isAuthPath, purgeAdScriptsAndElements } from "@/lib/ads/script-loader";
 import { AdBanner728x90 } from "./AdBanner728x90";
 import { AdBanner320x50 } from "./AdBanner320x50";
 import { AdContainer } from "./AdContainer";
@@ -27,8 +29,16 @@ export function useAdManager() {
 export function AdProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AdSettingsData>(DEFAULT_AD_SETTINGS);
   const [isReady, setIsReady] = useState(false);
+  const pathname = usePathname();
+  const isAuth = isAuthPath(pathname);
 
   useEffect(() => {
+    if (isAuth) {
+      purgeAdScriptsAndElements();
+      setIsReady(true);
+      return;
+    }
+
     fetch("/api/ads/config")
       .then((res) => (res.ok ? res.json() : DEFAULT_AD_SETTINGS))
       .then((cfg) => {
@@ -36,12 +46,12 @@ export function AdProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {})
       .finally(() => setIsReady(true));
-  }, []);
+  }, [pathname, isAuth]);
 
   return (
-    <AdContext.Provider value={{ settings, isAdFree: false, isReady }}>
-      {/* Load Code 5 external network script once if enabled */}
-      {settings.adsEnabled && settings.providerProfitableRate && (
+    <AdContext.Provider value={{ settings, isAdFree: isAuth, isReady }}>
+      {/* STRICT ZERO-AD POLICY ON AUTH PAGES: Never load external ad scripts on login/register/password pages */}
+      {!isAuth && settings.adsEnabled && settings.providerProfitableRate && (
         <AdScript enabled={true} />
       )}
       {children}
@@ -67,8 +77,9 @@ export function ResponsiveAdSlot({
   allowContainer = false,
 }: ResponsiveAdSlotProps) {
   const { settings, isAdFree } = useAdManager();
+  const pathname = usePathname();
 
-  if (!settings.adsEnabled || isAdFree) {
+  if (isAuthPath(pathname) || !settings.adsEnabled || isAdFree) {
     return null;
   }
 

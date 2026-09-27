@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChillerLogo } from "@/components/icons";
+import { purgeAdScriptsAndElements } from "@/lib/ads/script-loader";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    purgeAdScriptsAndElements();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,10 +50,10 @@ export default function ForgotPasswordPage() {
         </div>
 
         <h1 className="text-xl sm:text-2xl font-black text-white text-center tracking-tight mb-2">
-          Reset Password
+          Reset Password • CHILLER
         </h1>
         <p className="text-xs text-zinc-400 text-center mb-6">
-          Enter your registered email address and we'll send you instructions to reset your password.
+          Enter your registered email address and we'll send you instructions to reset your CHILLER password.
         </p>
 
         {submitted ? (
@@ -64,7 +69,7 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form method="POST" action="#" onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold text-center">
                 {error}
@@ -72,12 +77,15 @@ export default function ForgotPasswordPage() {
             )}
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+              <label htmlFor="forgot-email" className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
                 Email Address
               </label>
               <input
+                id="forgot-email"
+                name="email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"

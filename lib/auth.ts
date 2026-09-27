@@ -11,6 +11,18 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  useSecureCookies: process.env.NODE_ENV === "production",
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" ? `__Secure-next-auth.session-token` : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   pages: {
     signIn: "/login",
     error: "/login",
@@ -121,6 +133,23 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith("/")) {
+        if (url.startsWith("//") || url.startsWith("/\\") || url.includes(":")) {
+          return baseUrl;
+        }
+        return `${baseUrl}${url}`;
+      }
+      // Allows callback URLs on the exact same origin
+      try {
+        const parsed = new URL(url);
+        if (parsed.origin === baseUrl) {
+          return url;
+        }
+      } catch {}
+      return baseUrl;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
