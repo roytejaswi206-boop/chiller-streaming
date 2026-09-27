@@ -1,11 +1,11 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign In • CHILLER",
+  title: "Sign In",
+  description: "Sign in to your CHILLER account to synchronize your watchlist, viewing history, and preferences across devices.",
   robots: {
-    index: false,
-    follow: false,
-    nocache: true,
+    index: true,
+    follow: true,
   },
 };
 
