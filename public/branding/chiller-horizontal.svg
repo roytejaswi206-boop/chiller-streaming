@@ -1,0 +1,48 @@
+<svg width="640" height="160" viewBox="0 0 640 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    
+    
+    <linearGradient id="cGrad" x1="112.47999999999999" y1="130.88" x2="278.08" y2="416.08000000000004" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="42%" stop-color="#FFFFFF" />
+      <stop offset="56%" stop-color="#FFA8BC" />
+      <stop offset="72%" stop-color="#FF3B6B" />
+      <stop offset="100%" stop-color="#FF1A50" />
+    </linearGradient>
+    <linearGradient id="triGrad" x1="211.84" y1="211.84" x2="307.52" y2="300.16" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF4776" />
+      <stop offset="100%" stop-color="#FF2458" />
+    </linearGradient>
+  
+  
+  </defs>
+
+  <!-- Emblem scaled to 130x130 at x=15, y=15 -->
+  <g transform="translate(15, 15) scale(0.254)">
+    
+    <!-- The "C" Symbol -->
+    <path d="
+    M 333.28 154.80
+    A 154.56 154.56 0 1 0 348.00 324.08
+    L 296.48 281.76
+    A 75.44 75.44 0 1 1 281.76 202.64
+    Z
+  " fill="url(#cGrad)" stroke="url(#cGrad)" stroke-width="11.040000000000001" stroke-linejoin="round" stroke-linecap="round" />
+
+    <!-- The Play Triangle -->
+    <path d="
+    M 223.80 211.84
+    L 291.97 247.63
+    Q 307.52 256.00 291.97 264.37
+    L 223.80 300.16
+    Q 211.84 300.16 211.84 288.20
+    L 211.84 223.80
+    Q 211.84 211.84 223.80 211.84
+    Z
+  " fill="url(#triGrad)" />
+  
+  </g>
+
+  <!-- Wordmark "CHILLER" in modern geometric sans-serif -->
+  <text x="175" y="105" fill="#F8FAFC" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif" font-size="76" font-weight="900" letter-spacing="0.10em">CHILLER</text>
+</svg>

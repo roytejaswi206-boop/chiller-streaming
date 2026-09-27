@@ -87,7 +87,7 @@ export function PwaInstallBanner() {
             Install CHILLER App
           </h4>
           <p className="text-[11px] text-zinc-400 truncate">
-            Watch beyond with standalone speed
+            Stream with standalone speed &bull; No browser chrome
           </p>
         </div>
 

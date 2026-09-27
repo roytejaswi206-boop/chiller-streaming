@@ -14,6 +14,7 @@ import {
   IconSettings,
   IconTrending,
   IconUser,
+  ChillerLogo,
 } from "@/components/icons";
 
 export function Sidebar() {
@@ -133,18 +134,14 @@ export function Sidebar() {
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#8A5CFF]/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="w-10 h-10 mx-auto mb-2 flex items-center justify-center">
-          <img
-            src="/branding/chiller-icon-emblem.webp"
-            alt="CHILLER"
-            className="w-full h-full object-contain drop-shadow-[0_2px_10px_rgba(255,59,107,0.4)]"
-          />
+          <ChillerLogo variant="icon" className="w-9 h-9" withText={false} />
         </div>
 
         <h4 className="text-xs font-black text-white tracking-wider mb-0.5">
           CHILLER
         </h4>
         <p className="text-[9px] text-[#FF3B6B] mb-2 font-black tracking-widest uppercase">
-          WATCH BEYOND
+          STREAM BEYOND
         </p>
 
         <span className="inline-block px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/10 text-[9px] font-bold text-zinc-300">

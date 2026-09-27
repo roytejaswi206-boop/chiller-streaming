@@ -12,6 +12,7 @@
 build
 dist
 profreehost_dist
+/scratch
 
 # Environment variables & secrets — NEVER commit real credentials
 .env

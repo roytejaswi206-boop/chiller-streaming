@@ -122,8 +122,8 @@ export function ChillerIntro({ forcePlay = false, onComplete }: ChillerIntroProp
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#09090C] p-6 text-center">
             <ChillerLogo className="w-20 h-20 animate-pulse mb-4" withText={false} />
             <h2 className="text-xl font-black tracking-wider text-white mb-1">CHILLER</h2>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#FF3B6B] mb-6">
-              WATCH BEYOND
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#FF3B6B] mb-6">
+              Movies &bull; Anime &bull; TV Shows
             </p>
 
             {needsUserGesture ? (

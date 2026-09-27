@@ -1,6 +1,6 @@
 // CHILLER Official Service Worker — PWA App Shell & Offline Experience
-// Build: 2026.09.25-v2.1.0-5f0f0b8
-const CACHE_NAME = 'chiller-v3';
+// Build: 2026.09.28-brand-redesign-v4.0.0
+const CACHE_NAME = 'chiller-brand-v4';
 const CORE_ASSETS = [
   '/manifest.webmanifest',
   '/favicon.ico',
@@ -8,9 +8,14 @@ const CORE_ASSETS = [
   '/favicon-32x32.png',
   '/favicon-16x16.png',
   '/apple-touch-icon.png',
+  '/branding/chiller-logo.svg',
   '/branding/chiller-app-icon.png',
   '/branding/chiller-app-icon-maskable.png',
   '/branding/chiller-logo-horizontal.png',
+  '/icons/chiller-192.png',
+  '/icons/chiller-512.png',
+  '/icons/chiller-maskable-192.png',
+  '/icons/chiller-maskable-512.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-maskable-192.png',

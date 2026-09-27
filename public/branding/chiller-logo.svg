@@ -15,7 +15,10 @@
   
   </defs>
 
-  <circle cx="256" cy="256" r="256" fill="#09090C" />
+  
+      <rect width="512" height="512" rx="126" fill="#09090C" />
+      <rect width="510" height="510" x="1" y="1" rx="126" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+    
 
   <g opacity="1">
     <!-- The "C" Symbol -->
