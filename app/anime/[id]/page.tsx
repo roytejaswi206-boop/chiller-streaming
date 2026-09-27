@@ -50,8 +50,7 @@ export async function generateMetadata({ params }: AnimeDetailPageProps): Promis
 
     if (anime) {
       const title = anime.title || "Anime";
-      const releaseYear = anime.year ? String(anime.year) : (anime.releaseDate || "").split("-")[0];
-      const pageTitle = releaseYear ? `${title} (${releaseYear})` : title;
+      const pageTitle = `${title} | Anime | CHILLER`;
       const description = anime.overview
         ? anime.overview.length > 155
           ? `${anime.overview.slice(0, 155)}...`
@@ -60,7 +59,7 @@ export async function generateMetadata({ params }: AnimeDetailPageProps): Promis
       const imageUrl = anime.backdropUrl || anime.posterUrl || "/branding/og-image.jpg";
 
       return {
-        title: `${pageTitle} — Watch Beyond`,
+        title: pageTitle,
         description,
         alternates: {
           canonical: canonicalUrl,
@@ -69,14 +68,14 @@ export async function generateMetadata({ params }: AnimeDetailPageProps): Promis
           type: "video.tv_show",
           locale: "en_US",
           url: canonicalUrl,
-          title: `CHILLER | ${title}`,
+          title: pageTitle,
           description,
           siteName: "CHILLER",
           images: [{ url: imageUrl, width: 1200, height: 675, alt: title }],
         },
         twitter: {
           card: "summary_large_image",
-          title: `CHILLER | ${title}`,
+          title: pageTitle,
           description,
           images: [imageUrl],
         },
@@ -100,8 +99,7 @@ export async function generateMetadata({ params }: AnimeDetailPageProps): Promis
     const tvData = await getTVDetails(animeId).catch(() => null);
     if (tvData) {
       const title = tvData.name || tvData.title || "Anime";
-      const releaseYear = (tvData.first_air_date || "").split("-")[0];
-      const pageTitle = releaseYear ? `${title} (${releaseYear})` : title;
+      const pageTitle = `${title} | Anime | CHILLER`;
       const description = tvData.overview
         ? tvData.overview.length > 155
           ? `${tvData.overview.slice(0, 155)}...`
@@ -114,7 +112,7 @@ export async function generateMetadata({ params }: AnimeDetailPageProps): Promis
         : "/branding/og-image.jpg";
 
       return {
-        title: `${pageTitle} — Watch Beyond`,
+        title: pageTitle,
         description,
         alternates: {
           canonical: canonicalUrl,
@@ -123,14 +121,14 @@ export async function generateMetadata({ params }: AnimeDetailPageProps): Promis
           type: "video.tv_show",
           locale: "en_US",
           url: canonicalUrl,
-          title: `CHILLER | ${title}`,
+          title: pageTitle,
           description,
           siteName: "CHILLER",
           images: [{ url: backdropUrl, width: 1200, height: 675, alt: title }],
         },
         twitter: {
           card: "summary_large_image",
-          title: `CHILLER | ${title}`,
+          title: pageTitle,
           description,
           images: [backdropUrl],
         },
@@ -151,7 +149,7 @@ export async function generateMetadata({ params }: AnimeDetailPageProps): Promis
   }
 
   return {
-    title: "Anime Details • CHILLER",
+    title: "Anime Details | CHILLER",
     robots: { index: true, follow: true },
   };
 }

@@ -13,13 +13,13 @@ import { getCanonicalUrl } from "@/lib/config/site";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Stream TV Series Online — Full Seasons, Episodes & Dramas",
-  description: "Binge-watch your favorite TV series and dramas on CHILLER. Full seasons, episode guides, and seamless playback across devices.",
+  title: "TV Series | Stream Seasons & Episodes | CHILLER",
+  description: "Binge-watch your favorite TV series and dramas on CHILLER. Full seasons, episode guides, and seamless HD playback across devices.",
   alternates: {
     canonical: getCanonicalUrl("/series"),
   },
   openGraph: {
-    title: "CHILLER | Stream TV Series Online",
+    title: "TV Series | Stream Seasons & Episodes | CHILLER",
     description: "Binge-watch your favorite TV series and dramas on CHILLER. Full seasons, episode guides, and seamless playback across devices.",
     url: getCanonicalUrl("/series"),
     siteName: "CHILLER",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "CHILLER | Stream TV Series Online",
+    title: "TV Series | Stream Seasons & Episodes | CHILLER",
     description: "Binge-watch your favorite TV series and dramas on CHILLER.",
     images: ["/branding/og-image.jpg"],
   },

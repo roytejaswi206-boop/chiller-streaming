@@ -154,7 +154,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
 
-    // Popular TV Series -> /tv/[id]
+    // Popular TV Series -> /series/[id]
     if (popularTv && Array.isArray(popularTv.results)) {
       for (const item of popularTv.results.slice(0, 40)) {
         if (item.id) {
@@ -164,13 +164,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           if (isAnime) {
             addRoute(`/anime/${item.id}`, 0.85);
           } else {
-            addRoute(`/tv/${item.id}`, 0.85);
+            addRoute(`/series/${item.id}`, 0.85);
           }
         }
       }
     }
 
-    // Trending Mixed -> /movie/[id], /tv/[id], /anime/[id]
+    // Trending Mixed -> /movie/[id], /series/[id], /anime/[id]
     if (trendingAll && Array.isArray(trendingAll.results)) {
       for (const item of trendingAll.results.slice(0, 40)) {
         if (!item.id) continue;
@@ -181,7 +181,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         if (isAnime) {
           addRoute(`/anime/${item.id}`, 0.85);
         } else if (item.media_type === "tv") {
-          addRoute(`/tv/${item.id}`, 0.85);
+          addRoute(`/series/${item.id}`, 0.85);
         } else {
           addRoute(`/movie/${item.id}`, 0.85);
         }
@@ -204,7 +204,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   for (const id of evergreenMovieIds) addRoute(`/movie/${id}`, 0.8);
-  for (const id of evergreenTvIds) addRoute(`/tv/${id}`, 0.8);
+  for (const id of evergreenTvIds) addRoute(`/series/${id}`, 0.8);
   for (const id of evergreenAnimeIds) addRoute(`/anime/${id}`, 0.8);
 
   return [...staticRoutes, ...genreRoutes, ...dynamicRoutes];

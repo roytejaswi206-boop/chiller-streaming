@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: MovieDetailPageProps): Promis
 
     const title = movie.title || movie.name || "Movie";
     const releaseYear = (movie.release_date || "").split("-")[0];
-    const pageTitle = releaseYear ? `${title} (${releaseYear})` : title;
+    const pageTitle = releaseYear ? `${title} (${releaseYear}) | CHILLER` : `${title} | CHILLER`;
     const description = movie.overview
       ? movie.overview.length > 155
         ? `${movie.overview.slice(0, 155)}...`
@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: MovieDetailPageProps): Promis
       : "/branding/og-image.jpg";
 
     return {
-      title: `${pageTitle} — Watch Beyond`,
+      title: pageTitle,
       description,
       alternates: {
         canonical: canonicalUrl,
@@ -68,7 +68,7 @@ export async function generateMetadata({ params }: MovieDetailPageProps): Promis
         type: "video.movie",
         locale: "en_US",
         url: canonicalUrl,
-        title: `CHILLER | ${title}`,
+        title: pageTitle,
         description,
         siteName: "CHILLER",
         images: [
@@ -82,7 +82,7 @@ export async function generateMetadata({ params }: MovieDetailPageProps): Promis
       },
       twitter: {
         card: "summary_large_image",
-        title: `CHILLER | ${title}`,
+        title: pageTitle,
         description,
         images: [backdropUrl],
       },
@@ -99,7 +99,7 @@ export async function generateMetadata({ params }: MovieDetailPageProps): Promis
     };
   } catch {
     return {
-      title: "Movie Details • CHILLER",
+      title: "Movie Details | CHILLER",
       robots: { index: true, follow: true },
     };
   }

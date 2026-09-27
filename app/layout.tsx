@@ -7,7 +7,7 @@ import { PwaUpdateManager } from "@/components/pwa/PwaUpdateManager";
 import { PwaInstallBanner } from "@/components/layout/PwaInstallBanner";
 import { ActivityTracker } from "@/components/analytics/ActivityTracker";
 import { getCanonicalUrl } from "@/lib/config/site";
-import { JsonLd, buildWebSiteSchema } from "@/components/seo/JsonLd";
+import { JsonLd, buildWebSiteSchema, buildOrganizationSchema } from "@/components/seo/JsonLd";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -21,11 +21,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(getCanonicalUrl("/")),
   title: {
-    default: "CHILLER — Watch Beyond",
-    template: "%s • CHILLER",
+    default: "CHILLER | Movies, Anime & TV Shows",
+    template: "%s",
   },
-  description: "A premium streaming and discovery experience for Movies, Anime, and TV Series.",
-  keywords: ["chiller", "streaming", "movies", "anime", "series", "tv shows", "watch beyond", "sub", "dub", "free streaming"],
+  description: "Discover movies, anime, TV series, dramas and more on CHILLER. Explore trending titles, genres, new releases and personalized recommendations.",
+  keywords: ["chiller", "chiller movies", "chiller anime", "chiller streaming", "movies", "anime", "series", "tv shows", "k-drama", "c-drama", "streaming"],
   alternates: {
     canonical: getCanonicalUrl("/"),
   },
@@ -59,22 +59,22 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: getCanonicalUrl("/"),
-    title: "CHILLER — Watch Beyond",
-    description: "A premium streaming and discovery experience for Movies, Anime, and TV Series.",
+    title: "CHILLER | Movies, Anime & TV Shows",
+    description: "Discover movies, anime, TV series, dramas and more on CHILLER. Explore trending titles, genres, new releases and personalized recommendations.",
     siteName: "CHILLER",
     images: [
       {
         url: "/branding/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "CHILLER — Watch Beyond",
+        alt: "CHILLER — Movies, Anime & TV Shows",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CHILLER — Watch Beyond",
-    description: "A premium streaming and discovery experience for Movies, Anime, and TV Series.",
+    title: "CHILLER | Movies, Anime & TV Shows",
+    description: "Discover movies, anime, TV series, dramas and more on CHILLER. Explore trending titles, genres, new releases and personalized recommendations.",
     images: ["/branding/og-image.jpg"],
   },
 };
@@ -87,7 +87,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen min-h-[100dvh] bg-[#09090C] text-[#F8FAFC] antialiased selection:bg-[#FF3B6B] selection:text-white pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden">
-        <JsonLd schema={buildWebSiteSchema()} />
+        <JsonLd schema={[buildWebSiteSchema(), buildOrganizationSchema()]} />
         <Providers>
           <ActivityTracker />
           <PwaUpdateManager>

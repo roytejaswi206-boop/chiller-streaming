@@ -11,13 +11,13 @@ import { getCanonicalUrl } from "@/lib/config/site";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Watch Anime Online Free — Subbed & Dubbed HD Episodes",
+  title: "Anime | Stream Subbed & Dubbed Episodes | CHILLER",
   description: "Stream trending, popular, and classic anime on CHILLER. Fast HD buffering, Japanese audio with English subtitles, English dubs, and seamless AniList discovery.",
   alternates: {
     canonical: getCanonicalUrl("/anime"),
   },
   openGraph: {
-    title: "CHILLER | Watch Anime Online Free",
+    title: "Anime | Stream Subbed & Dubbed Episodes | CHILLER",
     description: "Stream trending, popular, and classic anime on CHILLER. Fast HD buffering, Japanese audio with English subtitles, and English dubs.",
     url: getCanonicalUrl("/anime"),
     siteName: "CHILLER",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "CHILLER | Watch Anime Online Free",
+    title: "Anime | Stream Subbed & Dubbed Episodes | CHILLER",
     description: "Stream trending, popular, and classic anime on CHILLER.",
     images: ["/branding/og-image.jpg"],
   },

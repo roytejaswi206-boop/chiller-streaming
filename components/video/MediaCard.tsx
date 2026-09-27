@@ -49,7 +49,7 @@ function MediaCardComponent({
       ? `/anime/${id}`
       : mediaType === "tv"
       ? `/series/${id}`
-      : `/movies/${id}`);
+      : `/movie/${id}`);
 
   const imageSrc =
     layout === "backdrop"

@@ -44,6 +44,19 @@ export function buildWebSiteSchema() {
   };
 }
 
+export function buildOrganizationSchema() {
+  const siteUrl = getCanonicalUrl("/");
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${siteUrl}#organization`,
+    name: "CHILLER",
+    url: siteUrl,
+    logo: `${siteUrl}branding/chiller-logo.png`,
+    description: "Discover movies, anime, TV series, dramas and more on CHILLER.",
+  };
+}
+
 /**
  * Builds BreadcrumbList Schema
  */
@@ -149,7 +162,7 @@ export function buildTVSeriesSchema(series: {
   country?: string;
   isAnime?: boolean;
 }) {
-  const pathPrefix = series.isAnime ? "/anime" : "/tv";
+  const pathPrefix = series.isAnime ? "/anime" : "/series";
   const canonicalUrl = getCanonicalUrl(`${pathPrefix}/${series.id}`);
   const images: string[] = [];
   if (series.backdropPath) {

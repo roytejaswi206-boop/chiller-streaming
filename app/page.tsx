@@ -17,23 +17,23 @@ import { getCanonicalUrl } from "@/lib/config/site";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "CHILLER — Watch Beyond | Free Movies, TV Series & Anime",
-  description: "A premium cinematic streaming and discovery platform. Watch thousands of HD movies, TV shows, and subbed/dubbed anime with zero subscription fees.",
+  title: "CHILLER | Movies, Anime & TV Shows",
+  description: "Discover movies, anime, TV series, dramas and more on CHILLER. Explore trending titles, genres, new releases and personalized recommendations.",
   alternates: {
     canonical: getCanonicalUrl("/"),
   },
   openGraph: {
-    title: "CHILLER — Watch Beyond",
-    description: "A premium cinematic streaming and discovery platform. Watch thousands of HD movies, TV shows, and subbed/dubbed anime.",
+    title: "CHILLER | Movies, Anime & TV Shows",
+    description: "Discover movies, anime, TV series, dramas and more on CHILLER. Explore trending titles, genres, new releases and personalized recommendations.",
     url: getCanonicalUrl("/"),
     siteName: "CHILLER",
     type: "website",
-    images: [{ url: "/branding/og-image.jpg", width: 1200, height: 630, alt: "CHILLER — Watch Beyond" }],
+    images: [{ url: "/branding/og-image.jpg", width: 1200, height: 630, alt: "CHILLER | Movies, Anime & TV Shows" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CHILLER — Watch Beyond",
-    description: "A premium cinematic streaming and discovery platform. Watch thousands of HD movies, TV shows, and subbed/dubbed anime.",
+    title: "CHILLER | Movies, Anime & TV Shows",
+    description: "Discover movies, anime, TV series, dramas and more on CHILLER. Explore trending titles, genres, new releases and personalized recommendations.",
     images: ["/branding/og-image.jpg"],
   },
 };

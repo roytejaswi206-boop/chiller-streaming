@@ -1,11 +1,12 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Set New Password",
-  description: "Set a new secure password for your CHILLER account.",
+  title: "Reset Password | CHILLER",
+  description: "Set a new password for your CHILLER account.",
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
+    nocache: true,
   },
 };
 

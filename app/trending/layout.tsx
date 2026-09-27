@@ -2,13 +2,13 @@ import { Metadata } from "next";
 import { getCanonicalUrl } from "@/lib/config/site";
 
 export const metadata: Metadata = {
-  title: "Trending Movies & TV Shows Today — Watch Beyond",
+  title: "Trending Movies & TV Shows | CHILLER",
   description: "Discover what is popular right now across movies, television series, and anime on CHILLER. Real-time trending charts and community favorites.",
   alternates: {
     canonical: getCanonicalUrl("/trending"),
   },
   openGraph: {
-    title: "CHILLER | Trending Movies & TV Shows Today",
+    title: "Trending Movies & TV Shows | CHILLER",
     description: "Discover what is popular right now across movies, television series, and anime on CHILLER.",
     url: getCanonicalUrl("/trending"),
     siteName: "CHILLER",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "CHILLER | Trending Movies & TV Shows Today",
+    title: "Trending Movies & TV Shows | CHILLER",
     description: "Discover what is popular right now across movies, television series, and anime on CHILLER.",
     images: ["/branding/og-image.jpg"],
   },

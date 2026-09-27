@@ -257,7 +257,7 @@ export function ChillerHero({ items }: ChillerHeroProps) {
                 ? `/anime/${activeItem.id}`
                 : activeItem.mediaType === "tv"
                 ? `/series/${activeItem.id}`
-                : `/movies/${activeItem.id}`
+                : `/movie/${activeItem.id}`
             }
             className="px-4 py-3 rounded-full text-xs sm:text-sm font-semibold text-zinc-400 hover:text-white hover:bg-white/5 transition"
           >

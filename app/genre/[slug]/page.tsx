@@ -21,12 +21,12 @@ export async function generateMetadata({ params }: GenrePageProps): Promise<Meta
   const genreMeta = GENRE_SLUG_MAP[normalizedSlug];
   const genreTitle = genreMeta?.name || normalizedSlug.charAt(0).toUpperCase() + normalizedSlug.slice(1);
 
-  const title = `${genreTitle} Movies, Series & Anime`;
+  const title = `${genreTitle} Movies, Series & Anime | CHILLER`;
   const description = `Explore top-rated, popular, and trending ${genreTitle.toLowerCase()} movies, television shows, and anime on CHILLER. HD streaming, multiple languages, and continuous discovery.`;
   const canonicalUrl = getCanonicalUrl(`/genre/${normalizedSlug}`);
 
   return {
-    title: `${title} — Watch Beyond`,
+    title,
     description,
     alternates: {
       canonical: canonicalUrl,
@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: GenrePageProps): Promise<Meta
       type: "website",
       locale: "en_US",
       url: canonicalUrl,
-      title: `CHILLER | ${title}`,
+      title,
       description,
       siteName: "CHILLER",
       images: [
@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: GenrePageProps): Promise<Meta
     },
     twitter: {
       card: "summary_large_image",
-      title: `CHILLER | ${title}`,
+      title,
       description,
       images: ["/branding/og-image.jpg"],
     },

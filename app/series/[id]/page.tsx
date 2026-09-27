@@ -43,15 +43,14 @@ export async function generateMetadata({ params }: SeriesDetailPageProps): Promi
     }
 
     const title = tvData.name || tvData.title || "Series";
-    const releaseYear = (tvData.first_air_date || "").split("-")[0];
-    const pageTitle = releaseYear ? `${title} (${releaseYear})` : title;
+    const pageTitle = `${title} | TV Series | CHILLER`;
     const description = tvData.overview
       ? tvData.overview.length > 155
         ? `${tvData.overview.slice(0, 155)}...`
         : tvData.overview
       : `Watch ${title} on CHILLER with all seasons, episodes, and seamless HD streaming.`;
 
-    const canonicalUrl = getCanonicalUrl(`/tv/${tmdbId}`);
+    const canonicalUrl = getCanonicalUrl(`/series/${tmdbId}`);
     const backdropUrl = tvData.backdrop_path
       ? `https://image.tmdb.org/t/p/w1280${tvData.backdrop_path}`
       : tvData.poster_path
@@ -59,7 +58,7 @@ export async function generateMetadata({ params }: SeriesDetailPageProps): Promi
       : "/branding/og-image.jpg";
 
     return {
-      title: `${pageTitle} — Watch Beyond`,
+      title: pageTitle,
       description,
       alternates: {
         canonical: canonicalUrl,
@@ -68,7 +67,7 @@ export async function generateMetadata({ params }: SeriesDetailPageProps): Promi
         type: "video.tv_show",
         locale: "en_US",
         url: canonicalUrl,
-        title: `CHILLER | ${title}`,
+        title: pageTitle,
         description,
         siteName: "CHILLER",
         images: [
@@ -82,7 +81,7 @@ export async function generateMetadata({ params }: SeriesDetailPageProps): Promi
       },
       twitter: {
         card: "summary_large_image",
-        title: `CHILLER | ${title}`,
+        title: pageTitle,
         description,
         images: [backdropUrl],
       },
@@ -99,7 +98,7 @@ export async function generateMetadata({ params }: SeriesDetailPageProps): Promi
     };
   } catch {
     return {
-      title: "Series Details • CHILLER",
+      title: "Series Details | CHILLER",
       robots: { index: true, follow: true },
     };
   }
@@ -173,7 +172,7 @@ export default async function SeriesDetailPage({ params }: SeriesDetailPageProps
     const breadcrumbsSchema = buildBreadcrumbSchema([
       { name: "Home", url: getCanonicalUrl("/") },
       { name: "Series", url: getCanonicalUrl("/series") },
-      { name: title, url: getCanonicalUrl(`/tv/${tmdbId}`) },
+      { name: title, url: getCanonicalUrl(`/series/${tmdbId}`) },
     ]);
 
     return (

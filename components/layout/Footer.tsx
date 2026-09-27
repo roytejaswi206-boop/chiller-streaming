@@ -54,6 +54,26 @@ export function Footer() {
                 New Releases
               </Link>
             </li>
+            <li>
+              <Link href="/kdrama" className="hover:text-white transition">
+                K-Drama
+              </Link>
+            </li>
+            <li>
+              <Link href="/cdrama" className="hover:text-white transition">
+                C-Drama
+              </Link>
+            </li>
+            <li>
+              <Link href="/kids" className="hover:text-white transition">
+                Kids & Family
+              </Link>
+            </li>
+            <li>
+              <Link href="/documentaries" className="hover:text-white transition">
+                Documentaries
+              </Link>
+            </li>
           </ul>
         </div>
 

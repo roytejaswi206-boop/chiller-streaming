@@ -1,9 +1,34 @@
 import React from "react";
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { InfiniteMediaGrid } from "@/components/video/InfiniteMediaGrid";
 import { discoverContent } from "@/lib/content/discovery";
+import { getCanonicalUrl } from "@/lib/config/site";
+import { JsonLd, buildCollectionSchema, buildBreadcrumbSchema } from "@/components/seo/JsonLd";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "K-Drama | Korean Dramas & Series | CHILLER",
+  description: "Discover trending and top-rated Korean dramas on CHILLER. Explore romantic comedies, thrillers, and historical sagas in HD.",
+  alternates: {
+    canonical: getCanonicalUrl("/kdrama"),
+  },
+  openGraph: {
+    title: "K-Drama | Korean Dramas & Series | CHILLER",
+    description: "Discover trending and top-rated Korean dramas on CHILLER. Explore romantic comedies, thrillers, and historical sagas.",
+    url: getCanonicalUrl("/kdrama"),
+    siteName: "CHILLER",
+    type: "website",
+    images: [{ url: "/branding/og-image.jpg", width: 1200, height: 630, alt: "K-Drama on CHILLER" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "K-Drama | Korean Dramas & Series | CHILLER",
+    description: "Discover trending and top-rated Korean dramas on CHILLER.",
+    images: ["/branding/og-image.jpg"],
+  },
+};
 
 export default async function KDramaPage() {
   const initialRes = await discoverContent({
@@ -14,8 +39,19 @@ export default async function KDramaPage() {
     page: 1,
   });
 
+  const collectionSchema = buildCollectionSchema(
+    "Korean Dramas & Series",
+    "Discover trending and top-rated Korean dramas on CHILLER.",
+    "/kdrama"
+  );
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: "Home", url: getCanonicalUrl("/") },
+    { name: "K-Drama", url: getCanonicalUrl("/kdrama") },
+  ]);
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)] bg-[#09090C]">
+      <JsonLd schema={[collectionSchema, breadcrumbSchema]} />
       <Sidebar />
 
       <main className="flex-1 p-4 lg:p-8 max-w-[1680px] overflow-hidden space-y-6">

@@ -1,8 +1,11 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { Metadata } from "next";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { VideoCard } from "@/components/video/VideoCard";
 import { prisma } from "@/lib/prisma";
+import { getCanonicalUrl } from "@/lib/config/site";
+import { GENRE_SLUG_MAP } from "@/lib/content/discovery";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +14,46 @@ interface CategoryPageProps {
   searchParams: Promise<{ page?: string; sort?: string }>;
 }
 
+export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const normalizedSlug = slug.toLowerCase();
+  const category = await prisma.category.findUnique({ where: { slug: normalizedSlug } }).catch(() => null);
+
+  if (!category) {
+    if (GENRE_SLUG_MAP[normalizedSlug]) {
+      const g = GENRE_SLUG_MAP[normalizedSlug];
+      return {
+        title: `${g.name} Movies & Series | CHILLER`,
+        description: `Explore ${g.name} movies, TV series, and anime on CHILLER.`,
+        alternates: { canonical: getCanonicalUrl(`/genre/${normalizedSlug}`) },
+      };
+    }
+    return {
+      title: "Category Not Found | CHILLER",
+      robots: { index: false, follow: true },
+    };
+  }
+
+  return {
+    title: `${category.name} | CHILLER`,
+    description: `Browse ${category.name} movies and videos on CHILLER.`,
+    alternates: { canonical: getCanonicalUrl(`/category/${normalizedSlug}`) },
+  };
+}
+
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const { slug } = await params;
+  const normalizedSlug = slug.toLowerCase();
   const { page = "1", sort = "newest" } = await searchParams;
 
   const category = await prisma.category.findUnique({
-    where: { slug },
-  });
+    where: { slug: normalizedSlug },
+  }).catch(() => null);
 
   if (!category) {
+    if (GENRE_SLUG_MAP[normalizedSlug]) {
+      redirect(`/genre/${normalizedSlug}`);
+    }
     notFound();
   }
 

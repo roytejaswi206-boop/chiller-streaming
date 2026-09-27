@@ -134,7 +134,7 @@ export function Header() {
         setShowSuggestions(false);
         const targetUrl =
           selected.mediaType === "movie"
-            ? `/movies/${selected.id}`
+            ? `/movie/${selected.id}`
             : selected.mediaType === "anime"
             ? `/anime/${selected.id}`
             : `/series/${selected.id}`;
@@ -282,7 +282,7 @@ export function Header() {
               const isSelected = selectedIndex === idx;
               const targetUrl =
                 item.mediaType === "movie"
-                  ? `/movies/${item.id}`
+                  ? `/movie/${item.id}`
                   : item.mediaType === "anime"
                   ? `/anime/${item.id}`
                   : `/series/${item.id}`;

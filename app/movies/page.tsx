@@ -13,14 +13,14 @@ import { getCanonicalUrl } from "@/lib/config/site";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Stream Movies Online — Action, Sci-Fi, Drama & Blockbusters",
-  description: "Explore top-rated, trending, and newly released movies on CHILLER. Watch in high definition with fast streaming and subtitles.",
+  title: "Movies | Stream Popular & Trending Films | CHILLER",
+  description: "Explore top-rated, trending, and newly released movies on CHILLER. Watch in high definition with seamless playback and subtitles.",
   alternates: {
     canonical: getCanonicalUrl("/movies"),
   },
   openGraph: {
-    title: "CHILLER | Stream Movies Online",
-    description: "Explore top-rated, trending, and newly released movies on CHILLER. Watch in HD with fast streaming and subtitles.",
+    title: "Movies | Stream Popular & Trending Films | CHILLER",
+    description: "Explore top-rated, trending, and newly released movies on CHILLER. Watch in HD with seamless playback and subtitles.",
     url: getCanonicalUrl("/movies"),
     siteName: "CHILLER",
     type: "website",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "CHILLER | Stream Movies Online",
+    title: "Movies | Stream Popular & Trending Films | CHILLER",
     description: "Explore top-rated, trending, and newly released movies on CHILLER.",
     images: ["/branding/og-image.jpg"],
   },
