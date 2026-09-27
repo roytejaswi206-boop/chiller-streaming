@@ -17,21 +17,8 @@ interface AdScriptProps {
  * Loads the network script once safely with singleton protection and error isolation.
  * STRICT SECURITY: Never mounts or executes on authentication pages.
  */
-export function AdScript({ enabled = true }: AdScriptProps) {
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (!enabled || isAuthPath(pathname)) return;
-
-    const config = AD_PROVIDERS.PROFITABLERATE_CPM;
-    loadAdScript(config.scriptUrl, {
-      async: true,
-      cfAsync: false,
-      timeoutMs: 8000,
-    }).catch(() => {
-      // Graceful error isolation
-    });
-  }, [enabled, pathname]);
-
+export function AdScript({ enabled = false }: AdScriptProps) {
+  // Popunder / global network scripts are disabled to ensure normal CHILLER
+  // navigation (movie cards, watch buttons, player controls) is never hijacked by ads.
   return null;
 }

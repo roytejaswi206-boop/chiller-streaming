@@ -655,15 +655,33 @@ export function ExternalPlayer({
     [sources, onSelectSourceIndex]
   );
 
-  // Load timeout monitor
+  // Playback startup watchdog: auto-fails over if provider iframe is blocked (e.g. 403 / X-Frame-Options) or hangs
   useEffect(() => {
-    if (!isLoading || ["PLAYER_READY", "PLAYBACK_CONFIRMED"].includes(playbackState)) {
+    if (
+      ["PLAYER_READY", "PLAYBACK_CONFIRMED", "PLAYBACK_NOT_VERIFIABLE", "ENDED", "ALL_PROVIDERS_FAILED"].includes(
+        playbackState
+      )
+    ) {
       setLoadTimeoutReached(false);
       return;
     }
-    const t = setTimeout(() => setLoadTimeoutReached(true), LOAD_TIMEOUT_MS);
-    return () => clearTimeout(t);
-  }, [isLoading, playbackState, iframeKey]);
+
+    const unattemptedCount = sources.filter((_, i) => !failedIndices.has(i) && i !== activeIndex).length;
+
+    const timer = setTimeout(() => {
+      // If playback has not confirmed ready and alternative backup providers exist, automatically switch
+      if (unattemptedCount > 0) {
+        triggerFallback(
+          activeIndex,
+          `${activeSource?.providerName || "Stream"} did not start.`
+        );
+      } else {
+        setLoadTimeoutReached(true);
+      }
+    }, 8000);
+
+    return () => clearTimeout(timer);
+  }, [playbackState, activeIndex, sources, failedIndices, iframeKey, activeSource, triggerFallback]);
 
   // Send CineSrc command via postMessage
   const sendCineSrcCommand = useCallback((command: string, args?: Record<string, unknown>) => {
@@ -785,8 +803,16 @@ export function ExternalPlayer({
         }
       }
 
-      // 2. VidSrc (Origins: https://vidsrc.sbs, https://vidsrc.sh, https://vidsrc.to)
-      const vidsrcOrigins = ["https://vidsrc.sbs", "https://vidsrc.sh", "https://vidsrc.to", "https://vidsrc.pm"];
+      // 2. VidSrc (Origins: https://vidsrc.pm, https://vidsrc.su, https://vidsrc.sbs, https://vidsrc.to, https://vidsrc.cc, https://vidsrc.in)
+      const vidsrcOrigins = [
+        "https://vidsrc.pm",
+        "https://vidsrc.su",
+        "https://vidsrc.sbs",
+        "https://vidsrc.sh",
+        "https://vidsrc.to",
+        "https://vidsrc.cc",
+        "https://vidsrc.in",
+      ];
       if (vidsrcOrigins.includes(event.origin) && activeSource.providerId === "vidsrc") {
         if (data && typeof data === "object") {
           if (data.player_status === "playing") {
@@ -1495,7 +1521,12 @@ export function ExternalPlayer({
               allowFullScreen
               onLoad={() => {
                 setIsLoading(false);
-                setPlaybackState((prev) => (prev === "CONNECTING" ? "EMBED_LOADED" : prev));
+                if (!embedPolicy.supportsPostMessage) {
+                  // Providers without postMessage capability (e.g. sandboxed NHD) are marked ready on load
+                  setPlaybackState("PLAYBACK_NOT_VERIFIABLE");
+                } else {
+                  setPlaybackState((prev) => (prev === "CONNECTING" ? "EMBED_LOADED" : prev));
+                }
                 resetControlsTimeout();
                 setTelemetry((prev) => ({
                   ...prev,

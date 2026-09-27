@@ -28,11 +28,7 @@ export function AdSmartLink({
 }: AdSmartLinkProps) {
   const config = AD_PROVIDERS.PROFITABLERATE_SMARTLINK;
 
-  useEffect(() => {
-    // Load the associated provider script once safely
-    loadAdScript(config.scriptUrl, { async: true, timeoutMs: 8000 }).catch(() => {});
-  }, [config.scriptUrl]);
-
+  // Background popunder script execution is permanently disabled to guarantee clean navigation.
   return (
     <div className={`my-4 flex items-center justify-center ${className}`}>
       <a

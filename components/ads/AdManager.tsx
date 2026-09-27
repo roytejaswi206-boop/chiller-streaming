@@ -50,10 +50,11 @@ export function AdProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AdContext.Provider value={{ settings, isAdFree: isAuth, isReady }}>
-      {/* STRICT ZERO-AD POLICY ON AUTH PAGES: Never load external ad scripts on login/register/password pages */}
-      {!isAuth && settings.adsEnabled && settings.providerProfitableRate && (
-        <AdScript enabled={true} />
-      )}
+      {/* 
+        NO GLOBAL CLICK-JACKING / POPUNDER SCRIPTS:
+        Ads are strictly confined to isolated <AdSlot /> containers (728x90, 320x50, Native).
+        No script is ever loaded at the document root to intercept user navigation.
+      */}
       {children}
     </AdContext.Provider>
   );

@@ -145,7 +145,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const payload: ResolvePayload = {
-      mediaType: (searchParams.get("type") || undefined) as any,
+      mediaType: (searchParams.get("type") || searchParams.get("mediaType") || undefined) as any,
       mediaClass: (searchParams.get("mediaClass") || undefined) as any,
       id: searchParams.get("id") || undefined,
       tmdbId: searchParams.get("tmdbId") || undefined,

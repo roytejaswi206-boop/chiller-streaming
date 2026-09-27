@@ -85,7 +85,16 @@ export const PROVIDER_EMBED_POLICIES: Record<string, ProviderEmbedPolicy> = {
     requiresTopNavigation: false,
     supportsExternalControls: false,
     supportsPostMessage: true,
-    trustedOrigins: ["https://vidsrc.sbs", "https://vidsrc.pm", "https://vidsrc.net", "https://vidsrc.xyz"],
+    trustedOrigins: [
+      "https://vidsrc.pm",
+      "https://vidsrc.su",
+      "https://vidsrc.sbs",
+      "https://vidsrc.net",
+      "https://vidsrc.xyz",
+      "https://vidsrc.to",
+      "https://vidsrc.cc",
+      "https://vidsrc.in",
+    ],
   },
 
   // 3. NHD Embed — Anime / Movie resolver

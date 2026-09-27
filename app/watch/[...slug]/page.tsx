@@ -51,8 +51,8 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
       {/* Provider connection hints (Preconnect & DNS-prefetch) */}
       <link rel="preconnect" href="https://cinesrc.st" crossOrigin="anonymous" />
       <link rel="dns-prefetch" href="https://cinesrc.st" />
-      <link rel="preconnect" href="https://vidsrc.sbs" crossOrigin="anonymous" />
-      <link rel="dns-prefetch" href="https://vidsrc.sbs" />
+      <link rel="preconnect" href="https://vidsrc.pm" crossOrigin="anonymous" />
+      <link rel="dns-prefetch" href="https://vidsrc.pm" />
       <link rel="preconnect" href="https://nhdapi.st" crossOrigin="anonymous" />
       <link rel="dns-prefetch" href="https://nhdapi.st" />
 

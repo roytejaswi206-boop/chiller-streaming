@@ -22,11 +22,11 @@ export const DEFAULT_AD_SETTINGS: AdSettingsData = {
   contentBannerEnabled: true,
   detailBannerEnabled: true,
   playerBannerEnabled: true,
-  providerProfitableRate: true,
+  providerProfitableRate: false, // Popunder disabled to prevent click hijacking
   providerHighRevenue320: true,
   providerHighRevenue728: true,
   providerContainer: true,
-  providerSmartlink: true,
+  providerSmartlink: false, // Smartlink background script disabled
   initialPageAdDelay: 0,
   minIntervalSeconds: 0,
   sessionLimit: 50,
@@ -133,8 +133,8 @@ export async function getAdSettings(): Promise<AdSettingsData> {
         providerHighRevenue728: env728Disabled ? false : dbRecord.providerHighRevenue728,
         providerHighRevenue320: env320Disabled ? false : dbRecord.providerHighRevenue320,
         providerContainer: envContainerDisabled ? false : dbRecord.providerContainer,
-        providerSmartlink: envSmartlinkDisabled ? false : dbRecord.providerSmartlink,
-        providerProfitableRate: envExternalScriptDisabled ? false : dbRecord.providerProfitableRate,
+        providerSmartlink: false, // Smartlink disabled from content navigation
+        providerProfitableRate: false, // Popunder disabled to prevent click hijacking
       };
       lastCacheTime = now;
       return cachedSettings;
@@ -148,8 +148,8 @@ export async function getAdSettings(): Promise<AdSettingsData> {
         providerHighRevenue728: !env728Disabled,
         providerHighRevenue320: !env320Disabled,
         providerContainer: !envContainerDisabled,
-        providerSmartlink: !envSmartlinkDisabled,
-        providerProfitableRate: !envExternalScriptDisabled,
+        providerSmartlink: false,
+        providerProfitableRate: false,
       },
     });
 
