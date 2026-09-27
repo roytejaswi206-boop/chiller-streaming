@@ -341,90 +341,90 @@ export async function getSuperAdminAnalytics(
     prisma.siteActivity.groupBy({
       by: ["sessionId"],
       where: { updatedAt: { gte: fiveMinAgo } },
-    }),
+    }).catch(() => []),
     prisma.watchSession.groupBy({
       by: ["sessionId"],
       where: { updatedAt: { gte: fiveMinAgo } },
-    }),
+    }).catch(() => []),
 
     // Current Period
     prisma.siteActivity.count({
       where: { type: "VISIT", createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => 0),
     prisma.siteActivity.groupBy({
       by: ["sessionId"],
       where: { createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => []),
     prisma.watchSession.count({
       where: { createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => 0),
     prisma.watchSession.aggregate({
       _sum: { watchDuration: true },
       where: { createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => ({ _sum: { watchDuration: 0 } })),
     prisma.siteActivity.count({
       where: { type: { in: ["VISIT", "PAGE_VIEW"] }, createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => 0),
     prisma.user.count({
       where: { createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => 0),
     prisma.siteActivity.count({
       where: { type: "LOGIN", createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => 0),
     prisma.searchEvent.count({
       where: { createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => 0),
     prisma.playbackAttempt.count({
       where: { status: "SUCCESS", createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => 0),
     prisma.playbackAttempt.count({
       where: { status: { in: ["FAILED", "TIMEOUT"] }, createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => 0),
     prisma.systemLog.count({
       where: { level: { in: ["ERROR", "FATAL"] }, createdAt: { gte: dates.startDate, lte: dates.endDate } },
-    }),
+    }).catch(() => 0),
 
     // Previous Period
     prisma.siteActivity.count({
       where: { type: "VISIT", createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => 0),
     prisma.siteActivity.groupBy({
       by: ["sessionId"],
       where: { createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => []),
     prisma.watchSession.count({
       where: { createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => 0),
     prisma.watchSession.aggregate({
       _sum: { watchDuration: true },
       where: { createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => ({ _sum: { watchDuration: 0 } })),
     prisma.siteActivity.count({
       where: { type: { in: ["VISIT", "PAGE_VIEW"] }, createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => 0),
     prisma.user.count({
       where: { createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => 0),
     prisma.siteActivity.count({
       where: { type: "LOGIN", createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => 0),
     prisma.searchEvent.count({
       where: { createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => 0),
     prisma.playbackAttempt.count({
       where: { status: "SUCCESS", createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => 0),
     prisma.playbackAttempt.count({
       where: { status: { in: ["FAILED", "TIMEOUT"] }, createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => 0),
     prisma.systemLog.count({
       where: { level: { in: ["ERROR", "FATAL"] }, createdAt: { gte: dates.prevStartDate, lte: dates.prevEndDate } },
-    }),
+    }).catch(() => 0),
 
     // User Governance Stats
-    prisma.user.count(),
-    prisma.watchlist.groupBy({ by: ["userId"] }),
-    prisma.watchHistory.groupBy({ by: ["userId"] }),
+    prisma.user.count().catch(() => 0),
+    prisma.watchlist.groupBy({ by: ["userId"] }).catch(() => []),
+    prisma.watchHistory.groupBy({ by: ["userId"] }).catch(() => []),
 
     // Top Content grouped by mediaKey
     prisma.watchSession.groupBy({
@@ -434,21 +434,21 @@ export async function getSuperAdminAnalytics(
       where: { createdAt: { gte: dates.startDate, lte: dates.endDate } },
       orderBy: { _count: { id: "desc" } },
       take: 20,
-    }),
+    }).catch(() => []),
 
     // Timeline activity for charts
     prisma.siteActivity.findMany({
       where: { createdAt: { gte: dates.startDate, lte: dates.endDate } },
       select: { createdAt: true, type: true, sessionId: true },
-    }),
+    }).catch(() => []),
     prisma.watchSession.findMany({
       where: { createdAt: { gte: dates.startDate, lte: dates.endDate } },
       select: { createdAt: true, watchDuration: true, mediaType: true },
-    }),
+    }).catch(() => []),
     prisma.user.findMany({
       where: { createdAt: { gte: dates.startDate, lte: dates.endDate } },
       select: { createdAt: true },
-    }),
+    }).catch(() => []),
   ]);
 
   // Metric derivations
@@ -629,7 +629,7 @@ export async function getPlaybackAndProviderHealth() {
   const attempts = await prisma.playbackAttempt.findMany({
     take: 500,
     orderBy: { createdAt: "desc" },
-  });
+  }).catch(() => []);
 
   const generalProviders = playbackRegistry.getGeneralProviders();
   const animeProviders = playbackRegistry.getAnimeProviders();
@@ -706,20 +706,20 @@ export async function getLiveActivityFeed(limit: number = 20): Promise<LiveActiv
     prisma.siteActivity.findMany({
       take: limit,
       orderBy: { createdAt: "desc" },
-    }),
+    }).catch(() => []),
     prisma.searchEvent.findMany({
       take: 10,
       orderBy: { createdAt: "desc" },
-    }),
+    }).catch(() => []),
     prisma.playbackAttempt.findMany({
       take: 10,
       orderBy: { createdAt: "desc" },
-    }),
+    }).catch(() => []),
     prisma.user.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
       select: { id: true, name: true, email: true, createdAt: true },
-    }),
+    }).catch(() => []),
   ]);
 
   const events: LiveActivityEvent[] = [];

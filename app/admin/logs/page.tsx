@@ -19,7 +19,7 @@ export default async function AdminLogsPage({ searchParams }: AdminLogsPageProps
     where,
     orderBy: { createdAt: "desc" },
     take: 50,
-  });
+  }).catch(() => []);
 
   return (
     <div>

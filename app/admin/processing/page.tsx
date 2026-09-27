@@ -9,7 +9,7 @@ export default async function AdminProcessingPage() {
     orderBy: { createdAt: "desc" },
     take: 40,
     include: { video: true },
-  });
+  }).catch(() => []);
 
   const queuedCount = jobs.filter((j) => j.status === "QUEUED").length;
   const activeCount = jobs.filter((j) => ["PROCESSING", "TRANSCODING", "PACKAGING"].includes(j.status)).length;

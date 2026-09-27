@@ -3,6 +3,11 @@ import Link from "next/link";
 import { Metadata } from "next";
 import { ChillerLogo } from "@/components/icons";
 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { isSuperAdminEmail } from "@/lib/config/super-admin";
+
 export const metadata: Metadata = {
   title: "CHILLER Super Admin — Root Control Center",
   robots: {
@@ -12,7 +17,36 @@ export const metadata: Metadata = {
   },
 };
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email) {
+    redirect("/login?callbackUrl=/admin");
+  }
+
+  const email = (session.user.email as string).trim().toLowerCase();
+  const isSuperAdmin = isSuperAdminEmail(email);
+  const userRole = isSuperAdmin ? "SUPER_ADMIN" : ((session.user as any)?.role || "USER");
+
+  if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] bg-[#09090C] text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-3xl mb-4 shadow-xl">
+          🚫
+        </div>
+        <h1 className="text-2xl font-black tracking-tight text-white mb-2">Access Denied</h1>
+        <p className="text-sm text-zinc-400 max-w-md mb-6 leading-relaxed">
+          You do not have administrative clearance to access the CHILLER Root Infrastructure. This incident has been recorded.
+        </p>
+        <Link
+          href="/"
+          className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-bold text-white transition cursor-pointer"
+        >
+          ← Return to Platform
+        </Link>
+      </div>
+    );
+  }
   const adminNav = [
     { label: "Dashboard", href: "/admin", icon: "📊" },
     { label: "Root Security Authority", href: "/admin/security", icon: "🛡️" },

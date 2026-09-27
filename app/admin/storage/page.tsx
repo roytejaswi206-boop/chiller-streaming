@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminStoragePage() {
   const [totalVideos, totalStorageAgg] = await Promise.all([
-    prisma.video.count(),
-    prisma.video.aggregate({ _sum: { fileSize: true } }),
+    prisma.video.count().catch(() => 0),
+    prisma.video.aggregate({ _sum: { fileSize: true } }).catch(() => ({ _sum: { fileSize: BigInt(0) } })),
   ]);
 
   const totalBytes = totalStorageAgg._sum.fileSize || BigInt(0);

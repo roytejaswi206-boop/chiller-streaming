@@ -39,8 +39,8 @@ export default async function AdminVideosPage({ searchParams }: AdminVideosPageP
         category: true,
         origins: { include: { server: true } },
       },
-    }),
-    prisma.video.count({ where }),
+    }).catch(() => []),
+    prisma.video.count({ where }).catch(() => 0),
   ]);
 
   const totalPages = Math.ceil(totalCount / pageSize);

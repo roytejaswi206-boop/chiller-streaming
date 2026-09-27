@@ -10,7 +10,7 @@ export default async function AdminServersPage() {
       },
     },
     orderBy: { priority: "asc" },
-  });
+  }).catch(() => []);
 
   return (
     <div>

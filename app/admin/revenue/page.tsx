@@ -8,8 +8,8 @@ export default async function AdminRevenuePage() {
   );
 
   const [subscriptionsCount, payments] = await Promise.all([
-    prisma.subscription.count({ where: { status: "ACTIVE" } }),
-    prisma.payment.findMany({ take: 10, orderBy: { createdAt: "desc" } }),
+    prisma.subscription.count({ where: { status: "ACTIVE" } }).catch(() => 0),
+    prisma.payment.findMany({ take: 10, orderBy: { createdAt: "desc" } }).catch(() => []),
   ]);
 
   return (

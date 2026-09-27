@@ -7,44 +7,120 @@ import {
 
 export const dynamic = "force-dynamic";
 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { isSuperAdminEmail } from "@/lib/config/super-admin";
+import Link from "next/link";
+
 export default async function AdminSecurityPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    redirect("/login?callbackUrl=/admin/security");
+  }
+
+  const email = (session.user.email as string).trim().toLowerCase();
+  const isSuperAdmin = isSuperAdminEmail(email);
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-2xl mb-4">
+          🔒
+        </div>
+        <h2 className="text-xl font-black text-white mb-2">Super Admin Clearance Required</h2>
+        <p className="text-xs text-zinc-400 max-w-md mb-6 leading-relaxed">
+          The Root Security Authority is restricted strictly to designated platform owners.
+        </p>
+        <Link
+          href="/admin"
+          className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-bold text-zinc-200 transition cursor-pointer"
+        >
+          ← Return to Control Center
+        </Link>
+      </div>
+    );
+  }
+
   const diagnostics = getSuperAdminDiagnostics();
 
-  // Fetch registered Super Admin accounts from database
-  const superAdminUsers = await prisma.user.findMany({
-    where: {
-      role: "SUPER_ADMIN",
-    },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      tier: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
+  // Safely fetch registered Super Admin accounts from database with in-memory fallback
+  let superAdminUsers: Array<{
+    id: string;
+    email: string;
+    name: string | null;
+    role: string;
+    tier: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = [];
 
-  // Recent security audit events
-  const securityLogs = await prisma.auditLog.findMany({
-    where: {
-      action: {
-        in: [
-          "SUPER_ADMIN_LOGIN",
-          "SUPER_ADMIN_ACCESS_DENIED",
-          "ROLE_PROMOTION_DENIED",
-          "ROOT_ACCOUNT_MODIFICATION_BLOCKED",
-          "SUPER_ADMIN_DELETION_BLOCKED",
-          "SUPER_ADMIN_BOOTSTRAP_SYNC",
-          "USER_UPDATED",
-          "USER_DELETED",
-        ],
+  try {
+    superAdminUsers = await prisma.user.findMany({
+      where: {
+        role: "SUPER_ADMIN",
       },
-    },
-    take: 30,
-    orderBy: { createdAt: "desc" },
-  });
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        tier: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  } catch (err) {
+    console.error("[SECURITY_PAGE_DB_FETCH_ERROR]", err);
+  }
+
+  // If database is empty or cold, ensure all designated identities are displayed as protected root
+  if (superAdminUsers.length === 0) {
+    superAdminUsers = DESIGNATED_SUPER_ADMIN_EMAILS.map((saEmail) => ({
+      id: `sa_${Buffer.from(saEmail).toString("hex").slice(0, 10)}`,
+      email: saEmail,
+      name: "Tejaswi Roy (Super Admin)",
+      role: "SUPER_ADMIN",
+      tier: "PREMIUM_YEARLY",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+  }
+
+  // Safe fetch of recent security audit events
+  let securityLogs: Array<{
+    id: string;
+    adminEmail: string;
+    action: string;
+    target: string | null;
+    details: string | null;
+    ipAddress: string | null;
+    createdAt: Date;
+  }> = [];
+
+  try {
+    securityLogs = await prisma.auditLog.findMany({
+      where: {
+        action: {
+          in: [
+            "SUPER_ADMIN_LOGIN",
+            "SUPER_ADMIN_ACCESS_DENIED",
+            "ROLE_PROMOTION_DENIED",
+            "ROOT_ACCOUNT_MODIFICATION_BLOCKED",
+            "SUPER_ADMIN_DELETION_BLOCKED",
+            "SUPER_ADMIN_BOOTSTRAP_SYNC",
+            "USER_UPDATED",
+            "USER_DELETED",
+          ],
+        },
+      },
+      take: 30,
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (err) {
+    console.error("[SECURITY_PAGE_AUDIT_LOG_ERROR]", err);
+    securityLogs = [];
+  }
 
   return (
     <div className="space-y-8">

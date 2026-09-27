@@ -26,7 +26,7 @@ export default async function AdminUsersPage() {
           },
         },
       },
-    }),
+    }).catch(() => []),
     getAuthContext(),
   ]);
 

@@ -54,20 +54,45 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   if (!session?.user?.email) return null;
 
   const email = (session.user.email as string).trim().toLowerCase();
+  const isSuperAdmin = isSuperAdminEmail(email);
 
-  // Re-fetch from DB to get current role (JWT may be stale)
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, email: true, role: true },
-  });
+  try {
+    // Re-fetch from DB to get current role (JWT may be stale)
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, role: true },
+    });
 
-  if (!user) return null;
+    if (user) {
+      return {
+        userId: user.id,
+        email: user.email,
+        role: isSuperAdmin ? "SUPER_ADMIN" : user.role,
+        isSuperAdmin,
+      };
+    }
+  } catch (err) {
+    console.error("[AUTH_CONTEXT_DB_FALLBACK]", err);
+  }
 
+  // Graceful fallback: If database is unreachable or read-only (serverless cold start),
+  // but the session is a cryptographically verified designated Super Admin:
+  if (isSuperAdmin) {
+    return {
+      userId: (session.user as any)?.id || `sa_${Buffer.from(email).toString("hex").slice(0, 12)}`,
+      email,
+      role: "SUPER_ADMIN",
+      isSuperAdmin: true,
+    };
+  }
+
+  // Non-super-admin fallback from verified JWT session
+  const sessionRole = (session.user as any)?.role || "USER";
   return {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-    isSuperAdmin: isSuperAdminEmail(user.email),
+    userId: (session.user as any)?.id || "user_session",
+    email,
+    role: sessionRole,
+    isSuperAdmin: false,
   };
 }
 

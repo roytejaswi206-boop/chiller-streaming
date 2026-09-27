@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPerformancePage() {
   // Test Database Query Latency
   const dbStart = Date.now();
-  await prisma.video.findFirst({ select: { id: true } });
+  await prisma.video.findFirst({ select: { id: true } }).catch(() => null);
   const dbLatencyMs = Date.now() - dbStart;
 
   return (

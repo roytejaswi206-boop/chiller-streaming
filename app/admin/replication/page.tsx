@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminReplicationPage() {
   const [servers, origins] = await Promise.all([
-    prisma.streamingServer.findMany(),
+    prisma.streamingServer.findMany().catch(() => []),
     prisma.videoOrigin.findMany({
       take: 30,
       orderBy: { updatedAt: "desc" },
@@ -13,7 +13,7 @@ export default async function AdminReplicationPage() {
         server: true,
         video: true,
       },
-    }),
+    }).catch(() => []),
   ]);
 
   return (

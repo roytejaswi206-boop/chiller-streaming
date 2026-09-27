@@ -15,35 +15,71 @@ export const metadata: Metadata = {
   },
 };
 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { isSuperAdminEmail } from "@/lib/config/super-admin";
+
 export default async function AdminOverviewPage() {
-  // Query real database metrics for video inventory and jobs
-  const [
-    totalVideos,
-    readyVideos,
-    processingVideos,
-    failedVideos,
-    totalViewsAgg,
-    recentJobs,
-    servers,
-  ] = await Promise.all([
-    prisma.video.count(),
-    prisma.video.count({ where: { status: "READY" } }),
-    prisma.video.count({ where: { status: { in: ["PROCESSING", "TRANSCODING", "PACKAGING", "QUEUED"] } } }),
-    prisma.video.count({ where: { status: "FAILED" } }),
-    prisma.video.aggregate({ _sum: { views: true } }),
-    prisma.processingJob.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: { video: true },
-    }),
-    prisma.streamingServer.findMany(),
-  ]);
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    redirect("/login?callbackUrl=/admin");
+  }
 
-  const totalViews = totalViewsAgg._sum.views || 0;
+  const email = (session.user.email as string).trim().toLowerCase();
+  const isSuperAdmin = isSuperAdminEmail(email);
+  const userRole = isSuperAdmin ? "SUPER_ADMIN" : ((session.user as any)?.role || "USER");
 
-  // Real storage usage calculation
-  const storageAgg = await prisma.video.aggregate({ _sum: { fileSize: true } });
-  const totalStorageBytes = storageAgg._sum.fileSize || BigInt(0);
+  if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
+    redirect("/");
+  }
+
+  // Gracefully query real database metrics for video inventory and jobs
+  let totalVideos = 0;
+  let readyVideos = 0;
+  let processingVideos = 0;
+  let failedVideos = 0;
+  let totalViews = 0;
+  let recentJobs: any[] = [];
+  let servers: any[] = [];
+  let totalStorageBytes = BigInt(0);
+
+  try {
+    const [
+      dbTotalVideos,
+      dbReadyVideos,
+      dbProcessingVideos,
+      dbFailedVideos,
+      totalViewsAgg,
+      dbRecentJobs,
+      dbServers,
+      storageAgg,
+    ] = await Promise.all([
+      prisma.video.count().catch(() => 0),
+      prisma.video.count({ where: { status: "READY" } }).catch(() => 0),
+      prisma.video.count({ where: { status: { in: ["PROCESSING", "TRANSCODING", "PACKAGING", "QUEUED"] } } }).catch(() => 0),
+      prisma.video.count({ where: { status: "FAILED" } }).catch(() => 0),
+      prisma.video.aggregate({ _sum: { views: true } }).catch(() => ({ _sum: { views: 0 } })),
+      prisma.processingJob.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: { video: true },
+      }).catch(() => []),
+      prisma.streamingServer.findMany().catch(() => []),
+      prisma.video.aggregate({ _sum: { fileSize: true } }).catch(() => ({ _sum: { fileSize: BigInt(0) } })),
+    ]);
+
+    totalVideos = dbTotalVideos;
+    readyVideos = dbReadyVideos;
+    processingVideos = dbProcessingVideos;
+    failedVideos = dbFailedVideos;
+    totalViews = totalViewsAgg._sum?.views || 0;
+    recentJobs = dbRecentJobs;
+    servers = dbServers;
+    totalStorageBytes = storageAgg._sum?.fileSize || BigInt(0);
+  } catch (err) {
+    console.error("[ADMIN_OVERVIEW_DB_QUERY_ERROR]", err);
+  }
 
   // Connected providers check
   const isPaymentConnected = Boolean(process.env.STRIPE_SECRET_KEY || process.env.CCBILL_ACCOUNT_NUMBER);
